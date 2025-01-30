@@ -8,7 +8,7 @@ class VehicleTracking(gym.Env):
     ts = 0.1  # sample time (s)
     alpha = 0  # road inclination (rad)
 
-    gamma = 1  # weight for fuel consumption in cost
+    gamma = 0.01  # weight for tracking in cost
     Q = np.array([[1, 0], [0, 0.1]])  # tracking cost weight
 
     def __init__(self, vehicle: Vehicle):
@@ -38,9 +38,9 @@ class VehicleTracking(gym.Env):
 
     def reward(self, x: np.ndarray, fuel: float) -> float:
         # TODO add docstring
-        return (x - self.x_ref[self.counter]).T @ self.Q @ (
+        return self.gamma * (x - self.x_ref[self.counter]).T @ self.Q @ (
             x - self.x_ref[self.counter]
-        ) + self.gamma * fuel
+        ) + fuel
 
     def step(
         self, action: tuple[float, float, int]
@@ -63,7 +63,7 @@ class VehicleTracking(gym.Env):
                 "x_ref": self.x_ref[self.counter - 1],
             },
         )
-    
+
     def get_x_ref_prediction(self, horizon: int) -> np.ndarray:
         # TODO add docstring
         return self.x_ref[self.counter : self.counter + horizon]

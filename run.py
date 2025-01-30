@@ -1,4 +1,4 @@
-from agent import Agent
+from agent import Agent, MINLPAgent, HeuristicGearAgent
 from env import VehicleTracking
 from vehicle import Vehicle
 from gymnasium.wrappers import TimeLimit
@@ -6,15 +6,20 @@ from utils.wrappers.monitor_episodes import MonitorEpisodes
 import matplotlib.pyplot as plt
 import numpy as np
 from visualisation.plot import plot
-from mpc import HybridTrackingMpc
+from mpc import HybridTrackingMpc, HybridTrackingMpcFixedGear, HybridTrackingFuelMpc
 
-mpc = HybridTrackingMpc(5)
 
 vehicle = Vehicle()
-env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=100))
-agent = Agent(mpc)
+env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=50))
 
-returns, info = agent.evaluate(env.unwrapped, episodes=1)
+# mpc = HybridTrackingMpc(5)
+mpc = HybridTrackingFuelMpc(5)
+agent = MINLPAgent(mpc)
+
+# mpc = HybridTrackingMpcFixedGear(5)
+# agent = HeuristicGearAgent(mpc)
+
+returns, info = agent.evaluate(env, episodes=1)
 fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
