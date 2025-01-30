@@ -2,8 +2,8 @@ from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
 
-class Agent:
 
+class Agent:
     fuel: list[list[float]] = []
     engine_torque: list[list[float]] = []
     engine_speed: list[list[float]] = []
@@ -14,14 +14,11 @@ class Agent:
         self.mpc = mpc
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
-        sol = self.mpc.solve({"x_0": state, "x_ref": self.x_ref_predicition.T.reshape(2, -1)})
-        # TODO check success
-        T_e = sol.vals['T_e'].full()[0, 0]
-        F_b = sol.vals['F_b'].full()[0, 0]
-        gear = np.argmax(sol.vals['gear'].full(), 0)[0]
-        return T_e, F_b, gear
+        raise NotImplementedError
 
-    def evaluate(self, env: VehicleTracking, episodes, seed=0) -> tuple[np.ndarray, dict]:
+    def evaluate(
+        self, env: VehicleTracking, episodes, seed=0
+    ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
 
         # self.reset()
@@ -63,7 +60,9 @@ class Agent:
         self.engine_torque.append([])
         self.engine_speed.append([])
         self.x_ref.append(np.empty((0, 2, 1)))
-        self.x_ref_predicition = env.get_x_ref_prediction(self.mpc.prediction_horizon+1)
+        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction(
+            self.mpc.prediction_horizon + 1
+        )
 
     def on_env_step(self, env: VehicleTracking, episode: int, info: dict):
         self.fuel[episode].append(info["fuel"])
@@ -72,5 +71,49 @@ class Agent:
         self.x_ref[episode] = np.concatenate(
             (self.x_ref[episode], info["x_ref"].reshape(1, 2, 1))
         )
-        self.x_ref_predicition = env.get_x_ref_prediction(self.mpc.prediction_horizon+1)
+        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction(
+            self.mpc.prediction_horizon + 1
+        )
 
+
+class MINLPAgent(Agent):
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+        sol = self.mpc.solve(
+            {"x_0": state, "x_ref": self.x_ref_predicition.T.reshape(2, -1)}
+        )
+        # TODO check success
+        T_e = sol.vals["T_e"].full()[0, 0]
+        F_b = sol.vals["F_b"].full()[0, 0]
+        gear = np.argmax(sol.vals["gear"].full(), 0)[0]
+        return T_e, F_b, gear
+
+
+class HeuristicGearAgent(Agent):
+    def gear_from_velocity(self, v: float) -> int:
+        if v < 5:
+            return 0
+        if v < 15:
+            return 1
+        if v < 20:
+            return 2
+        if v < 25:
+            return 3
+        if v < 30:
+            return 4
+        return 5
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+        gear_int = self.gear_from_velocity(state[1])
+        gear_array = np.zeros((6, self.mpc.prediction_horizon))
+        gear_array[gear_int] = 1
+        sol = self.mpc.solve(
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "gear": gear_array,
+            }
+        )
+        # TODO check success
+        T_e = sol.vals["T_e"].full()[0, 0]
+        F_b = sol.vals["F_b"].full()[0, 0]
+        return T_e, F_b, gear_int
