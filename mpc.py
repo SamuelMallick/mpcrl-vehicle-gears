@@ -23,14 +23,14 @@ F_b_max = 9000  # maximum braking force (N)
 p_0 = 0.04918
 p_1 = 0.001897
 p_2 = 4.5232e-5
-gamma = 0.1    # weight for tracking in cost
+gamma = 0.1  # weight for tracking in cost
 
-dt = 0.1
+dt = 1
 
 Q = cs.diag([1, 0.1])
 
 
-def non_linear_model(x, u, dt, alpha):
+def nonlinear_hybrid_model(x, u, dt, alpha):
     # TODO add docstring
     # u = [T_e, F_b, gear_1, gear_2, gear_3, gear_4, gear_5, gear_6]"
     n = (z_f / r_r) * sum([z_t[i] * u[i + 2] for i in range(6)])
@@ -41,6 +41,12 @@ def non_linear_model(x, u, dt, alpha):
         - g * np.sin(alpha)
         - u[1] / m
     )
+    return x + cs.vertcat(x[1], a) * dt
+
+
+def nonlinear_model(x, u, dt, alpha):
+    # TODO add docstring
+    a = u / m - C_wind * x[1] ** 2 / m - g * mu * np.cos(alpha) - g * np.sin(alpha)
     return x + cs.vertcat(x[1], a) * dt
 
 
@@ -69,7 +75,7 @@ class HybridTrackingMpc(Mpc):
         self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
-        self.set_nonlinear_dynamics(lambda x, u: non_linear_model(x, u, dt, 0))
+        self.set_nonlinear_dynamics(lambda x, u: nonlinear_hybrid_model(x, u, dt, 0))
         self.minimize(
             sum(
                 [
@@ -106,9 +112,10 @@ class HybridTrackingFuelMpc(Mpc):
         self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
-        self.set_nonlinear_dynamics(lambda x, u: non_linear_model(x, u, dt, 0))
+        self.set_nonlinear_dynamics(lambda x, u: nonlinear_hybrid_model(x, u, dt, 0))
         self.minimize(
-            gamma * sum(
+            gamma
+            * sum(
                 [
                     cs.mtimes([(x[:, i] - x_ref[:, i]).T, Q, x[:, i] - x_ref[:, i]])
                     for i in range(prediction_horizon + 1)
@@ -151,7 +158,7 @@ class HybridTrackingMpcFixedGear(Mpc):
         X_next = []
         for k in range(prediction_horizon):
             X_next.append(
-                non_linear_model(
+                nonlinear_hybrid_model(
                     x[:, k], cs.vertcat(T_e[k], F_b[k], gear[:, k]), dt, 0
                 )
             )
@@ -178,3 +185,31 @@ class HybridTrackingMpcFixedGear(Mpc):
         if not all(np.sum(gear[:, i], axis=0) == 1 for i in range(gear.shape[1])):
             raise ValueError("More than one gear selected for a time step.")
         return self.nlp.solve(pars, vals0)
+
+
+class TrackingMpc(Mpc):
+
+    def __init__(self, prediction_horizon: int):
+        # TODO add docstring for this whole file
+        nlp = Nlp[cs.SX](sym_type="SX")
+        super().__init__(nlp, prediction_horizon)
+
+        x, _ = self.state("x", 2)
+
+        F_trac_max = self.parameter("F_trac_max", (1, 1))
+        F_trac, _ = self.action(
+            "F_trac", 1, lb=T_e_idle * z_t[-1] * z_f / r_r - F_b_max
+        )
+        self.constraint("traction_force", F_trac, "<=", F_trac_max)
+
+        x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
+        self.set_nonlinear_dynamics(lambda x, u: nonlinear_model(x, u, dt, 0))
+        self.minimize(
+            sum(
+                [
+                    cs.mtimes([(x[:, i] - x_ref[:, i]).T, Q, x[:, i] - x_ref[:, i]])
+                    for i in range(prediction_horizon + 1)
+                ]
+            )
+        )
+        self.init_solver({}, solver="ipopt")

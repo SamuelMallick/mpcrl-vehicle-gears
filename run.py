@@ -6,17 +6,23 @@ from utils.wrappers.monitor_episodes import MonitorEpisodes
 import matplotlib.pyplot as plt
 import numpy as np
 from visualisation.plot import plot
-from mpc import HybridTrackingMpc, HybridTrackingMpcFixedGear, HybridTrackingFuelMpc
+from mpc import (
+    HybridTrackingMpc,
+    HybridTrackingMpcFixedGear,
+    HybridTrackingFuelMpc,
+    TrackingMpc,
+)
 
 
 vehicle = Vehicle()
-env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=50))
+env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=60))
 
 # mpc = HybridTrackingMpc(5)
 mpc = HybridTrackingFuelMpc(5)
 agent = MINLPAgent(mpc)
 
 # mpc = HybridTrackingMpcFixedGear(5)
+# mpc = TrackingMpc(5)
 # agent = HeuristicGearAgent(mpc)
 
 returns, info = agent.evaluate(env, episodes=1)
@@ -28,6 +34,9 @@ x_ref = info["x_ref"]
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
+
+print(f"cost = {sum(R[0])}")
+print(f"fuel = {sum(fuel[0])}")
 
 # plot first episode
 plot(x_ref[0], X[0], U[0], R[0], fuel[0], engine_torque[0], engine_speed[0])

@@ -1,6 +1,8 @@
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
+from vehicle import Vehicle
+from bisect import bisect_right
 
 
 class Agent:
@@ -89,31 +91,47 @@ class MINLPAgent(Agent):
 
 
 class HeuristicGearAgent(Agent):
-    def gear_from_velocity(self, v: float) -> int:
-        if v < 5:
-            return 0
-        if v < 15:
-            return 1
-        if v < 20:
-            return 2
-        if v < 25:
-            return 3
-        if v < 30:
-            return 4
-        return 5
+
+    # def __init__(self, mpc: Mpc, vehicle: Vehicle):
+    #     super().__init__(mpc)
+    #     self.vehicle = vehicle
+
+    def gear_from_velocity(self, v: float, F_trac: float) -> int:
+        for i in range(6):
+            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
+            if (
+                F_trac / n <= Vehicle.T_e_max
+                and v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max
+            ):
+                return i
+        raise ValueError("No gear found")
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
-        gear_int = self.gear_from_velocity(state[1])
-        gear_array = np.zeros((6, self.mpc.prediction_horizon))
-        gear_array[gear_int] = 1
+        max_v_per_gear = [
+            (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi)
+            / (Vehicle.z_t[i] * Vehicle.z_f * 60)
+            for i in range(6)
+        ]
+        idx = bisect_right(max_v_per_gear, state[1])
+        F_trac_max = Vehicle.T_e_max * Vehicle.z_t[idx] * Vehicle.z_f / Vehicle.r_r
         sol = self.mpc.solve(
             {
                 "x_0": state,
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                "gear": gear_array,
+                "F_trac_max": F_trac_max,
             }
         )
+
         # TODO check success
-        T_e = sol.vals["T_e"].full()[0, 0]
-        F_b = sol.vals["F_b"].full()[0, 0]
-        return T_e, F_b, gear_int
+        F_trac = sol.vals["F_trac"].full()[0, 0]
+        gear = self.gear_from_velocity(state[1], F_trac)
+        if F_trac < 0:
+            T_e = Vehicle.T_e_idle
+            F_b = (
+                -F_trac
+                + Vehicle.T_e_idle * Vehicle.z_t[gear] * Vehicle.z_f / Vehicle.r_r
+            )
+        else:
+            T_e = (F_trac * Vehicle.r_r) / (Vehicle.z_t[gear] * Vehicle.z_f)
+            F_b = 0
+        return T_e, F_b, gear
