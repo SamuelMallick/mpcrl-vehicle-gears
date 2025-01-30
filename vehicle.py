@@ -53,7 +53,7 @@ class Vehicle:
         )
 
         w_e = np.abs(self.x[1]) * n * 60 / (2 * np.pi)
-        if w_e > w_e_max:
+        if w_e > w_e_max + 1:  # TODO make this threshold more rigorous
             raise ValueError("Engine speed exceeds maximum value.")
         if w_e < w_e_idle:
             print("Engine speed below idle. Setting to idle.")
