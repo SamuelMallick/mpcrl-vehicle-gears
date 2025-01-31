@@ -11,6 +11,7 @@ class Agent:
     engine_speed: list[list[float]] = []
     x_ref: list[np.ndarray] = []
     x_ref_predicition: np.ndarray = np.empty((0, 2, 1))  # TODO is right shape?
+    T_e_prev = Vehicle.T_e_idle
 
     def __init__(self, mpc: Mpc):
         self.mpc = mpc
@@ -65,6 +66,7 @@ class Agent:
         self.x_ref_predicition = env.unwrapped.get_x_ref_prediction(
             self.mpc.prediction_horizon + 1
         )
+        self.T_e_prev = Vehicle.T_e_idle
 
     def on_env_step(self, env: VehicleTracking, episode: int, info: dict):
         self.fuel[episode].append(info["fuel"])
@@ -81,12 +83,17 @@ class Agent:
 class MINLPAgent(Agent):
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
         sol = self.mpc.solve(
-            {"x_0": state, "x_ref": self.x_ref_predicition.T.reshape(2, -1)}
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "T_e_prev": self.T_e_prev,
+            }
         )
         # TODO check success
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
+        self.T_e_prev = T_e
         return T_e, F_b, gear
 
 

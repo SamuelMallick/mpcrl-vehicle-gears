@@ -15,7 +15,7 @@ from mpc import (
 
 
 vehicle = Vehicle()
-env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=60))
+env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=10))
 
 # mpc = HybridTrackingMpc(5)
 mpc = HybridTrackingFuelMpc(5)

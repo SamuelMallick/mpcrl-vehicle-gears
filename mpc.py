@@ -60,8 +60,19 @@ class HybridTrackingMpc(Mpc):
         x, _ = self.state("x", 2)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
-        self.constraint("engine_torque_rate_ub", T_e[:-1] - T_e[1:], "<=", dT_e_max)
-        self.constraint("engine_torque_rate_lb", T_e[:-1] - T_e[1:], ">=", -dT_e_max)
+        T_e_prev = self.parameter("T_e_prev", (1, 1))
+        self.constraint(
+            "engine_torque_rate_ub",
+            cs.horzcat(T_e_prev, T_e[:-1]) - T_e,
+            "<=",
+            dT_e_max,
+        )
+        self.constraint(
+            "engine_torque_rate_lb",
+            cs.horzcat(T_e_prev, T_e[:-1]) - T_e,
+            ">=",
+            -dT_e_max,
+        )
 
         F_b, _ = self.action("F_b", 1, lb=0, ub=F_b_max)
 
@@ -97,8 +108,19 @@ class HybridTrackingFuelMpc(Mpc):
         x, _ = self.state("x", 2)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
-        self.constraint("engine_torque_rate_ub", T_e[:-1] - T_e[1:], "<=", dT_e_max)
-        self.constraint("engine_torque_rate_lb", T_e[:-1] - T_e[1:], ">=", -dT_e_max)
+        T_e_prev = self.parameter("T_e_prev", (1, 1))
+        self.constraint(
+            "engine_torque_rate_ub",
+            cs.horzcat(T_e_prev, T_e[:-1]) - T_e,
+            "<=",
+            dT_e_max,
+        )
+        self.constraint(
+            "engine_torque_rate_lb",
+            cs.horzcat(T_e_prev, T_e[:-1]) - T_e,
+            ">=",
+            -dT_e_max,
+        )
 
         F_b, _ = self.action("F_b", 1, lb=0, ub=F_b_max)
 
@@ -140,8 +162,19 @@ class HybridTrackingMpcFixedGear(Mpc):
         x, _ = self.state("x", 2)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
-        self.constraint("engine_torque_rate_ub", T_e[:-1] - T_e[1:], "<=", dT_e_max)
-        self.constraint("engine_torque_rate_lb", T_e[:-1] - T_e[1:], ">=", -dT_e_max)
+        T_e_prev = self.parameter("T_e_prev", (1, 1))
+        self.constraint(
+            "engine_torque_rate_ub",
+            cs.horzcat(T_e_prev, T_e[:-1]) - T_e,
+            "<=",
+            dT_e_max,
+        )
+        self.constraint(
+            "engine_torque_rate_lb",
+            cs.horzcat(T_e_prev, T_e[:-1]) - T_e,
+            ">=",
+            -dT_e_max,
+        )
 
         F_b, _ = self.action("F_b", 1, lb=0, ub=F_b_max)
 
@@ -199,7 +232,7 @@ class TrackingMpc(Mpc):
         F_trac_max = self.parameter("F_trac_max", (1, 1))
         F_trac, _ = self.action(
             "F_trac", 1, lb=T_e_idle * z_t[-1] * z_f / r_r - F_b_max
-        )
+        )  # TODO add torque rate constraint
         self.constraint("traction_force", F_trac, "<=", F_trac_max)
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
