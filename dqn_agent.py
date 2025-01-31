@@ -1,0 +1,360 @@
+from collections import deque, namedtuple
+from agent import Agent
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+from env import VehicleTracking
+from vehicle import Vehicle
+
+Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
+
+
+class ReplayMemory(object):
+    # TODO docstring
+
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+
+    def push(self, *args):
+        self.memory.append(Transition(*args))
+
+    def sample(
+        self, batch_size: int, np_random: np.random.Generator
+    ):  # TODO add return type
+        return np_random.choice(self.memory, batch_size, replace=False)
+
+    def __len__(self):
+        return len(self.memory)
+
+
+class DRQN(nn.Module):
+    # TODO docstring
+
+    def __init__(
+        self, input_size, hidden_size, num_actions=3, num_layers=1
+    ):  # three actions : downshift, no shift, upshift
+        super(DRQN, self).__init__()
+        self.fc = nn.Linear(hidden_size * 2, num_actions)  # fully connected layer
+        self.rnn = nn.RNN(
+            input_size, hidden_size, num_layers, batch_first=True, bidirectional=True
+        )  # recurrent layer
+
+    def forward(self, x):
+        drqn_out, _ = self.rnn(x)
+        q_values = self.fc(drqn_out)
+        return q_values
+
+
+class DQNAgent(Agent):
+
+    def __init__(self, mpc, N: int, np_random: np.random.Generator):
+        # TODO add docstring
+        super().__init__(mpc)
+        self.train_flag = True
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # hyperparameters
+        self.gamma = 0.99
+        self.learning_rate = 0.0001
+        self.tau = 0.001
+
+        # archticeture
+        self.n_states = 4
+        self.n_hidden = 64
+        self.n_actions = 3
+        self.n_layers = 2
+        self.N = N
+        self.n_gears = 6
+
+        # exploration
+        self.eps_start = 0
+        self.eps_end = 0
+        self.eps_decay = 0
+        self.steps_done = 0
+
+        # memory
+        self.memory_size = 100000
+        self.memory = ReplayMemory(self.memory_size)
+        self.batch_size = 1
+
+        self.np_random = np_random
+
+        self.policy_net = DRQN(
+            self.n_states, self.n_hidden, self.n_actions, self.n_layers
+        ).to(self.device)
+        self.target_net = DRQN(
+            self.n_states, self.n_hidden, self.n_actions, self.n_layers
+        ).to(self.device)
+        self.optimizer = optim.Adam(
+            self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
+        )  # TODO what is amsgrad?
+
+    def train(
+        self,
+        env: VehicleTracking,
+        num_episodes: int,
+        seed: int = 0,
+        save: bool = True,
+    ):
+        # TODO add docstring
+        seeds = map(
+            int, np.random.SeedSequence(seed).generate_state(num_episodes)
+        )  # TODO add this seeding to eval in other agents
+        self.on_train_start()
+        for episode, seed in zip(range(num_episodes), seeds):
+            state, info = env.reset(seed=seed)
+            self.on_episode_start(env)
+
+            gear = 3  # TODO pass in a way of getting the gear from the velocity for initial
+            gear_choice_init_explicit = np.ones((self.N, 1)) * gear
+            gear_choice_init_binary = np.zeros((self.n_gears, self.N))
+            gear_choice_init_binary[gear] = 1
+
+            # solve mpc with fixed gear choice
+            sol = self.mpc.solve(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear": gear_choice_init_binary,
+                }
+            )
+            # TODO check mpc solve succeed
+            T_e = torch.tensor(
+                sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+            ).unsqueeze(0)
+            F_b = torch.tensor(
+                sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
+            ).unsqueeze(0)
+            x = torch.tensor(
+                sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
+            ).unsqueeze(0)
+
+            nn_state = self.relative_state(x, T_e, F_b)
+            last_gear_choice_explicit = gear_choice_init_explicit   # TODO remove the need for explicit and binary
+
+            state, reward, truncated, terminated, info = env.step((T_e[0].item(), F_b[0].item(), gear))
+            self.on_env_step(env, episode, info)
+            # self.on_timestep_end()
+
+            while not (terminated or truncated):    
+                penalty = 0
+
+                network_action = self.network_action(nn_state)
+
+                gear_shift = network_action - 1 # TODO is action shift needed?
+                # gear_shift = gear_shift.cpu().numpy()
+                # gear_shift = gear_shift.T
+                # NOTE this is different to what Qizhang did, he shifted from previous gear sequence (which was not known by NN)
+                gear_choice_explicit = np.array([gear + np.sum(gear_shift[:i]) for i in range(self.N)]) # TODO check that works 
+
+                # clip gears to be within range
+                gear_choice_explicit_clipped = np.clip(gear_choice_explicit, 0, 5)
+                penalty += 100 * np.sum(gear_choice_explicit != gear_choice_explicit_clipped)   # TODO remove hard coded 100 and check that this works
+
+                gear_choice_binary = np.zeros((self.n_gears, self.N))
+                for i in range(self.N): # TODO remove loop
+                    gear_choice_binary[int(gear_choice_explicit[i]), i] = 1 # TODO is int cast needed?
+
+                sol = self.mpc.solve(
+                        {
+                            "x_0": state,
+                            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                            "T_e_prev": self.T_e_prev,
+                            "gear": gear_choice_binary,
+                        }
+                    )
+                if not sol.SUCCESS:
+                    # backup sol 1: use previous gear choice shifted
+                    penalty += 500
+                    gear_choice_explicit = np.concatenate(  # TODO is there a cleaner way to do this?
+                        (
+                            last_gear_choice_explicit[1:],
+                            last_gear_choice_explicit[[-1]],
+                        ),
+                        0,
+                    )
+                    gear_choice_binary = np.zeros((self.n_gears, self.N))   # remove loop
+                    for i in range(self.N):
+                        gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
+
+                    sol = self.mpc.solve(
+                        {
+                            "x_0": state,
+                            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                            "T_e_prev": self.T_e_prev,
+                            "gear": gear_choice_binary,
+                        }
+                    )
+
+                    if not sol.SUCCESS:
+                        # backup sol 2: use the same gear for all time steps
+                        gear = 3    # TODO get this from velocity
+
+                        # assume all time step have the same gear choice
+                        gear_choice_explicit = np.ones((self.N, 1)) * gear
+                        gear_choice_binary = np.zeros(
+                            (self.n_gears, self.N)
+                        )
+                        # set value for gear choice binary
+                        for i in range(self.N):
+                            gear_choice_binary[
+                                int(gear_choice_explicit[i]), i
+                            ] = 1
+
+                        sol = self.mpc.solve(
+                            {
+                                "x_0": state,
+                                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                                "T_e_prev": self.T_e_prev,
+                                "gear": gear_choice_binary,
+                            }
+                        )
+
+                        if not sol.SUCCESS:
+                            raise RuntimeError(
+                                "Backup gear solution was still infeasible, reconsider theory. Oh no."
+                            )
+
+                T_e = torch.tensor(
+                sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+                ).unsqueeze(0)
+                F_b = torch.tensor(
+                    sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
+                ).unsqueeze(0)
+                x = torch.tensor(
+                    sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
+                ).unsqueeze(0)
+
+                state, reward, truncated, terminated, info = env.step((T_e[0].item(), F_b[0].item(), gear_choice_explicit[0]))
+                self.on_env_step(env, episode, info)
+
+                nn_next_state = self.relative_state(x, T_e, F_b)
+
+                # Store the transition in memory
+                self.memory.push(nn_state, network_action, nn_next_state, reward+penalty)
+
+                # Move to the next state
+                nn_state = nn_next_state
+                last_gear_choice_explicit = gear_choice_explicit    # TODO type hint issue
+
+                # self.on_timestep_end()
+
+                self.optimize_model()
+
+                # Soft update of the target network's weights
+                # θ′ ← τ θ + (1 −τ )θ′
+                target_net_state_dict = self.target_net.state_dict()
+                policy_net_state_dict = self.policy_net.state_dict()
+                for key in policy_net_state_dict:
+                    target_net_state_dict[key] = policy_net_state_dict[
+                        key
+                    ] * self.tau + target_net_state_dict[key] * (1 - self.tau)
+                self.target_net.load_state_dict(target_net_state_dict)
+
+        print("Training complete")
+
+    def network_action(self, state):
+        # TODO add docstring
+        if (
+            self.train_flag
+        ):  # epsilon greedy exploration # TODO make it simpler, starting with an exp rate and decaying it each step
+            eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * torch.exp(
+                -1.0 * self.steps_done / self.eps_decay
+            )
+        else:
+            eps_threshold = 0
+
+        self.steps_done += 1  # TODO move this
+        sample = self.np_random.random()
+        if sample > eps_threshold:
+            with torch.no_grad():
+                q_values = self.policy_net(state)
+                actions = q_values.argmax(2)
+        else:  # this random action does not make sense # TODO what does this comment mean?
+            actions = torch.tensor(
+                [
+                    self.np_random.integers(0, self.n_actions)
+                    for _ in range(state.size(1))
+                ],  # TODO why size?
+                device=self.device,
+                dtype=torch.long,  # why long?
+            )
+            actions = actions.unsqueeze(0)
+        return actions
+
+    def optimize_model(self):
+        # TODO add docstring
+        if len(self.memory) < self.batch_size:
+            return
+        transitions = self.memory.sample(self.batch_size, self.np_random)
+        batch = Transition(
+            *zip(*transitions)
+        )  # convert batch of transitions to transition of batches
+
+        non_final_mask = torch.tensor(  # mask for transitions that are not final (where the simulation ended)
+            tuple(map(lambda s: s is not None, batch.next_state)),
+            device=self.device,
+            dtype=torch.bool,
+        )
+        non_final_next_states = torch.cat(
+            [s for s in batch.next_state if s is not None]
+        )
+
+        state_batch = torch.cat(batch.state)
+        action_batch = torch.cat(batch.action)
+        reward_batch = -torch.cat(batch.reward)  # negate cost to become reward
+
+        # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
+        # columns of actions taken. These are the actions which would've been taken
+        # for each batch state according to policy_net
+        state_action_values = self.policy_net(state_batch).gather(
+            2, action_batch.unsqueeze(2)
+        )
+
+        # Compute V(s_{t+1}) for all next states.
+        # Expected values of actions for non_final_next_states are computed based
+        # on the "older" target_net; selecting their best reward with max(1).values
+        # This is merged based on the mask, such that we'll have either the expected
+        # state value or 0 in case the state was final.
+        next_state_values = torch.zeros(self.batch_size, self.N, device=self.device)
+        with torch.no_grad():
+            next_state_values[non_final_mask] = (
+                self.target_net(non_final_next_states).max(2).values
+            )
+
+        # Compute the expected Q values, extend the reward to the length of the sequence
+        reward_batch = reward_batch.unsqueeze(-1)  # TODO combine lines
+        reward_batch = reward_batch.unsqueeze(-1)
+        reward_batch_extended = reward_batch.expand(-1, self.N, -1)
+
+        # Compute the expected Q values (All steps of each sequence are used)
+        expected_state_action_values = (
+            next_state_values * self.gamma
+        ) + reward_batch_extended.squeeze(-1)
+        # Compute Huber loss``
+        criterion = nn.SmoothL1Loss()
+        # loss = criterion(state_action_values[:,0,:], expected_state_action_values.unsqueeze(-1))
+        loss = criterion(
+            state_action_values, expected_state_action_values.unsqueeze(-1)
+        )
+        # Optimize the model
+        self.optimizer.zero_grad()
+        loss.backward()
+        # In-place gradient clipping
+        torch.nn.utils.clip_grad_value_(
+            self.policy_net.parameters(), 100
+        )  # TODO what is this value?
+        self.optimizer.step()
+
+    def on_train_start(self):
+        # TODO add docstring
+        self.train_flag = True
+
+    def relative_state(self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor) -> torch.Tensor:
+        # TODO add docstring
+        d_rel = x[0] - torch.from_numpy(self.x_ref[0])  # TODO do I need to send to device
+        v_rel = (x[1] - Vehicle.v_min)/(Vehicle.v_max - Vehicle.v_min)
+        return torch.cat((d_rel, v_rel, T_e, F_b), 0)
