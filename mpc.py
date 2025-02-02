@@ -4,6 +4,7 @@ from csnlp.wrappers.mpc.mpc import Mpc
 from csnlp import Nlp, Solution
 from vehicle import Vehicle
 import numpy as np
+from utils.solver_options import solver_options
 
 m = 1500  # mass of the vehicle (kg)
 C_wind = 0.4071  # wind resistance coefficient
@@ -95,7 +96,7 @@ class HybridTrackingMpc(Mpc):
                 ]
             )
         )
-        self.init_solver({}, solver="bonmin")
+        self.init_solver(solver_options["bonmin"], solver="bonmin")
 
 
 class HybridTrackingFuelMpc(Mpc):
@@ -150,7 +151,7 @@ class HybridTrackingFuelMpc(Mpc):
                 ]
             )
         )
-        self.init_solver({}, solver="bonmin")
+        self.init_solver(solver_options["bonmin"], solver="bonmin")
 
 
 class HybridTrackingMpcFixedGear(Mpc):
@@ -206,7 +207,7 @@ class HybridTrackingMpcFixedGear(Mpc):
                 ]
             )
         )
-        self.init_solver({}, solver="ipopt")
+        self.init_solver(solver_options["ipopt"], solver="ipopt")
 
     def solve(
         self,
@@ -245,4 +246,4 @@ class TrackingMpc(Mpc):
                 ]
             )
         )
-        self.init_solver({}, solver="ipopt")
+        self.init_solver(solver_options["ipopt"], solver="ipopt")

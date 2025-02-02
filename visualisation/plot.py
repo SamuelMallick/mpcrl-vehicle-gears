@@ -2,7 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot(
+def plot_training(
+    cost: np.ndarray,
+):
+    # TODO add docstring
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(cost)
+    ax.set_ylabel("Cost")
+    plt.show()
+
+
+def plot_evaluation(
     x_ref: np.ndarray,
     X: np.ndarray,
     U: np.ndarray,

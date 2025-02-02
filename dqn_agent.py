@@ -52,6 +52,8 @@ class DRQN(nn.Module):
 
 class DQNAgent(Agent):
 
+    cost: list[list[float]] = []
+
     def __init__(self, mpc, N: int, np_random: np.random.Generator):
         # TODO add docstring
         super().__init__(mpc)
@@ -73,7 +75,7 @@ class DQNAgent(Agent):
         self.n_gears = 6
 
         # exploration
-        self.eps_start = 0
+        self.eps_start = 0.99
         self.eps_end = 0
         self.eps_decay = 700000
         self.steps_done = 0
@@ -101,11 +103,12 @@ class DQNAgent(Agent):
         episodes: int,
         seed: int = 0,
         save: bool = True,
-    ):
+    ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
         seeds = map(
             int, np.random.SeedSequence(seed).generate_state(episodes)
         )  # TODO add this seeding to eval in other agents
+        returns = np.zeros(episodes)
         self.on_train_start()
         for episode, seed in zip(range(episodes), seeds):
             state, info = env.reset(seed=seed)
@@ -142,6 +145,7 @@ class DQNAgent(Agent):
             state, reward, truncated, terminated, info = env.step(
                 (T_e[0].item(), F_b[0].item(), gear)
             )
+            returns[episode] += reward
             self.on_env_step(env, episode, info)
             # self.on_timestep_end()
 
@@ -241,6 +245,7 @@ class DQNAgent(Agent):
                 state, reward, truncated, terminated, info = env.step(
                     (T_e[0].item(), F_b[0].item(), gear_choice_explicit_clipped[0])
                 )
+                returns[episode] += reward
                 self.on_env_step(env, episode, info)
 
                 nn_next_state = self.relative_state(x, T_e, F_b)
@@ -259,7 +264,7 @@ class DQNAgent(Agent):
                     gear_choice_explicit_clipped  # TODO type hint issue
                 )
 
-                # self.on_timestep_end()
+                self.on_timestep_end(reward + penalty)
 
                 self.optimize_model()
 
@@ -274,6 +279,13 @@ class DQNAgent(Agent):
                 self.target_net.load_state_dict(target_net_state_dict)
 
         print("Training complete")
+        return returns, {
+            "fuel": self.fuel,
+            "T_e": self.engine_torque,
+            "w_e": self.engine_speed,
+            "x_ref": self.x_ref,
+            "cost": self.cost,
+        }
 
     def network_action(self, state):
         # TODO add docstring
@@ -371,6 +383,14 @@ class DQNAgent(Agent):
     def on_train_start(self):
         # TODO add docstring
         self.train_flag = True
+        self.cost = []
+
+    def on_episode_start(self, env):
+        self.cost.append([])
+        return super().on_episode_start(env)
+
+    def on_timestep_end(self, cost: float):
+        self.cost[-1].append(cost)
 
     def relative_state(
         self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor
