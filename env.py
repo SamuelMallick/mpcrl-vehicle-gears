@@ -58,7 +58,7 @@ class VehicleTracking(gym.Env):
         self.counter += 1
         return (
             self.x,
-            r,
+            r.item(),
             False,
             False,
             {

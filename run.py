@@ -1,4 +1,5 @@
 from agent import Agent, MINLPAgent, HeuristicGearAgent
+from dqn_agent import DQNAgent
 from env import VehicleTracking
 from vehicle import Vehicle
 from gymnasium.wrappers import TimeLimit
@@ -13,19 +14,23 @@ from mpc import (
     TrackingMpc,
 )
 
+np_random = np.random.default_rng(1)
 
 vehicle = Vehicle()
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=10))
 
 # mpc = HybridTrackingMpc(5)
-mpc = HybridTrackingFuelMpc(5)
-agent = MINLPAgent(mpc)
+# mpc = HybridTrackingFuelMpc(5)
+# agent = MINLPAgent(mpc)
 
-# mpc = HybridTrackingMpcFixedGear(5)
+mpc = HybridTrackingMpcFixedGear(5)
+agent = DQNAgent(mpc, 5, np_random)
+
 # mpc = TrackingMpc(5)
 # agent = HeuristicGearAgent(mpc)
 
-returns, info = agent.evaluate(env, episodes=1)
+# returns, info = agent.evaluate(env, episodes=1)
+agent.train(env, episodes=100)
 fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]

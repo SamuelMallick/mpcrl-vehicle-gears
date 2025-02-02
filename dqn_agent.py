@@ -1,4 +1,5 @@
 from collections import deque, namedtuple
+import random
 from agent import Agent
 import torch
 import torch.nn as nn
@@ -22,7 +23,10 @@ class ReplayMemory(object):
     def sample(
         self, batch_size: int, np_random: np.random.Generator
     ):  # TODO add return type
-        return np_random.choice(self.memory, batch_size, replace=False)
+        return random.sample(
+            self.memory, batch_size
+        )  # TODO make this a seeded operation
+        # return np_random.choice(list(self.memory), batch_size, replace=False)
 
     def __len__(self):
         return len(self.memory)
@@ -56,8 +60,8 @@ class DQNAgent(Agent):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # hyperparameters
-        self.gamma = 0.99
-        self.learning_rate = 0.0001
+        self.gamma = 0.9
+        self.learning_rate = 0.001
         self.tau = 0.001
 
         # archticeture
@@ -71,13 +75,13 @@ class DQNAgent(Agent):
         # exploration
         self.eps_start = 0
         self.eps_end = 0
-        self.eps_decay = 0
+        self.eps_decay = 700000
         self.steps_done = 0
 
         # memory
         self.memory_size = 100000
         self.memory = ReplayMemory(self.memory_size)
-        self.batch_size = 1
+        self.batch_size = 128
 
         self.np_random = np_random
 
@@ -94,16 +98,16 @@ class DQNAgent(Agent):
     def train(
         self,
         env: VehicleTracking,
-        num_episodes: int,
+        episodes: int,
         seed: int = 0,
         save: bool = True,
     ):
         # TODO add docstring
         seeds = map(
-            int, np.random.SeedSequence(seed).generate_state(num_episodes)
+            int, np.random.SeedSequence(seed).generate_state(episodes)
         )  # TODO add this seeding to eval in other agents
         self.on_train_start()
-        for episode, seed in zip(range(num_episodes), seeds):
+        for episode, seed in zip(range(episodes), seeds):
             state, info = env.reset(seed=seed)
             self.on_episode_start(env)
 
@@ -124,59 +128,67 @@ class DQNAgent(Agent):
             # TODO check mpc solve succeed
             T_e = torch.tensor(
                 sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
-            ).unsqueeze(0)
+            )
             F_b = torch.tensor(
                 sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
-            ).unsqueeze(0)
+            )
             x = torch.tensor(
                 sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
-            ).unsqueeze(0)
+            )
 
             nn_state = self.relative_state(x, T_e, F_b)
-            last_gear_choice_explicit = gear_choice_init_explicit   # TODO remove the need for explicit and binary
+            last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
 
-            state, reward, truncated, terminated, info = env.step((T_e[0].item(), F_b[0].item(), gear))
+            state, reward, truncated, terminated, info = env.step(
+                (T_e[0].item(), F_b[0].item(), gear)
+            )
             self.on_env_step(env, episode, info)
             # self.on_timestep_end()
 
-            while not (terminated or truncated):    
+            while not (terminated or truncated):
                 penalty = 0
 
                 network_action = self.network_action(nn_state)
 
-                gear_shift = network_action - 1 # TODO is action shift needed?
-                # gear_shift = gear_shift.cpu().numpy()
-                # gear_shift = gear_shift.T
+                gear_shift = network_action - 1  # TODO is action shift needed?
                 # NOTE this is different to what Qizhang did, he shifted from previous gear sequence (which was not known by NN)
-                gear_choice_explicit = np.array([gear + np.sum(gear_shift[:i]) for i in range(self.N)]) # TODO check that works 
+                gear_choice_explicit = np.array(
+                    [gear + torch.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
+                )  # TODO check that works
 
                 # clip gears to be within range
                 gear_choice_explicit_clipped = np.clip(gear_choice_explicit, 0, 5)
-                penalty += 100 * np.sum(gear_choice_explicit != gear_choice_explicit_clipped)   # TODO remove hard coded 100 and check that this works
+                penalty += 100 * np.sum(
+                    gear_choice_explicit != gear_choice_explicit_clipped
+                )  # TODO remove hard coded 100 and check that this works
 
                 gear_choice_binary = np.zeros((self.n_gears, self.N))
-                for i in range(self.N): # TODO remove loop
-                    gear_choice_binary[int(gear_choice_explicit[i]), i] = 1 # TODO is int cast needed?
+                for i in range(self.N):  # TODO remove loop
+                    gear_choice_binary[int(gear_choice_explicit_clipped[i]), i] = (
+                        1  # TODO is int cast needed?
+                    )
 
                 sol = self.mpc.solve(
-                        {
-                            "x_0": state,
-                            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                            "T_e_prev": self.T_e_prev,
-                            "gear": gear_choice_binary,
-                        }
-                    )
-                if not sol.SUCCESS:
+                    {
+                        "x_0": state,
+                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        "T_e_prev": self.T_e_prev,
+                        "gear": gear_choice_binary,
+                    }
+                )
+                if not sol.success:
                     # backup sol 1: use previous gear choice shifted
                     penalty += 500
-                    gear_choice_explicit = np.concatenate(  # TODO is there a cleaner way to do this?
-                        (
-                            last_gear_choice_explicit[1:],
-                            last_gear_choice_explicit[[-1]],
-                        ),
-                        0,
+                    gear_choice_explicit = (
+                        np.concatenate(  # TODO is there a cleaner way to do this?
+                            (
+                                last_gear_choice_explicit[1:],
+                                last_gear_choice_explicit[[-1]],
+                            ),
+                            0,
+                        )
                     )
-                    gear_choice_binary = np.zeros((self.n_gears, self.N))   # remove loop
+                    gear_choice_binary = np.zeros((self.n_gears, self.N))  # remove loop
                     for i in range(self.N):
                         gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
 
@@ -189,20 +201,16 @@ class DQNAgent(Agent):
                         }
                     )
 
-                    if not sol.SUCCESS:
+                    if not sol.success:
                         # backup sol 2: use the same gear for all time steps
-                        gear = 3    # TODO get this from velocity
+                        gear = 3  # TODO get this from velocity
 
                         # assume all time step have the same gear choice
                         gear_choice_explicit = np.ones((self.N, 1)) * gear
-                        gear_choice_binary = np.zeros(
-                            (self.n_gears, self.N)
-                        )
+                        gear_choice_binary = np.zeros((self.n_gears, self.N))
                         # set value for gear choice binary
                         for i in range(self.N):
-                            gear_choice_binary[
-                                int(gear_choice_explicit[i]), i
-                            ] = 1
+                            gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
 
                         sol = self.mpc.solve(
                             {
@@ -213,32 +221,43 @@ class DQNAgent(Agent):
                             }
                         )
 
-                        if not sol.SUCCESS:
+                        if not sol.success:
                             raise RuntimeError(
                                 "Backup gear solution was still infeasible, reconsider theory. Oh no."
                             )
 
                 T_e = torch.tensor(
-                sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
-                ).unsqueeze(0)
+                    sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+                )
                 F_b = torch.tensor(
                     sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
-                ).unsqueeze(0)
+                )
                 x = torch.tensor(
-                    sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
-                ).unsqueeze(0)
+                    sol.vals["x"][:, :-1].full().T,
+                    dtype=torch.float32,
+                    device=self.device,
+                )
 
-                state, reward, truncated, terminated, info = env.step((T_e[0].item(), F_b[0].item(), gear_choice_explicit[0]))
+                state, reward, truncated, terminated, info = env.step(
+                    (T_e[0].item(), F_b[0].item(), gear_choice_explicit_clipped[0])
+                )
                 self.on_env_step(env, episode, info)
 
                 nn_next_state = self.relative_state(x, T_e, F_b)
 
                 # Store the transition in memory
-                self.memory.push(nn_state, network_action, nn_next_state, reward+penalty)
+                self.memory.push(
+                    nn_state,
+                    network_action,
+                    nn_next_state,
+                    torch.tensor([reward + penalty]),
+                )
 
                 # Move to the next state
                 nn_state = nn_next_state
-                last_gear_choice_explicit = gear_choice_explicit    # TODO type hint issue
+                last_gear_choice_explicit = (
+                    gear_choice_explicit_clipped  # TODO type hint issue
+                )
 
                 # self.on_timestep_end()
 
@@ -261,7 +280,7 @@ class DQNAgent(Agent):
         if (
             self.train_flag
         ):  # epsilon greedy exploration # TODO make it simpler, starting with an exp rate and decaying it each step
-            eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * torch.exp(
+            eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * np.exp(
                 -1.0 * self.steps_done / self.eps_decay
             )
         else:
@@ -277,7 +296,7 @@ class DQNAgent(Agent):
             actions = torch.tensor(
                 [
                     self.np_random.integers(0, self.n_actions)
-                    for _ in range(state.size(1))
+                    for _ in range(state.shape[1])
                 ],  # TODO why size?
                 device=self.device,
                 dtype=torch.long,  # why long?
@@ -353,8 +372,12 @@ class DQNAgent(Agent):
         # TODO add docstring
         self.train_flag = True
 
-    def relative_state(self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor) -> torch.Tensor:
+    def relative_state(
+        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor
+    ) -> torch.Tensor:
         # TODO add docstring
-        d_rel = x[0] - torch.from_numpy(self.x_ref[0])  # TODO do I need to send to device
-        v_rel = (x[1] - Vehicle.v_min)/(Vehicle.v_max - Vehicle.v_min)
-        return torch.cat((d_rel, v_rel, T_e, F_b), 0)
+        d_rel = x[:, [0]] - torch.from_numpy(
+            self.x_ref_predicition[:-1, 0]
+        )  # TODO do I need to send to device
+        v_rel = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
+        return torch.cat((d_rel, v_rel, T_e, F_b), dim=1).unsqueeze(0).to(torch.float32)

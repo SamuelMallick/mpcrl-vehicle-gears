@@ -17,8 +17,8 @@ class Vehicle:
     w_e_idle = 900  # engine idle speed (rpm)
     T_e_max = 300  # maximum engine torque (Nm)
 
-    v_max = (w_e_max*2*np.pi*r_r)/(60*z_f*z_t[-1])  # maximum velocity (m/s)
-    v_min = (w_e_idle*2*np.pi*r_r)/(60*z_f*z_t[0])  # minimum velocity (m/s)
+    v_max = (w_e_max * 2 * np.pi * r_r) / (60 * z_f * z_t[-1])  # maximum velocity (m/s)
+    v_min = (w_e_idle * 2 * np.pi * r_r) / (60 * z_f * z_t[0])  # minimum velocity (m/s)
 
     def __init__(self, x: np.ndarray = np.array([[0], [20]])):
         """Initialize the vehicle with state containing position and velocity.
