@@ -16,7 +16,8 @@ from mpc import (
 np_random = np.random.default_rng(1)
 
 vehicle = Vehicle()
-env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=60))
+ep_length = 60
+env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
 
 # mpc = HybridTrackingMpc(5)
 # mpc = HybridTrackingFuelMpc(5)
@@ -29,7 +30,10 @@ agent = DQNAgent(mpc, 5, np_random)
 # agent = HeuristicGearAgent(mpc)
 
 # returns, info = agent.evaluate(env, episodes=1)
-returns, info = agent.train(env, episodes=10)
+num_eps = 10
+returns, info = agent.train(
+    env, episodes=num_eps, exp_zero_steps=int(ep_length * num_eps / 2)
+)
 fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
@@ -43,8 +47,10 @@ R = list(env.rewards)
 print(f"cost = {sum(R[0])}")
 print(f"fuel = {sum(fuel[0])}")
 
-
-# plot_evaluation(x_ref[0], X[0], U[0], R[0], fuel[0], engine_torque[0], engine_speed[0])
+ep = 0
+plot_evaluation(
+    x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
+)
 plot_training(
     [sum(cost[i]) for i in range(len(cost))],
     [sum(fuel[i]) for i in range(len(fuel))],

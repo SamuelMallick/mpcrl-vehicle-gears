@@ -76,9 +76,8 @@ class DQNAgent(Agent):
 
         # exploration
         self.eps_start = 0.99
-        self.eps_end = 0
-        self.eps_decay = 700000
         self.steps_done = 0
+        self.decay_rate = 0
 
         # memory
         self.memory_size = 100000
@@ -103,12 +102,16 @@ class DQNAgent(Agent):
         episodes: int,
         seed: int = 0,
         save: bool = True,
+        exp_zero_steps: int = 0,
     ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
         seeds = map(
             int, np.random.SeedSequence(seed).generate_state(episodes)
         )  # TODO add this seeding to eval in other agents
         returns = np.zeros(episodes)
+
+        self.decay_rate = np.log(1 / 1e-3) / exp_zero_steps
+
         self.on_train_start()
         for episode, seed in zip(range(episodes), seeds):
             state, info = env.reset(seed=seed)
@@ -296,16 +299,12 @@ class DQNAgent(Agent):
 
     def network_action(self, state):
         # TODO add docstring
-        if (
-            self.train_flag
-        ):  # epsilon greedy exploration # TODO make it simpler, starting with an exp rate and decaying it each step
-            eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * np.exp(
-                -1.0 * self.steps_done / self.eps_decay
-            )
+        if self.train_flag:  # epsilon greedy exploration
+            eps_threshold = self.eps_start * np.exp(-self.decay_rate * self.steps_done)
         else:
             eps_threshold = 0
 
-        self.steps_done += 1  # TODO move this
+        self.steps_done += 1
         sample = self.np_random.random()
         if sample > eps_threshold:
             with torch.no_grad():
