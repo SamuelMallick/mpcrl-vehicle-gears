@@ -390,7 +390,7 @@ class DQNAgent(Agent):
         # Compute the expected Q values, extend the reward to the length of the sequence
         reward_batch = reward_batch.unsqueeze(-1)  # TODO combine lines
         reward_batch = reward_batch.unsqueeze(-1)
-        reward_batch_extended = reward_batch.expand(-1, self.N, -1)
+        reward_batch_extended = reward_batch.expand(-1, self.N, -1).to(self.device)
 
         # Compute the expected Q values (All steps of each sequence are used)
         expected_state_action_values = (
