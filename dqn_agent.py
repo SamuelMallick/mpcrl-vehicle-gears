@@ -68,7 +68,7 @@ class DQNAgent(Agent):
         self.tau = 0.001
 
         # archticeture
-        self.n_states = 4
+        self.n_states = 6
         self.n_hidden = 64
         self.n_actions = 3
         self.n_layers = 2
@@ -123,7 +123,7 @@ class DQNAgent(Agent):
 
             # TODO does all this stuff outside of the loop need to be done?
             gear = self.gear_from_velocity(state[1])
-            gear_choice_init_explicit = np.ones((self.N, 1)) * gear
+            gear_choice_init_explicit = np.ones((self.N,)) * gear
             gear_choice_init_binary = np.zeros((self.n_gears, self.N))
             gear_choice_init_binary[gear] = 1
 
@@ -151,7 +151,9 @@ class DQNAgent(Agent):
                 sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
             )
 
-            nn_state = self.relative_state(x, T_e, F_b)
+            nn_state = self.relative_state(
+                x, T_e, F_b, torch.from_numpy(gear_choice_init_explicit).unsqueeze(1)
+            )
             last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
 
             state, reward, truncated, terminated, info = env.step(
@@ -223,7 +225,7 @@ class DQNAgent(Agent):
                         gear = self.gear_from_velocity(state[1])
 
                         # assume all time step have the same gear choice
-                        gear_choice_explicit = np.ones((self.N, 1)) * gear
+                        gear_choice_explicit = np.ones((self.N,)) * gear
                         gear_choice_binary = np.zeros((self.n_gears, self.N))
                         # set value for gear choice binary
                         for i in range(self.N):  # TODO remove loop
@@ -262,7 +264,9 @@ class DQNAgent(Agent):
                 returns[episode] += reward
                 self.on_env_step(env, episode, info)
 
-                nn_next_state = self.relative_state(x, T_e, F_b)
+                nn_next_state = self.relative_state(
+                    x, T_e, F_b, torch.from_numpy(gear_choice_explicit).unsqueeze(1)
+                )
 
                 # Store the transition in memory
                 self.memory.push(
@@ -413,14 +417,19 @@ class DQNAgent(Agent):
         self.cost[-1].append(cost)
 
     def relative_state(
-        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor
+        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, gear: torch.Tensor
     ) -> torch.Tensor:
         # TODO add docstring
         d_rel = x[:, [0]] - torch.from_numpy(
             self.x_ref_predicition[:-1, 0]
         )  # TODO do I need to send to device
-        v_rel = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
-        return torch.cat((d_rel, v_rel, T_e, F_b), dim=1).unsqueeze(0).to(torch.float32)
+        v_rel = x[:, [1]] - torch.from_numpy(self.x_ref_predicition[:-1, 1])
+        v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
+        return (
+            torch.cat((d_rel, v_rel, v_norm, T_e, F_b, gear), dim=1)
+            .unsqueeze(0)
+            .to(torch.float32)
+        )  # TODO should we normalize the gears and stuff?
 
     def save(self, env: VehicleTracking, ep: int, path: str = ""):
         torch.save(self.policy_net.state_dict(), path + f"/policy_net_ep_{ep}.pth")
@@ -430,10 +439,12 @@ class DQNAgent(Agent):
                 {
                     "cost": self.cost,
                     "fuel": self.fuel,
-                    "engine_torque": self.engine_torque,
-                    "engine_speed": self.engine_speed,
+                    "T_e": self.engine_torque,
+                    "w_e": self.engine_speed,
                     "x_ref": self.x_ref,
                     "R": list(env.rewards),
+                    "X": list(env.observations),
+                    "U": list(env.actions),
                 },
                 f,
             )
