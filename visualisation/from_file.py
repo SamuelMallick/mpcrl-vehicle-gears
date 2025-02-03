@@ -1,18 +1,26 @@
 import pickle
-import matplotlib.pyplot as plt
-import numpy as np
 import sys, os
 
 sys.path.append(os.getcwd())
-from visualisation.plot import plot_training
+from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/data_ep_50.pkl"
+file_name = "results/data_ep_0.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
 cost = data["cost"]
 fuel = data["fuel"]
 R = data["R"]
+X = data["X"]
+U = data["U"]
+x_ref = data["x_ref"]
+engine_torque = data["T_e"]
+engine_speed = data["w_e"]
+
+ep = 0
+plot_evaluation(
+    x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
+)
 
 plot_training(
     [sum(cost[i]) for i in range(len(cost))],
