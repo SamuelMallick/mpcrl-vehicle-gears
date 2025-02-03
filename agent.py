@@ -78,6 +78,7 @@ class Agent:
         self.x_ref_predicition = env.unwrapped.get_x_ref_prediction(
             self.mpc.prediction_horizon + 1
         )
+        self.T_e_prev = info["T_e"]
 
 
 class MINLPAgent(Agent):
@@ -93,7 +94,6 @@ class MINLPAgent(Agent):
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
-        self.T_e_prev = T_e
         return T_e, F_b, gear
 
 
