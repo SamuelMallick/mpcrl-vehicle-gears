@@ -113,8 +113,10 @@ class DQNAgent(Agent):
         for episode, seed in zip(range(episodes), seeds):
             state, info = env.reset(seed=seed)
             self.on_episode_start(env)
+            time_step = 0
 
-            gear = 3  # TODO pass in a way of getting the gear from the velocity for initial
+            # TODO does all this stuff outside of the loop need to be done?
+            gear = self.gear_from_velocity(state[1])
             gear_choice_init_explicit = np.ones((self.N, 1)) * gear
             gear_choice_init_binary = np.zeros((self.n_gears, self.N))
             gear_choice_init_binary[gear] = 1
@@ -128,7 +130,11 @@ class DQNAgent(Agent):
                     "gear": gear_choice_init_binary,
                 }
             )
-            # TODO check mpc solve succeed
+            if not sol.success:
+                raise RuntimeError(
+                    f"Initial gear choice for episode {episode} was infeasible"
+                )
+
             T_e = torch.tensor(
                 sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
             )
@@ -161,14 +167,14 @@ class DQNAgent(Agent):
                 )  # TODO check that works
 
                 # clip gears to be within range
-                gear_choice_explicit_clipped = np.clip(gear_choice_explicit, 0, 5)
-                penalty += 100 * np.sum(
-                    gear_choice_explicit != gear_choice_explicit_clipped
-                )  # TODO remove hard coded 100 and check that this works
+                penalty += 100 * np.sum(gear_choice_explicit < 0) + 100 * np.sum(
+                    gear_choice_explicit > 5
+                )  # TODO remove hardcoded 100
+                gear_choice_explicit = np.clip(gear_choice_explicit, 0, 5)
 
                 gear_choice_binary = np.zeros((self.n_gears, self.N))
                 for i in range(self.N):  # TODO remove loop
-                    gear_choice_binary[int(gear_choice_explicit_clipped[i]), i] = (
+                    gear_choice_binary[int(gear_choice_explicit[i]), i] = (
                         1  # TODO is int cast needed?
                     )
 
@@ -207,13 +213,13 @@ class DQNAgent(Agent):
 
                     if not sol.success:
                         # backup sol 2: use the same gear for all time steps
-                        gear = 3  # TODO get this from velocity
+                        gear = self.gear_from_velocity(state[1])
 
                         # assume all time step have the same gear choice
                         gear_choice_explicit = np.ones((self.N, 1)) * gear
                         gear_choice_binary = np.zeros((self.n_gears, self.N))
                         # set value for gear choice binary
-                        for i in range(self.N):
+                        for i in range(self.N):  # TODO remove loop
                             gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
 
                         sol = self.mpc.solve(
@@ -241,9 +247,10 @@ class DQNAgent(Agent):
                     dtype=torch.float32,
                     device=self.device,
                 )
+                gear = int(gear_choice_explicit[0])
 
                 state, reward, truncated, terminated, info = env.step(
-                    (T_e[0].item(), F_b[0].item(), gear_choice_explicit_clipped[0])
+                    (T_e[0].item(), F_b[0].item(), gear)
                 )
                 returns[episode] += reward
                 self.on_env_step(env, episode, info)
@@ -260,9 +267,7 @@ class DQNAgent(Agent):
 
                 # Move to the next state
                 nn_state = nn_next_state
-                last_gear_choice_explicit = (
-                    gear_choice_explicit_clipped  # TODO type hint issue
-                )
+                last_gear_choice_explicit = gear_choice_explicit  # TODO type hint issue
 
                 self.on_timestep_end(reward + penalty)
 
@@ -277,6 +282,8 @@ class DQNAgent(Agent):
                         key
                     ] * self.tau + target_net_state_dict[key] * (1 - self.tau)
                 self.target_net.load_state_dict(target_net_state_dict)
+
+                time_step += 1
 
         print("Training complete")
         return returns, {
@@ -379,6 +386,14 @@ class DQNAgent(Agent):
             self.policy_net.parameters(), 100
         )  # TODO what is this value?
         self.optimizer.step()
+
+    def gear_from_velocity(self, v: float) -> int:
+        # TODO add docstring
+        for i in range(6):  # TODO get rid of loop
+            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
+            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
+                return i
+        raise ValueError("No gear found")
 
     def on_train_start(self):
         # TODO add docstring

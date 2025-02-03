@@ -34,7 +34,7 @@ class Agent:
             self.on_episode_start(env)
 
             while not (truncated or terminated):
-                action = self.network_action(state)
+                action = self.get_action(state)
                 state, reward, truncated, terminated, info = env.step(action)
                 self.on_env_step(env, episode, info)
 
@@ -81,7 +81,7 @@ class Agent:
 
 
 class MINLPAgent(Agent):
-    def network_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
         sol = self.mpc.solve(
             {
                 "x_0": state,
@@ -113,7 +113,7 @@ class HeuristicGearAgent(Agent):
                 return i
         raise ValueError("No gear found")
 
-    def network_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
         max_v_per_gear = [
             (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi)
             / (Vehicle.z_t[i] * Vehicle.z_f * 60)
