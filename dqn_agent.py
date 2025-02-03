@@ -61,6 +61,8 @@ class DQNAgent(Agent):
         self.train_flag = True
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if self.device.type == "cuda":
+            print("Using GPU")
 
         # hyperparameters
         self.gamma = 0.9
@@ -156,7 +158,7 @@ class DQNAgent(Agent):
             )
 
             nn_state = self.relative_state(
-                x, T_e, F_b, torch.from_numpy(gear_choice_init_explicit).unsqueeze(1)
+                x, T_e, F_b, torch.from_numpy(gear_choice_init_explicit).unsqueeze(1).to(self.device)
             )
             last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
 
@@ -269,7 +271,7 @@ class DQNAgent(Agent):
                 self.on_env_step(env, episode, info)
 
                 nn_next_state = self.relative_state(
-                    x, T_e, F_b, torch.from_numpy(gear_choice_explicit).unsqueeze(1)
+                    x, T_e, F_b, torch.from_numpy(gear_choice_explicit).unsqueeze(1).to(self.device)
                 )
 
                 # Store the transition in memory
@@ -329,7 +331,7 @@ class DQNAgent(Agent):
                 [
                     self.np_random.integers(0, self.n_actions)
                     for _ in range(state.shape[1])
-                ],  # TODO why size?
+                ],
                 device=self.device,
                 dtype=torch.long,  # why long?
             )
@@ -426,8 +428,8 @@ class DQNAgent(Agent):
         # TODO add docstring
         d_rel = x[:, [0]] - torch.from_numpy(
             self.x_ref_predicition[:-1, 0]
-        )  # TODO do I need to send to device
-        v_rel = x[:, [1]] - torch.from_numpy(self.x_ref_predicition[:-1, 1])
+        ).to(self.device)
+        v_rel = x[:, [1]] - torch.from_numpy(self.x_ref_predicition[:-1, 1]).to(self.device)
         v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
         return (
             torch.cat((d_rel, v_rel, v_norm, T_e, F_b, gear), dim=1)
