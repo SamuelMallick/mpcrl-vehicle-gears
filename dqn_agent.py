@@ -158,7 +158,12 @@ class DQNAgent(Agent):
             )
 
             nn_state = self.relative_state(
-                x, T_e, F_b, torch.from_numpy(gear_choice_init_explicit).unsqueeze(1).to(self.device)
+                x,
+                T_e,
+                F_b,
+                torch.from_numpy(gear_choice_init_explicit)
+                .unsqueeze(1)
+                .to(self.device),
             )
             last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
 
@@ -177,14 +182,15 @@ class DQNAgent(Agent):
 
                 gear_shift = network_action - 1  # TODO is action shift needed?
                 # NOTE this is different to what Qizhang did, he shifted from previous gear sequence (which was not known by NN)
+                gear_shift = gear_shift.cpu().numpy()
                 gear_choice_explicit = np.array(
-                    [gear + torch.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
-                )  # TODO check that works
+                    [gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
+                )
 
                 # clip gears to be within range
-                penalty += self.clip_pen * np.sum(gear_choice_explicit < 0) + self.clip_pen * np.sum(
-                    gear_choice_explicit > 5
-                )
+                penalty += self.clip_pen * np.sum(
+                    gear_choice_explicit < 0
+                ) + self.clip_pen * np.sum(gear_choice_explicit > 5)
                 gear_choice_explicit = np.clip(gear_choice_explicit, 0, 5)
 
                 gear_choice_binary = np.zeros((self.n_gears, self.N))
@@ -271,7 +277,10 @@ class DQNAgent(Agent):
                 self.on_env_step(env, episode, info)
 
                 nn_next_state = self.relative_state(
-                    x, T_e, F_b, torch.from_numpy(gear_choice_explicit).unsqueeze(1).to(self.device)
+                    x,
+                    T_e,
+                    F_b,
+                    torch.from_numpy(gear_choice_explicit).unsqueeze(1).to(self.device),
                 )
 
                 # Store the transition in memory
@@ -426,10 +435,12 @@ class DQNAgent(Agent):
         self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, gear: torch.Tensor
     ) -> torch.Tensor:
         # TODO add docstring
-        d_rel = x[:, [0]] - torch.from_numpy(
-            self.x_ref_predicition[:-1, 0]
-        ).to(self.device)
-        v_rel = x[:, [1]] - torch.from_numpy(self.x_ref_predicition[:-1, 1]).to(self.device)
+        d_rel = x[:, [0]] - torch.from_numpy(self.x_ref_predicition[:-1, 0]).to(
+            self.device
+        )
+        v_rel = x[:, [1]] - torch.from_numpy(self.x_ref_predicition[:-1, 1]).to(
+            self.device
+        )
         v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
         return (
             torch.cat((d_rel, v_rel, v_norm, T_e, F_b, gear), dim=1)
