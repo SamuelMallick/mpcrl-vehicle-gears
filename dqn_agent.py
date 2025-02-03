@@ -153,7 +153,8 @@ class DQNAgent(Agent):
             )
             returns[episode] += reward
             self.on_env_step(env, episode, info)
-            # self.on_timestep_end()
+            self.on_timestep_end(reward)
+            time_step += 1
 
             while not (terminated or truncated):
                 penalty = 0
@@ -269,8 +270,6 @@ class DQNAgent(Agent):
                 nn_state = nn_next_state
                 last_gear_choice_explicit = gear_choice_explicit  # TODO type hint issue
 
-                self.on_timestep_end(reward + penalty)
-
                 self.optimize_model()
 
                 # Soft update of the target network's weights
@@ -283,6 +282,7 @@ class DQNAgent(Agent):
                     ] * self.tau + target_net_state_dict[key] * (1 - self.tau)
                 self.target_net.load_state_dict(target_net_state_dict)
 
+                self.on_timestep_end(reward + penalty)
                 time_step += 1
 
         print("Training complete")

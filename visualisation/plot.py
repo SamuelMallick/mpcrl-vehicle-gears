@@ -3,12 +3,21 @@ import matplotlib.pyplot as plt
 
 
 def plot_training(
-    cost: np.ndarray,
+    cost: list,
+    fuel: list,
+    tracking: list,
+    penalty: list,
 ):
     # TODO add docstring
-    fig, ax = plt.subplots(1, 1)
-    ax.plot(cost)
-    ax.set_ylabel("Cost")
+    fig, ax = plt.subplots(4, 1, sharex=True)
+    ax[0].plot(cost)
+    ax[0].set_ylabel("Cost")
+    ax[1].plot(fuel)
+    ax[1].set_ylabel("Fuel")
+    ax[2].plot(tracking)
+    ax[2].set_ylabel("Tracking")
+    ax[3].plot(penalty)
+    ax[3].set_ylabel("Penalty")
     plt.show()
 
 

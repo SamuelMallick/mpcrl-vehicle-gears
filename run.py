@@ -43,7 +43,11 @@ R = list(env.rewards)
 print(f"cost = {sum(R[0])}")
 print(f"fuel = {sum(fuel[0])}")
 
-# plot first episode
 
 # plot_evaluation(x_ref[0], X[0], U[0], R[0], fuel[0], engine_torque[0], engine_speed[0])
-plot_training(np.array([sum(cost[i]) for i in range(len(cost))]))
+plot_training(
+    [sum(cost[i]) for i in range(len(cost))],
+    [sum(fuel[i]) for i in range(len(fuel))],
+    [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
+    [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
+)
