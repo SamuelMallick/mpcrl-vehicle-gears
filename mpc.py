@@ -218,7 +218,10 @@ class HybridTrackingMpcFixedGear(Mpc):
         gear = pars["gear"]
         if not all(np.sum(gear[:, i], axis=0) == 1 for i in range(gear.shape[1])):
             raise ValueError("More than one gear selected for a time step.")
-        vals0 = {"w_e": np.full((1, self.prediction_horizon), w_e_idle), "T_e": np.full((1, self.prediction_horizon), T_e_idle)}    # TODO is this warm start badly biasing
+        vals0 = {
+            "w_e": np.full((1, self.prediction_horizon), w_e_idle),
+            "T_e": np.full((1, self.prediction_horizon), T_e_idle),
+        }  # TODO is this warm start badly biasing
         return self.nlp.solve(pars, vals0)
 
 

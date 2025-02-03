@@ -30,9 +30,13 @@ agent = DQNAgent(mpc, 5, np_random)
 # agent = HeuristicGearAgent(mpc)
 
 # returns, info = agent.evaluate(env, episodes=1)
-num_eps = 10
+num_eps = 1000
 returns, info = agent.train(
-    env, episodes=num_eps, exp_zero_steps=int(ep_length * num_eps / 2)
+    env,
+    episodes=num_eps,
+    exp_zero_steps=int(ep_length * num_eps / 2),
+    save_freq=50,
+    save_path="results",
 )
 fuel = info["fuel"]
 engine_torque = info["T_e"]

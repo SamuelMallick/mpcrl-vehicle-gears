@@ -7,6 +7,7 @@ import torch.optim as optim
 import numpy as np
 from env import VehicleTracking
 from vehicle import Vehicle
+import pickle
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
@@ -101,7 +102,8 @@ class DQNAgent(Agent):
         env: VehicleTracking,
         episodes: int,
         seed: int = 0,
-        save: bool = True,
+        save_freq: int = 0,
+        save_path: str = "",
         exp_zero_steps: int = 0,
     ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
@@ -114,6 +116,7 @@ class DQNAgent(Agent):
 
         self.on_train_start()
         for episode, seed in zip(range(episodes), seeds):
+            print(f"Train: Episode {episode}")
             state, info = env.reset(seed=seed)
             self.on_episode_start(env)
             time_step = 0
@@ -288,6 +291,9 @@ class DQNAgent(Agent):
                 self.on_timestep_end(reward + penalty)
                 time_step += 1
 
+            if save_freq and episode % save_freq == 0:
+                self.save(env=env, ep=episode, path=save_path)
+
         print("Training complete")
         return returns, {
             "fuel": self.fuel,
@@ -415,3 +421,19 @@ class DQNAgent(Agent):
         )  # TODO do I need to send to device
         v_rel = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
         return torch.cat((d_rel, v_rel, T_e, F_b), dim=1).unsqueeze(0).to(torch.float32)
+
+    def save(self, env: VehicleTracking, ep: int, path: str = ""):
+        torch.save(self.policy_net.state_dict(), path + f"/policy_net_ep_{ep}.pth")
+        torch.save(self.target_net.state_dict(), path + f"/target_net_ep_{ep}.pth")
+        with open(path + f"/data_ep_{ep}.pkl", "wb") as f:
+            pickle.dump(
+                {
+                    "cost": self.cost,
+                    "fuel": self.fuel,
+                    "engine_torque": self.engine_torque,
+                    "engine_speed": self.engine_speed,
+                    "x_ref": self.x_ref,
+                    "R": list(env.rewards),
+                },
+                f,
+            )
