@@ -80,6 +80,10 @@ class DQNAgent(Agent):
         self.steps_done = 0
         self.decay_rate = 0
 
+        # penalties
+        self.clip_pen = 1e3
+        self.infeas_pen = 1e4
+
         # memory
         self.memory_size = 100000
         self.memory = ReplayMemory(self.memory_size)
@@ -176,9 +180,9 @@ class DQNAgent(Agent):
                 )  # TODO check that works
 
                 # clip gears to be within range
-                penalty += 100 * np.sum(gear_choice_explicit < 0) + 100 * np.sum(
+                penalty += self.clip_pen * np.sum(gear_choice_explicit < 0) + self.clip_pen * np.sum(
                     gear_choice_explicit > 5
-                )  # TODO remove hardcoded 100
+                )
                 gear_choice_explicit = np.clip(gear_choice_explicit, 0, 5)
 
                 gear_choice_binary = np.zeros((self.n_gears, self.N))
@@ -197,7 +201,7 @@ class DQNAgent(Agent):
                 )
                 if not sol.success:
                     # backup sol 1: use previous gear choice shifted
-                    penalty += 500
+                    penalty += self.infeas_pen
                     gear_choice_explicit = (
                         np.concatenate(  # TODO is there a cleaner way to do this?
                             (
