@@ -1,0 +1,4 @@
+csnlp==1.6.4
+gymnasium==1.0.0
+numpy==2.2.2
+torch==2.6.0
