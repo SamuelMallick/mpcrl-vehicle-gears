@@ -4,7 +4,7 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/data_ep_0.pkl"
+file_name = "results/data_ep_250.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
@@ -17,7 +17,7 @@ x_ref = data["x_ref"]
 engine_torque = data["T_e"]
 engine_speed = data["w_e"]
 
-ep = 0
+ep = 199
 plot_evaluation(
     x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
 )

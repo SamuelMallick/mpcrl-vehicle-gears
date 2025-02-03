@@ -8,7 +8,7 @@ import numpy as np
 from visualisation.plot import plot_evaluation, plot_training
 from mpc import (
     HybridTrackingMpc,
-    HybridTrackingMpcFixedGear,
+    HybridTrackingFuelMpcFixedGear,
     HybridTrackingFuelMpc,
     TrackingMpc,
 )
@@ -23,7 +23,7 @@ env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_l
 # mpc = HybridTrackingFuelMpc(5)
 # agent = MINLPAgent(mpc)
 
-mpc = HybridTrackingMpcFixedGear(5)
+mpc = HybridTrackingFuelMpcFixedGear(5)
 agent = DQNAgent(mpc, 5, np_random)
 
 # mpc = TrackingMpc(5)

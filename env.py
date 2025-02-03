@@ -27,12 +27,12 @@ class VehicleTracking(gym.Env):
             self.vehicle.x = np.array([[0], [10]])
             self.x = self.vehicle.x
 
-        # d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, 500)).reshape(
-        #     500, 1, 1
-        # )  # TODO get rid of hard code 500
-        # v_ref = np.full((500, 1, 1), 20)
-        # self.x_ref = np.concatenate((d_ref, v_ref), axis=1)
-        self.x_ref = self.generate_random_x_ref()
+        d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, 500)).reshape(
+            500, 1, 1
+        )  # TODO get rid of hard code 500
+        v_ref = np.full((500, 1, 1), 20)
+        self.x_ref = np.concatenate((d_ref, v_ref), axis=1)
+        # self.x_ref = self.generate_random_x_ref()
         self.counter = 0
 
         return self.x, {}

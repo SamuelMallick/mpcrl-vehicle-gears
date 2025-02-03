@@ -98,6 +98,18 @@ class HybridTrackingMpc(Mpc):
         )
         self.init_solver(solver_options["bonmin"], solver="bonmin")
 
+    def solve(
+        self,
+        pars: dict,
+        vals0: Optional[dict] = None,
+    ) -> Solution:
+        # TODO add docstring
+        vals0 = {
+            "w_e": np.full((1, self.prediction_horizon), w_e_idle),
+            "T_e": np.full((1, self.prediction_horizon), T_e_idle),
+        }  # TODO is this warm start badly biasing
+        return self.nlp.solve(pars, vals0)
+
 
 class HybridTrackingFuelMpc(Mpc):
 
@@ -154,7 +166,7 @@ class HybridTrackingFuelMpc(Mpc):
         self.init_solver(solver_options["bonmin"], solver="bonmin")
 
 
-class HybridTrackingMpcFixedGear(Mpc):
+class HybridTrackingFuelMpcFixedGear(Mpc):
 
     def __init__(self, prediction_horizon: int):
         nlp = Nlp[cs.SX](sym_type="SX")
@@ -204,6 +216,12 @@ class HybridTrackingMpcFixedGear(Mpc):
                 [
                     cs.mtimes([(x[:, i] - x_ref[:, i]).T, Q, x[:, i] - x_ref[:, i]])
                     for i in range(prediction_horizon + 1)
+                ]
+            )
+            + sum(
+                [
+                    dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
+                    for i in range(prediction_horizon)
                 ]
             )
         )
