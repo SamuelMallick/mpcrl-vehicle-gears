@@ -61,7 +61,7 @@ class Vehicle:
         if w_e > self.w_e_max + 1:  # TODO make this threshold more rigorous
             raise ValueError("Engine speed exceeds maximum value.")
         if w_e < self.w_e_idle:
-            print("Engine speed below idle. Setting to idle.")
+            # print("Engine speed below idle. Setting to idle.")
             w_e = self.w_e_idle
 
         fuel = self.fuel_rate(T_e, w_e) * dt
