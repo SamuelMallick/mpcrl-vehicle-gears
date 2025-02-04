@@ -20,10 +20,10 @@ ep_length = 60
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
 
 # mpc = HybridTrackingMpc(5)
-# mpc = HybridTrackingFuelMpc(5)
+# mpc = SolverTimeRecorder(HybridTrackingFuelMpc(15, mckormick_fuel=False))
 # agent = MINLPAgent(mpc)
 
-mpc = HybridTrackingFuelMpcFixedGear(5)
+mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(5, mckormick_fuel=True))
 agent = DQNAgent(mpc, 5, np_random)
 
 # mpc = TrackingMpc(5)
@@ -50,6 +50,7 @@ R = list(env.rewards)
 
 print(f"cost = {sum(R[0])}")
 print(f"fuel = {sum(fuel[0])}")
+print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 ep = 0
 plot_evaluation(
