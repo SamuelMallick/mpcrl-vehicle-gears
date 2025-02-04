@@ -93,6 +93,12 @@ class DQNAgent(Agent):
 
         self.np_random = np_random
 
+        seed = np_random.integers(0, 2**32 - 1)
+        if self.device.type == "cuda":
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        else:
+            torch.manual_seed(seed)
         self.policy_net = DRQN(
             self.n_states, self.n_hidden, self.n_actions, self.n_layers
         ).to(self.device)
