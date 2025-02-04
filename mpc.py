@@ -21,6 +21,8 @@ T_e_idle = 15  # engine idle torque (Nm)
 w_e_idle = 900  # engine idle speed (rpm)
 F_b_max = 9000  # maximum braking force (N)
 
+v_max = (w_e_max * r_r * 2 * np.pi) / (z_t[-1] * z_f * 60)
+
 p_0 = 0.04918
 p_1 = 0.001897
 p_2 = 4.5232e-5
@@ -53,7 +55,7 @@ def nonlinear_model(x, u, dt, alpha):
 
 class HybridTrackingMpc(Mpc):
 
-    def __init__(self, prediction_horizon: int):
+    def __init__(self, prediction_horizon: int, convexify_gears: bool = False):
         # TODO add docstring for this whole file
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
@@ -83,8 +85,24 @@ class HybridTrackingMpc(Mpc):
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
         )
-        n = (z_f / r_r) * sum([z_t[i] * gear[i, :] for i in range(6)])
-        self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
+        if convexify_gears:
+            for i in range(6):
+                n_i = z_f * z_t[i] / r_r
+                self.constraint(
+                    f"engine_speed_gear_{i}_1",
+                    w_e + (1 - gear[i, :]) * (n_i * v_max * 60 / (2 * np.pi)),
+                    ">=",
+                    n_i * x[1, :-1] * 60 / (2 * np.pi),
+                )
+                self.constraint(
+                    f"engine_speed_gear_{i}_2",
+                    w_e + (1 - gear[i, :]) * (-w_e_max),
+                    "<=",
+                    n_i * x[1, :-1] * 60 / (2 * np.pi),
+                )
+        else:
+            n = (z_f / r_r) * sum([z_t[i] * gear[i, :] for i in range(6)])
+            self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
         self.set_nonlinear_dynamics(lambda x, u: nonlinear_hybrid_model(x, u, dt, 0))
@@ -96,7 +114,7 @@ class HybridTrackingMpc(Mpc):
                 ]
             )
         )
-        self.init_solver(solver_options["bonmin"], solver="bonmin")
+        self.init_solver(solver_options["gurobi"], solver="gurobi")
 
     def solve(
         self,
@@ -113,7 +131,12 @@ class HybridTrackingMpc(Mpc):
 
 class HybridTrackingFuelMpc(Mpc):
 
-    def __init__(self, prediction_horizon: int, mckormick_fuel: bool = False):
+    def __init__(
+        self,
+        prediction_horizon: int,
+        convexify_fuel: bool = False,
+        convexify_gears: bool = False,
+    ):
         # TODO add docstring for this whole file
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
@@ -143,13 +166,29 @@ class HybridTrackingFuelMpc(Mpc):
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
         )
-        n = (z_f / r_r) * sum([z_t[i] * gear[i, :] for i in range(6)])
-        self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
+        if convexify_gears:
+            for i in range(6):
+                n_i = z_f * z_t[i] / r_r
+                self.constraint(
+                    f"engine_speed_gear_{i}_1",
+                    w_e + (1 - gear[i, :]) * (n_i * v_max * 60 / (2 * np.pi)),
+                    ">=",
+                    n_i * x[1, :-1] * 60 / (2 * np.pi),
+                )
+                self.constraint(
+                    f"engine_speed_gear_{i}_2",
+                    w_e + (1 - gear[i, :]) * (-w_e_max),
+                    "<=",
+                    n_i * x[1, :-1] * 60 / (2 * np.pi),
+                )
+        else:
+            n = (z_f / r_r) * sum([z_t[i] * gear[i, :] for i in range(6)])
+            self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
         self.set_nonlinear_dynamics(lambda x, u: nonlinear_hybrid_model(x, u, dt, 0))
 
-        if mckormick_fuel:
+        if convexify_fuel:
             P, _, _ = self.variable("P", (1, prediction_horizon))
             self.constraint(
                 "P_lb_1", P, ">=", T_e_idle * w_e + w_e_idle * T_e - w_e_idle * T_e_idle
@@ -185,7 +224,7 @@ class HybridTrackingFuelMpc(Mpc):
 
 class HybridTrackingFuelMpcFixedGear(Mpc):
 
-    def __init__(self, prediction_horizon: int, mckormick_fuel: bool = False):
+    def __init__(self, prediction_horizon: int, convexify_fuel: bool = False):
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 
@@ -228,7 +267,7 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         X_next = cs.horzcat(*X_next)
         self.constraint("dynamics", x[:, 1:], "==", X_next)
 
-        if mckormick_fuel:
+        if convexify_fuel:
             P, _, _ = self.variable("P", (1, prediction_horizon))
             self.constraint(
                 "P_lb_1", P, ">=", T_e_idle * w_e + w_e_idle * T_e - w_e_idle * T_e_idle

@@ -90,7 +90,8 @@ class MINLPAgent(Agent):
                 "T_e_prev": self.T_e_prev,
             }
         )
-        # TODO check success
+        if not sol.success:
+            raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
