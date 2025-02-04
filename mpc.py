@@ -114,7 +114,7 @@ class HybridTrackingMpc(Mpc):
                 ]
             )
         )
-        self.init_solver(solver_options["gurobi"], solver="gurobi")
+        self.init_solver(solver_options["bonmin"], solver="bonmin")
 
     def solve(
         self,
