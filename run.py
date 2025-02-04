@@ -21,7 +21,7 @@ env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_l
 
 mpc = SolverTimeRecorder(
     HybridTrackingMpc(
-        5, optimize_fuel=False, convexify_fuel=False, convexify_gears=False
+        5, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=False
     )
 )
 agent = MINLPAgent(mpc)

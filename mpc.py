@@ -38,6 +38,14 @@ F_r_min = (
     + m * (v_min - v_max) / dt
 )
 
+# drag approximation parameters
+beta = (3 * C_wind * v_max**2) / (16)
+alpha = v_max / 2
+a1 = beta / alpha
+a2 = (C_wind * v_max**2 - beta) / (v_max - alpha)
+b = beta - alpha * ((C_wind * v_max**2 - beta) / (v_max - alpha))
+
+# fuel cost parameters
 p_0 = 0.04918
 p_1 = 0.001897
 p_2 = 4.5232e-5
@@ -74,7 +82,7 @@ class HybridTrackingMpc(Mpc):
         prediction_horizon: int,
         optimize_fuel: bool = False,
         convexify_fuel: bool = False,
-        convexify_gears: bool = False,
+        convexify_dynamics: bool = False,
     ):
         # TODO add docstring for this whole file
         nlp = Nlp[cs.SX](sym_type="SX")
@@ -106,15 +114,38 @@ class HybridTrackingMpc(Mpc):
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
         )
         # comment this section
-        if convexify_gears:
+        if convexify_dynamics:
+            self.constraint("pos_dynam", x[0, 1:], "==", x[0, :-1] + x[1, :-1] * dt)
+
+            delta, _ = self.action("delta", 2, discrete=True, lb=0, ub=1)
+            self.constraint("delta_constraint", cs.sum1(delta), "==", 1)
+            z, _, _ = self.variable("z", (2, prediction_horizon))
+
             a = (x[1, 1:] - x[1, :-1]) / dt
             F_r = (
                 g * mu * m * np.cos(0)
                 + g * m * np.sin(0)
-                + C_wind * x[1, :-1] ** 2
+                # + C_wind * x[1, :-1] ** 2
+                + C_wind * (a1 * z[0, :])
+                + C_wind * (a2 * z[1, :] + delta[1, :] * b)
                 + m * a
             )
-            for i in range(6):
+            for i in range(2):  # TODO get ride of loop
+                self.constraint(
+                    f"drag_gear_{i}_1",
+                    z[i, :],
+                    "<=",
+                    x[1, :-1] - (1 - delta[i, :]) * v_min,
+                )
+                self.constraint(
+                    f"drag_gear_{i}_2",
+                    z[i, :],
+                    ">=",
+                    x[1, :-1] - (1 - delta[i, :]) * v_max,
+                )
+                self.constraint(f"drag_gear_{i}_3", z[i, :], "<=", delta[i, :] * v_max)
+                self.constraint(f"drag_gear_{i}_4", z[i, :], ">=", delta[i, :] * v_min)
+            for i in range(6):  # TODO get rid of loop
                 n_i = z_f * z_t[i] / r_r
                 self.constraint(
                     f"engine_speed_gear_{i}_1",
@@ -185,7 +216,16 @@ class HybridTrackingMpc(Mpc):
             )
             + fuel_cost
         )
-        self.init_solver(solver_options["bonmin"], solver="bonmin")
+        if (
+            convexify_dynamics
+            and not optimize_fuel
+            or convexify_dynamics
+            and optimize_fuel
+            and convexify_fuel
+        ):
+            self.init_solver(solver_options["gurobi"], solver="gurobi")
+        else:
+            self.init_solver(solver_options["bonmin"], solver="bonmin")
 
     def solve(
         self,
