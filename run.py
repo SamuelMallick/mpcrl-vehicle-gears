@@ -10,7 +10,6 @@ from visualisation.plot import plot_evaluation, plot_training
 from mpc import (
     HybridTrackingMpc,
     HybridTrackingFuelMpcFixedGear,
-    HybridTrackingFuelMpc,
     TrackingMpc,
 )
 
@@ -20,9 +19,12 @@ vehicle = Vehicle()
 ep_length = 60
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
 
-# mpc = HybridTrackingMpc(5)
-# mpc = SolverTimeRecorder(HybridTrackingFuelMpc(15, mckormick_fuel=False))
-# agent = MINLPAgent(mpc)
+mpc = SolverTimeRecorder(
+    HybridTrackingMpc(
+        5, optimize_fuel=False, convexify_fuel=False, convexify_gears=False
+    )
+)
+agent = MINLPAgent(mpc)
 
 mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(5, mckormick_fuel=True))
 agent = DQNAgent(mpc, 5, np_random)
