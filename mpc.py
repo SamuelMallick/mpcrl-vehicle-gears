@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional, TypeVar
 import casadi as cs
 from csnlp.wrappers.mpc.mpc import Mpc
 from csnlp import Nlp, Solution
@@ -113,7 +113,7 @@ class HybridTrackingMpc(Mpc):
 
 class HybridTrackingFuelMpc(Mpc):
 
-    def __init__(self, prediction_horizon: int):
+    def __init__(self, prediction_horizon: int, mckormick_fuel: bool = False):
         # TODO add docstring for this whole file
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
@@ -148,6 +148,28 @@ class HybridTrackingFuelMpc(Mpc):
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
         self.set_nonlinear_dynamics(lambda x, u: nonlinear_hybrid_model(x, u, dt, 0))
+
+        if mckormick_fuel:
+            P, _, _ = self.variable("P", (1, prediction_horizon))
+            self.constraint(
+                "P_lb_1", P, ">=", T_e_idle * w_e + w_e_idle * T_e - w_e_idle * T_e_idle
+            )
+            self.constraint(
+                "P_lb_2", P, ">=", T_e_max * w_e + w_e_max * T_e - w_e_max * T_e_max
+            )
+            fuel_cost = sum(
+                [
+                    dt * (p_0 + p_1 * w_e[i] + p_2 * P[i])
+                    for i in range(prediction_horizon)
+                ]
+            )
+        else:
+            fuel_cost = sum(
+                [
+                    dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
+                    for i in range(prediction_horizon)
+                ]
+            )
         self.minimize(
             gamma
             * sum(
@@ -156,19 +178,14 @@ class HybridTrackingFuelMpc(Mpc):
                     for i in range(prediction_horizon + 1)
                 ]
             )
-            + sum(
-                [
-                    dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
-                    for i in range(prediction_horizon)
-                ]
-            )
+            + fuel_cost
         )
         self.init_solver(solver_options["bonmin"], solver="bonmin")
 
 
 class HybridTrackingFuelMpcFixedGear(Mpc):
 
-    def __init__(self, prediction_horizon: int):
+    def __init__(self, prediction_horizon: int, mckormick_fuel: bool = False):
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 
@@ -211,6 +228,28 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         X_next = cs.horzcat(*X_next)
         self.constraint("dynamics", x[:, 1:], "==", X_next)
 
+        if mckormick_fuel:
+            P, _, _ = self.variable("P", (1, prediction_horizon))
+            self.constraint(
+                "P_lb_1", P, ">=", T_e_idle * w_e + w_e_idle * T_e - w_e_idle * T_e_idle
+            )
+            self.constraint(
+                "P_lb_2", P, ">=", T_e_max * w_e + w_e_max * T_e - w_e_max * T_e_max
+            )
+            fuel_cost = sum(
+                [
+                    dt * (p_0 + p_1 * w_e[i] + p_2 * P[i])
+                    for i in range(prediction_horizon)
+                ]
+            )
+        else:
+            fuel_cost = sum(
+                [
+                    dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
+                    for i in range(prediction_horizon)
+                ]
+            )
+
         self.minimize(
             sum(
                 [
@@ -218,12 +257,7 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
                     for i in range(prediction_horizon + 1)
                 ]
             )
-            + sum(
-                [
-                    dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
-                    for i in range(prediction_horizon)
-                ]
-            )
+            + fuel_cost
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
 
