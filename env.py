@@ -53,7 +53,7 @@ class VehicleTracking(gym.Env):
         # TODO add docstring
         T_e, F_b, gear = action
         x, fuel, T_e, w_e = self.vehicle.step(T_e, F_b, gear, self.ts, self.alpha)
-        r = self.reward(x, fuel)
+        r = self.reward(self.x, fuel)
         self.x = x
         self.counter += 1
         return (

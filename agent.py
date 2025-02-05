@@ -29,9 +29,10 @@ class Agent:
         self.on_validation_start()
 
         for episode in range(episodes):
+            print(f"Evaluate: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0
-            self.on_episode_start(env)
+            self.on_episode_start(state, env)
 
             while not (truncated or terminated):
                 action = self.get_action(state)
@@ -58,7 +59,7 @@ class Agent:
         self.engine_speed = []
         self.x_ref = []
 
-    def on_episode_start(self, env: VehicleTracking):
+    def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
         self.fuel.append([])
         self.engine_torque.append([])
         self.engine_speed.append([])
@@ -90,7 +91,8 @@ class MINLPAgent(Agent):
                 "T_e_prev": self.T_e_prev,
             }
         )
-        # TODO check success
+        if not sol.success:
+            raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]

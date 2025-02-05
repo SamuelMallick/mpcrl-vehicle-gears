@@ -70,7 +70,7 @@ class DQNAgent(Agent):
         self.tau = 0.001
 
         # archticeture
-        self.n_states = 6
+        self.n_states = 7
         self.n_hidden = 64
         self.n_actions = 3
         self.n_layers = 2
@@ -93,6 +93,12 @@ class DQNAgent(Agent):
 
         self.np_random = np_random
 
+        seed = np_random.integers(0, 2**32 - 1)
+        if self.device.type == "cuda":
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        else:
+            torch.manual_seed(seed)
         self.policy_net = DRQN(
             self.n_states, self.n_hidden, self.n_actions, self.n_layers
         ).to(self.device)
@@ -102,6 +108,70 @@ class DQNAgent(Agent):
         self.optimizer = optim.Adam(
             self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
         )  # TODO what is amsgrad?
+
+    def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
+        if policy_net_state_dict:
+            self.policy_net.load_state_dict(policy_net_state_dict)
+        return super().evaluate(env, episodes, seed)
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+        # TODO add docstring
+        if self.first_time_step:
+            gear_choice_binary = np.zeros((self.n_gears, self.N))
+            for i in range(self.N):  # TODO remove loop
+                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
+                    1  # TODO is int cast needed?
+                )
+            self.first_time_step = False
+        else:
+            nn_state = self.relative_state(
+                self.x,
+                self.T_e,
+                self.F_b,
+                self.w_e,
+                torch.from_numpy(self.gear_choice_explicit)
+                .unsqueeze(1)
+                .to(self.device),
+            )
+            with torch.no_grad():
+                q_values = self.policy_net(nn_state)
+                action = q_values.argmax(2)
+
+            gear_shift = action - 1
+            gear_shift = gear_shift.cpu().numpy()
+            self.gear_choice_explicit = np.array(
+                [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
+            )
+            self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
+            gear_choice_binary = np.zeros((self.n_gears, self.N))
+            for i in range(self.N):  # TODO remove loop
+                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
+                    1  # TODO is int cast needed?
+                )
+        sol = self.mpc.solve(
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "T_e_prev": self.T_e_prev,
+                "gear": gear_choice_binary,
+            }
+        )
+        if not sol.success:
+            raise RuntimeError("Infeasible action selected during eval")
+        self.T_e = torch.tensor(
+            sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+        )
+        self.F_b = torch.tensor(
+            sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
+        )
+        self.w_e = torch.tensor(
+            sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+        )
+        self.x = torch.tensor(
+            sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
+        )
+        self.gear = int(self.gear_choice_explicit[0])
+        return sol.vals["T_e"].full()[0, 0], sol.vals["F_b"].full()[0, 0], self.gear
 
     def train(
         self,
@@ -124,7 +194,7 @@ class DQNAgent(Agent):
         for episode, seed in zip(range(episodes), seeds):
             print(f"Train: Episode {episode}")
             state, info = env.reset(seed=seed)
-            self.on_episode_start(env)
+            self.on_episode_start(state, env)
             time_step = 0
 
             # TODO does all this stuff outside of the loop need to be done?
@@ -153,6 +223,9 @@ class DQNAgent(Agent):
             F_b = torch.tensor(
                 sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
             )
+            w_e = torch.tensor(
+                sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+            )
             x = torch.tensor(
                 sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
             )
@@ -161,6 +234,7 @@ class DQNAgent(Agent):
                 x,
                 T_e,
                 F_b,
+                w_e,
                 torch.from_numpy(gear_choice_init_explicit)
                 .unsqueeze(1)
                 .to(self.device),
@@ -180,7 +254,7 @@ class DQNAgent(Agent):
 
                 network_action = self.network_action(nn_state)
 
-                gear_shift = network_action - 1  # TODO is action shift needed?
+                gear_shift = network_action - 1
                 # NOTE this is different to what Qizhang did, he shifted from previous gear sequence (which was not known by NN)
                 gear_shift = gear_shift.cpu().numpy()
                 gear_choice_explicit = np.array(
@@ -263,6 +337,9 @@ class DQNAgent(Agent):
                 F_b = torch.tensor(
                     sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
                 )
+                w_e = torch.tensor(
+                    sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+                )
                 x = torch.tensor(
                     sol.vals["x"][:, :-1].full().T,
                     dtype=torch.float32,
@@ -280,6 +357,7 @@ class DQNAgent(Agent):
                     x,
                     T_e,
                     F_b,
+                    w_e,
                     torch.from_numpy(gear_choice_explicit).unsqueeze(1).to(self.device),
                 )
 
@@ -425,15 +503,28 @@ class DQNAgent(Agent):
         self.train_flag = True
         self.cost = []
 
-    def on_episode_start(self, env):
+    def on_validation_start(self):
+        self.train_flag = False
+        self.T_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
+        self.F_b = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
+        self.w_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
+        self.x = torch.empty((2, self.N), device=self.device, dtype=torch.float32)
+        self.gear_choice_explicit = np.empty((self.N,))
+        return super().on_validation_start()
+
+    def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
+        self.first_time_step = True
         self.cost.append([])
-        return super().on_episode_start(env)
+        if not self.train_flag:
+            self.gear = self.gear_from_velocity(state[1])
+            self.gear_choice_explicit = np.ones((self.N,)) * self.gear
+        return super().on_episode_start(state, env)
 
     def on_timestep_end(self, cost: float):
         self.cost[-1].append(cost)
 
     def relative_state(
-        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, gear: torch.Tensor
+        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, w_e: torch.Tensor, gear: torch.Tensor
     ) -> torch.Tensor:
         # TODO add docstring
         d_rel = x[:, [0]] - torch.from_numpy(self.x_ref_predicition[:-1, 0]).to(
@@ -444,7 +535,7 @@ class DQNAgent(Agent):
         )
         v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
         return (
-            torch.cat((d_rel, v_rel, v_norm, T_e, F_b, gear), dim=1)
+            torch.cat((d_rel, v_rel, v_norm, T_e, F_b, w_e, gear), dim=1)
             .unsqueeze(0)
             .to(torch.float32)
         )  # TODO should we normalize the gears and stuff?
