@@ -314,6 +314,7 @@ class DQNAgent(Agent):
                 self.save(env=env, ep=episode, path=save_path)
 
         print("Training complete")
+        self.save(env=env, ep=episode, path=save_path)
         return returns, {
             "fuel": self.fuel,
             "T_e": self.engine_torque,
