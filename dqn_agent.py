@@ -109,6 +109,66 @@ class DQNAgent(Agent):
             self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
         )  # TODO what is amsgrad?
 
+    def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
+        if policy_net_state_dict:
+            self.policy_net.load_state_dict(policy_net_state_dict)
+        return super().evaluate(env, episodes, seed)
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+        # TODO add docstring
+        if self.first_time_step:
+            gear_choice_binary = np.zeros((self.n_gears, self.N))
+            for i in range(self.N):  # TODO remove loop
+                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
+                    1  # TODO is int cast needed?
+                )
+            self.first_time_step = False
+        else:
+            nn_state = self.relative_state(
+                self.x,
+                self.T_e,
+                self.F_b,
+                torch.from_numpy(self.gear_choice_explicit)
+                .unsqueeze(1)
+                .to(self.device),
+            )
+            with torch.no_grad():
+                q_values = self.policy_net(nn_state)
+                action = q_values.argmax(2)
+
+            gear_shift = action - 1
+            gear_shift = gear_shift.cpu().numpy()
+            self.gear_choice_explicit = np.array(
+                [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
+            )
+            self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
+            gear_choice_binary = np.zeros((self.n_gears, self.N))
+            for i in range(self.N):  # TODO remove loop
+                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
+                    1  # TODO is int cast needed?
+                )
+        sol = self.mpc.solve(
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "T_e_prev": self.T_e_prev,
+                "gear": gear_choice_binary,
+            }
+        )
+        if not sol.success:
+            raise RuntimeError("Infeasible action selected during eval")
+        self.T_e = torch.tensor(
+            sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+        )
+        self.F_b = torch.tensor(
+            sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
+        )
+        self.x = torch.tensor(
+            sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
+        )
+        self.gear = int(self.gear_choice_explicit[0])
+        return sol.vals["T_e"].full()[0, 0], sol.vals["F_b"].full()[0, 0], self.gear
+
     def train(
         self,
         env: VehicleTracking,
@@ -430,9 +490,21 @@ class DQNAgent(Agent):
         self.train_flag = True
         self.cost = []
 
-    def on_episode_start(self, env):
+    def on_validation_start(self):
+        self.train_flag = False
+        self.T_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
+        self.F_b = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
+        self.x = torch.empty((2, self.N), device=self.device, dtype=torch.float32)
+        self.gear_choice_explicit = np.empty((self.N,))
+        return super().on_validation_start()
+
+    def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
+        self.first_time_step = True
         self.cost.append([])
-        return super().on_episode_start(env)
+        if not self.train_flag:
+            self.gear = self.gear_from_velocity(state[1])
+            self.gear_choice_explicit = np.ones((self.N,)) * self.gear
+        return super().on_episode_start(state, env)
 
     def on_timestep_end(self, cost: float):
         self.cost[-1].append(cost)

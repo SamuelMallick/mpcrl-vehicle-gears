@@ -31,7 +31,7 @@ class Agent:
         for episode in range(episodes):
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0
-            self.on_episode_start(env)
+            self.on_episode_start(state, env)
 
             while not (truncated or terminated):
                 action = self.get_action(state)
@@ -58,7 +58,7 @@ class Agent:
         self.engine_speed = []
         self.x_ref = []
 
-    def on_episode_start(self, env: VehicleTracking):
+    def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
         self.fuel.append([])
         self.engine_torque.append([])
         self.engine_speed.append([])
