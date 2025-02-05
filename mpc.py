@@ -51,6 +51,10 @@ p_1 = 0.001897
 p_2 = 4.5232e-5
 gamma = 0.1  # weight for tracking in cost
 
+A = np.zeros((6, 6))
+np.fill_diagonal(A, 1)
+np.fill_diagonal(A[1:], 1)
+np.fill_diagonal(A[:, 1:], 1)
 
 Q = cs.diag([1, 0.1])
 
@@ -109,6 +113,7 @@ class HybridTrackingMpc(Mpc):
 
         gear, _ = self.action("gear", 6, discrete=True, lb=0, ub=1)
         self.constraint("gear_constraint", cs.sum1(gear), "==", 1)
+        self.constraint("gear_shift_constraint", A @ gear[:, :-1], ">=", gear[:, 1:])
 
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
