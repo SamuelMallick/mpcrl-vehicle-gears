@@ -70,7 +70,7 @@ class DQNAgent(Agent):
         self.tau = 0.001
 
         # archticeture
-        self.n_states = 6
+        self.n_states = 7
         self.n_hidden = 64
         self.n_actions = 3
         self.n_layers = 2
@@ -128,6 +128,7 @@ class DQNAgent(Agent):
                 self.x,
                 self.T_e,
                 self.F_b,
+                self.w_e,
                 torch.from_numpy(self.gear_choice_explicit)
                 .unsqueeze(1)
                 .to(self.device),
@@ -163,6 +164,9 @@ class DQNAgent(Agent):
         self.F_b = torch.tensor(
             sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
         )
+        self.w_e = torch.tensor(
+            sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+        )
         self.x = torch.tensor(
             sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
         )
@@ -190,7 +194,7 @@ class DQNAgent(Agent):
         for episode, seed in zip(range(episodes), seeds):
             print(f"Train: Episode {episode}")
             state, info = env.reset(seed=seed)
-            self.on_episode_start(env)
+            self.on_episode_start(state, env)
             time_step = 0
 
             # TODO does all this stuff outside of the loop need to be done?
@@ -219,6 +223,9 @@ class DQNAgent(Agent):
             F_b = torch.tensor(
                 sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
             )
+            w_e = torch.tensor(
+                sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+            )
             x = torch.tensor(
                 sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
             )
@@ -227,6 +234,7 @@ class DQNAgent(Agent):
                 x,
                 T_e,
                 F_b,
+                w_e,
                 torch.from_numpy(gear_choice_init_explicit)
                 .unsqueeze(1)
                 .to(self.device),
@@ -246,7 +254,7 @@ class DQNAgent(Agent):
 
                 network_action = self.network_action(nn_state)
 
-                gear_shift = network_action - 1  # TODO is action shift needed?
+                gear_shift = network_action - 1
                 # NOTE this is different to what Qizhang did, he shifted from previous gear sequence (which was not known by NN)
                 gear_shift = gear_shift.cpu().numpy()
                 gear_choice_explicit = np.array(
@@ -329,6 +337,9 @@ class DQNAgent(Agent):
                 F_b = torch.tensor(
                     sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
                 )
+                w_e = torch.tensor(
+                    sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+                )
                 x = torch.tensor(
                     sol.vals["x"][:, :-1].full().T,
                     dtype=torch.float32,
@@ -346,6 +357,7 @@ class DQNAgent(Agent):
                     x,
                     T_e,
                     F_b,
+                    w_e,
                     torch.from_numpy(gear_choice_explicit).unsqueeze(1).to(self.device),
                 )
 
@@ -494,6 +506,7 @@ class DQNAgent(Agent):
         self.train_flag = False
         self.T_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
         self.F_b = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
+        self.w_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
         self.x = torch.empty((2, self.N), device=self.device, dtype=torch.float32)
         self.gear_choice_explicit = np.empty((self.N,))
         return super().on_validation_start()
@@ -510,7 +523,7 @@ class DQNAgent(Agent):
         self.cost[-1].append(cost)
 
     def relative_state(
-        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, gear: torch.Tensor
+        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, w_e: torch.Tensor, gear: torch.Tensor
     ) -> torch.Tensor:
         # TODO add docstring
         d_rel = x[:, [0]] - torch.from_numpy(self.x_ref_predicition[:-1, 0]).to(
@@ -521,7 +534,7 @@ class DQNAgent(Agent):
         )
         v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
         return (
-            torch.cat((d_rel, v_rel, v_norm, T_e, F_b, gear), dim=1)
+            torch.cat((d_rel, v_rel, v_norm, T_e, F_b, w_e, gear), dim=1)
             .unsqueeze(0)
             .to(torch.float32)
         )  # TODO should we normalize the gears and stuff?

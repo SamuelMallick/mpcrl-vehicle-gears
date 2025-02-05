@@ -29,6 +29,7 @@ class Agent:
         self.on_validation_start()
 
         for episode in range(episodes):
+            print(f"Evaluate: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0
             self.on_episode_start(state, env)
