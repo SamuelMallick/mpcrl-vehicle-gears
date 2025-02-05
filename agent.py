@@ -16,7 +16,7 @@ class Agent:
     def __init__(self, mpc: Mpc):
         self.mpc = mpc
 
-    def network_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
         raise NotImplementedError
 
     def evaluate(

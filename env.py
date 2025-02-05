@@ -24,15 +24,17 @@ class VehicleTracking(gym.Env):
             self.vehicle.x = options["x"]
             self.x = self.vehicle.x
         else:
-            self.vehicle.x = np.array([[0], [10]])
+            self.vehicle.x = np.array(
+                [[0], [self.np_random.uniform(Vehicle.v_min + 5, Vehicle.v_max - 5)]]
+            )
             self.x = self.vehicle.x
 
-        d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, 500)).reshape(
-            500, 1, 1
-        )  # TODO get rid of hard code 500
-        v_ref = np.full((500, 1, 1), 20)
-        self.x_ref = np.concatenate((d_ref, v_ref), axis=1)
-        # self.x_ref = self.generate_random_x_ref()
+        # d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, 500)).reshape(
+        #     500, 1, 1
+        # )  # TODO get rid of hard code 500
+        # v_ref = np.full((500, 1, 1), 20)
+        # self.x_ref = np.concatenate((d_ref, v_ref), axis=1)
+        self.x_ref = self.generate_random_x_ref()
         self.counter = 0
 
         return self.x, {}
@@ -66,6 +68,7 @@ class VehicleTracking(gym.Env):
                 "T_e": T_e,
                 "w_e": w_e,
                 "x_ref": self.x_ref[self.counter - 1],
+                "gear": gear,
             },
         )
 
@@ -75,25 +78,27 @@ class VehicleTracking(gym.Env):
 
     def generate_random_x_ref(self):
         # TODO add docstring
-        len = 110  # TODO get rid of hard code 500
+        len = 150  # TODO get rid of hard code 500
         x_ref = np.zeros((len, 2, 1))
-        v = 20 + self.np_random.uniform(-5, 5)
-        x_ref[0] = np.array([[self.x[0, 0]], [v]])
-        change_points = np.sort(self.np_random.integers(-5, 5, size=4))
-        slopes = self.np_random.uniform(-0.6, 0.6, size=3)
+        v = self.np_random.uniform(Vehicle.v_min + 5, Vehicle.v_max - 5)
+        d = self.np_random.uniform(-50, 50)
+        x_ref[0] = np.array([[d], [v]])
+        change_points = np.sort(self.np_random.integers(0, 100, size=5))
+        # change_points = np.sort(self.np_random.integers(-5, 5, size=4))
+        slopes = self.np_random.uniform(-2, 2, size=3)
 
-        for k in range(20 + change_points[0]):
+        for k in range(change_points[0]):
             x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-        for k in range(20 + change_points[0], 35 + change_points[1]):
+        for k in range(change_points[0], change_points[1]):
             v = max(min(35, v + slopes[0]), 5)
             x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-        for k in range(35 + change_points[1], 50 + change_points[2]):
+        for k in range(change_points[1], change_points[2]):
             v = max(min(35, v + slopes[1]), 5)
             x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-        for k in range(50 + change_points[2], 70 + change_points[3]):
+        for k in range(change_points[2], change_points[3]):
             v = max(min(35, v + slopes[2]), 5)
             x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-        for k in range(70 + change_points[3], len - 1):
+        for k in range(change_points[3], len - 1):
             x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
 
         return x_ref

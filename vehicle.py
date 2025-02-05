@@ -65,6 +65,12 @@ class Vehicle:
             w_e = self.w_e_idle
 
         fuel = self.fuel_rate(T_e, w_e) * dt
+
+        # check velocity bound
+        if self.x[1] + dt * a < self.v_min:
+            print("Velocity below minimum. Adjusting braking force.")
+            a = (self.v_min - self.x[1]) / dt
+
         self.x = (
             self.x + np.array([self.x[1], a]) * dt
         )  # TODO make it multiple steps within one for more accuracy
