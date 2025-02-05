@@ -188,9 +188,9 @@ class DQNAgent(Agent):
                 )
 
                 # clip gears to be within range
-                penalty += self.clip_pen * np.sum(
-                    gear_choice_explicit < 0
-                ) + self.clip_pen * np.sum(gear_choice_explicit > 5)
+                # penalty += self.clip_pen * np.sum(
+                #     gear_choice_explicit < 0
+                # ) + self.clip_pen * np.sum(gear_choice_explicit > 5)
                 gear_choice_explicit = np.clip(gear_choice_explicit, 0, 5)
 
                 gear_choice_binary = np.zeros((self.n_gears, self.N))
@@ -253,10 +253,10 @@ class DQNAgent(Agent):
                         )
 
                         if not sol.success:
-                            raise RuntimeError(
-                                "Backup gear solution was still infeasible, reconsider theory. Oh no."
-                            )
-
+                            # raise RuntimeError(
+                            #     "Backup gear solution was still infeasible, reconsider theory. Oh no."
+                            # )
+                            pass
                 T_e = torch.tensor(
                     sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
                 )

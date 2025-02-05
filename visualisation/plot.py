@@ -11,28 +11,32 @@ def plot_training(
 ):
     # TODO add docstring
     fig, ax = plt.subplots(4, 1, sharex=True)
-    ax[0].plot(cost)
+    # ax[0].plot(cost)
     ax[0].plot(
         np.convolve(cost, np.ones(average_interval) / average_interval, mode="valid")
     )
     ax[0].set_ylabel("Cost")
-    ax[1].plot(fuel)
+    ax[0].set_yscale("log")
+    # ax[1].plot(fuel)
     ax[1].plot(
         np.convolve(fuel, np.ones(average_interval) / average_interval, mode="valid")
     )
     ax[1].set_ylabel("Fuel")
-    ax[2].plot(tracking)
+    ax[1].set_yscale("log")
+    # ax[2].plot(tracking)
     ax[2].plot(
         np.convolve(
             tracking, np.ones(average_interval) / average_interval, mode="valid"
         )
     )
     ax[2].set_ylabel("Tracking")
-    ax[3].plot(penalty)
+    ax[2].set_yscale("log")
+    # ax[3].plot(penalty)
     ax[3].plot(
         np.convolve(penalty, np.ones(average_interval) / average_interval, mode="valid")
     )
     ax[3].set_ylabel("Penalty")
+    ax[3].set_yscale("log")
     plt.show()
 
 
