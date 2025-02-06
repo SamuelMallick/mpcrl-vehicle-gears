@@ -25,11 +25,13 @@ class Agent:
     ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
 
+        seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
+
         # self.reset()
         returns = np.zeros(episodes)
         self.on_validation_start()
 
-        for episode in range(episodes):
+        for episode, seed in zip(range(episodes), seeds):
             print(f"Evaluate: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0

@@ -183,9 +183,7 @@ class DQNAgent(Agent):
         exp_zero_steps: int = 0,
     ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
-        seeds = map(
-            int, np.random.SeedSequence(seed).generate_state(episodes)
-        )  # TODO add this seeding to eval in other agents
+        seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
         returns = np.zeros(episodes)
 
         self.decay_rate = np.log(1 / 1e-3) / exp_zero_steps
