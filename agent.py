@@ -94,7 +94,7 @@ class Agent:
         # TODO add docstring
         for i in range(6):  # TODO get rid of loop
             n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
+            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:
                 return i
         raise ValueError("No gear found")
 
