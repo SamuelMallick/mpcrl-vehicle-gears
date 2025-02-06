@@ -61,7 +61,7 @@ elif sim_type == "miqp_mpc":
         )
     )
     agent = MINLPAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=2, seed=seed)
+    returns, info = agent.evaluate(env, episodes=100, seed=seed)
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(
         HybridTrackingMpc(
@@ -92,7 +92,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open("results/evaluations/MIQP_MPC.pkl", "wb") as f:
+    with open(f"results/evaluations/MIQP_MPC_N_{N}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
