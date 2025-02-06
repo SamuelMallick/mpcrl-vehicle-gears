@@ -83,7 +83,7 @@ class DQNAgent(Agent):
         self.decay_rate = 0
 
         # penalties
-        self.clip_pen = 1e3
+        self.clip_pen = 0
         self.infeas_pen = 1e4
 
         # memory
