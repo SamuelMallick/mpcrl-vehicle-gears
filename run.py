@@ -13,63 +13,108 @@ from mpc import (
     TrackingMpc,
 )
 import torch
+import pickle
+from typing import Literal
 
-np_random = np.random.default_rng(1)
+SAVE = True
+PLOT = True
+
+sim_type: Literal[
+    "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "hueristic_mpc"
+] = "miqp_mpc"
+
 
 vehicle = Vehicle()
-ep_length = 60
+ep_length = 100
+N = 15
+seed = 0
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
+np_random = np.random.default_rng(seed)
 
-# mpc = SolverTimeRecorder(
-#     HybridTrackingMpc(
-#         5, optimize_fuel=True, convexify_fuel=False, convexify_dynamics=False
-#     )
-# )
-# agent = MINLPAgent(mpc)
-# mpc = SolverTimeRecorder(TrackingMpc(5))
-# agent = HeuristicGearAgent(mpc)
+if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+    mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(N, convexify_fuel=False))
+    agent = DQNAgent(mpc, N, np_random)
+    if sim_type == "rl_mpc_train":
+        num_eps = 50000
+        returns, info = agent.train(
+            env,
+            episodes=num_eps,
+            exp_zero_steps=int(ep_length * num_eps / 2),
+            save_freq=1000,
+            save_path="results",
+            seed=seed,
+        )
+    else:
+        state_dict = torch.load(
+            "results/many_traj_N_5/policy_net_ep_49000.pth",
+            weights_only=True,
+            map_location="cpu",
+        )
+        returns, info = agent.evaluate(
+            env, episodes=1, policy_net_state_dict=state_dict, seed=seed
+        )
 
-# returns, info = agent.evaluate(env, episodes=1)
+elif sim_type == "miqp_mpc":
+    mpc = SolverTimeRecorder(
+        HybridTrackingMpc(
+            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
+        )
+    )
+    agent = MINLPAgent(mpc)
+    returns, info = agent.evaluate(env, episodes=2, seed=seed)
+elif sim_type == "minlp_mpc":
+    mpc = SolverTimeRecorder(
+        HybridTrackingMpc(
+            N, optimize_fuel=True, convexify_fuel=False, convexify_dynamics=False
+        )
+    )
+    agent = MINLPAgent(mpc)
+    returns, info = agent.evaluate(env, episodes=100, seed=seed)
+elif sim_type == "heuristic_mpc":
+    mpc = SolverTimeRecorder(TrackingMpc(N))
+    agent = HeuristicGearAgent(mpc)
+    returns, info = agent.evaluate(env, episodes=100, seed=seed)
 
-mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(5, convexify_fuel=False))
-agent = DQNAgent(mpc, 5, np_random)
-state_dict = torch.load(
-    "results/many_traj_N_5/policy_net_ep_49000.pth",
-    weights_only=True,
-    map_location="cpu",
-)
 
-returns, info = agent.evaluate(env, episodes=1, policy_net_state_dict=state_dict)
-# num_eps = 1
-# returns, info = agent.train(
-#     env,
-#     episodes=num_eps,
-#     exp_zero_steps=int(ep_length * num_eps / 2),
-#     save_freq=50,
-#     save_path="results",
-#     seed=0,
-# )
 fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
 x_ref = info["x_ref"]
-# cost = info["cost"]
+if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+    cost = info["cost"]
 
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
 
-print(f"cost = {sum(R[0])}")
-print(f"fuel = {sum(fuel[0])}")
+print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
+print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
-ep = 0
-plot_evaluation(
-    x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
-)
-# plot_training(
-#     [sum(cost[i]) for i in range(len(cost))],
-#     [sum(fuel[i]) for i in range(len(fuel))],
-#     [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
-#     [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
-# )
+if SAVE:
+    with open("results/evaluations/MIQP_MPC.pkl", "wb") as f:
+        pickle.dump(
+            {
+                "x_ref": x_ref,
+                "X": X,
+                "U": U,
+                "R": R,
+                "fuel": fuel,
+                "T_e": engine_torque,
+                "w_e": engine_speed,
+                "mpc_solve_time": mpc.solver_time,
+            },
+            f,
+        )
+
+if PLOT:
+    ep = 0
+    plot_evaluation(
+        x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
+    )
+    # plot_training(
+    #     [sum(cost[i]) for i in range(len(cost))],
+    #     [sum(fuel[i]) for i in range(len(fuel))],
+    #     [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
+    #     [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
+    # )
