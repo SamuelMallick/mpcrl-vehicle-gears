@@ -70,6 +70,9 @@ class Vehicle:
         if self.x[1] + dt * a < self.v_min:
             print("Velocity below minimum. Adjusting braking force.")
             a = (self.v_min - self.x[1]) / dt
+        if self.x[1] + dt * a > self.v_max:
+            print("Velocity above maximum. Adjusting engine torque.")
+            a = (self.v_max - self.x[1]) / dt
 
         self.x = (
             self.x + np.array([self.x[1], a]) * dt

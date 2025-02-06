@@ -123,12 +123,12 @@ class HeuristicGearAgent(Agent):
     #     super().__init__(mpc)
     #     self.vehicle = vehicle
 
-    def gear_from_velocity(self, v: float, F_trac: float) -> int:
+    def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
         for i in range(6):
             n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
             if (
-                F_trac / n <= Vehicle.T_e_max
-                and v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max
+                F_trac / n <= Vehicle.T_e_max + 1e-3
+                and v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3
             ):
                 return i
         raise ValueError("No gear found")
@@ -151,7 +151,7 @@ class HeuristicGearAgent(Agent):
 
         # TODO check success
         F_trac = sol.vals["F_trac"].full()[0, 0]
-        gear = self.gear_from_velocity(state[1], F_trac)
+        gear = self.gear_from_velocity_and_traction(state[1], F_trac)
         if F_trac < 0:
             T_e = Vehicle.T_e_idle
             F_b = (

@@ -20,13 +20,13 @@ SAVE = True
 PLOT = True
 
 sim_type: Literal[
-    "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "hueristic_mpc"
-] = "miqp_mpc"
+    "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
+] = "heuristic_mpc"
 
 
 vehicle = Vehicle()
 ep_length = 100
-N = 15
+N = 20
 seed = 0
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
 np_random = np.random.default_rng(seed)
