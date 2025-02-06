@@ -12,6 +12,7 @@ class Agent:
     x_ref: list[np.ndarray] = []
     x_ref_predicition: np.ndarray = np.empty((0, 2, 1))  # TODO is right shape?
     T_e_prev = Vehicle.T_e_idle
+    gear_prev: np.ndarray = np.empty((6, 1))
 
     def __init__(self, mpc: Mpc):
         self.mpc = mpc
@@ -68,6 +69,9 @@ class Agent:
             self.mpc.prediction_horizon + 1
         )
         self.T_e_prev = Vehicle.T_e_idle
+        gear = self.gear_from_velocity(state[1])
+        self.gear_prev = np.zeros((6, 1))
+        self.gear_prev[gear] = 1  # TODO make one line
 
     def on_env_step(self, env: VehicleTracking, episode: int, info: dict):
         self.fuel[episode].append(info["fuel"])
@@ -80,6 +84,17 @@ class Agent:
             self.mpc.prediction_horizon + 1
         )
         self.T_e_prev = info["T_e"]
+        gear = info["gear"]
+        self.gear_prev = np.zeros((6, 1))
+        self.gear_prev[gear] = 1  # TODO make one line
+
+    def gear_from_velocity(self, v: float) -> int:
+        # TODO add docstring
+        for i in range(6):  # TODO get rid of loop
+            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
+            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
+                return i
+        raise ValueError("No gear found")
 
 
 class MINLPAgent(Agent):
@@ -89,6 +104,7 @@ class MINLPAgent(Agent):
                 "x_0": state,
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "T_e_prev": self.T_e_prev,
+                "gear_prev": self.gear_prev,
             }
         )
         if not sol.success:

@@ -490,14 +490,6 @@ class DQNAgent(Agent):
         )  # TODO what is this value?
         self.optimizer.step()
 
-    def gear_from_velocity(self, v: float) -> int:
-        # TODO add docstring
-        for i in range(6):  # TODO get rid of loop
-            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
-                return i
-        raise ValueError("No gear found")
-
     def on_train_start(self):
         # TODO add docstring
         self.train_flag = True
@@ -524,7 +516,12 @@ class DQNAgent(Agent):
         self.cost[-1].append(cost)
 
     def relative_state(
-        self, x: torch.Tensor, T_e: torch.Tensor, F_b: torch.Tensor, w_e: torch.Tensor, gear: torch.Tensor
+        self,
+        x: torch.Tensor,
+        T_e: torch.Tensor,
+        F_b: torch.Tensor,
+        w_e: torch.Tensor,
+        gear: torch.Tensor,
     ) -> torch.Tensor:
         # TODO add docstring
         d_rel = x[:, [0]] - torch.from_numpy(self.x_ref_predicition[:-1, 0]).to(
