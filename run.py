@@ -21,12 +21,13 @@ PLOT = True
 
 sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "heuristic_mpc"
+] = "miqp_mpc"
 
 
 vehicle = Vehicle()
 ep_length = 100
-N = 20
+num_eval_eps = 100
+N = 5
 seed = 0
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
 np_random = np.random.default_rng(seed)
@@ -51,7 +52,7 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             map_location="cpu",
         )
         returns, info = agent.evaluate(
-            env, episodes=1, policy_net_state_dict=state_dict, seed=seed
+            env, episodes=num_eval_eps, policy_net_state_dict=state_dict, seed=seed
         )
 
 elif sim_type == "miqp_mpc":
@@ -61,7 +62,7 @@ elif sim_type == "miqp_mpc":
         )
     )
     agent = MINLPAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=100, seed=seed)
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(
         HybridTrackingMpc(
@@ -69,11 +70,11 @@ elif sim_type == "minlp_mpc":
         )
     )
     agent = MINLPAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=100, seed=seed)
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
     agent = HeuristicGearAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=100, seed=seed)
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 
 
 fuel = info["fuel"]
@@ -92,7 +93,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"results/evaluations/MIQP_MPC_N_{N}.pkl", "wb") as f:
+    with open(f"results/evaluations/{sim_type}_N_{N}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,

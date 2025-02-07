@@ -4,7 +4,9 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/evaluations/MIQP_MPC_N_20.pkl"
+type = "MIQP_MPC"
+N = 5
+file_name = f"results/evaluations/{type}_N_{N}.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
@@ -23,7 +25,7 @@ print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(mpc_solve_time)}")
 
-# for ep in range(num_eps):
-#     plot_evaluation(
-#         x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
-#     )
+for ep in range(num_eps):
+    plot_evaluation(
+        x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
+    )

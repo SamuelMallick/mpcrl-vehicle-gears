@@ -122,6 +122,11 @@ class HeuristicGearAgent(Agent):
     # def __init__(self, mpc: Mpc, vehicle: Vehicle):
     #     super().__init__(mpc)
     #     self.vehicle = vehicle
+    max_v_per_gear = [
+        (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi)
+        / (Vehicle.z_t[i] * Vehicle.z_f * 60)
+        for i in range(6)
+    ]
 
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
         for i in range(6):
@@ -134,13 +139,11 @@ class HeuristicGearAgent(Agent):
         raise ValueError("No gear found")
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
-        max_v_per_gear = [
-            (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi)
-            / (Vehicle.z_t[i] * Vehicle.z_f * 60)
-            for i in range(6)
-        ]
-        idx = bisect_right(max_v_per_gear, state[1])
-        F_trac_max = Vehicle.T_e_max * Vehicle.z_t[idx] * Vehicle.z_f / Vehicle.r_r
+        # get lowet allowed gear for the given velocity, then use that to limit the traction force
+        idx = bisect_right(self.max_v_per_gear, state[1])
+        n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
+        F_trac_max = Vehicle.T_e_max * n
+
         sol = self.mpc.solve(
             {
                 "x_0": state,
@@ -149,7 +152,8 @@ class HeuristicGearAgent(Agent):
             }
         )
 
-        # TODO check success
+        if not sol.success:
+            raise ValueError("MPC failed to solve")
         F_trac = sol.vals["F_trac"].full()[0, 0]
         gear = self.gear_from_velocity_and_traction(state[1], F_trac)
         if F_trac < 0:
@@ -161,4 +165,10 @@ class HeuristicGearAgent(Agent):
         else:
             T_e = (F_trac * Vehicle.r_r) / (Vehicle.z_t[gear] * Vehicle.z_f)
             F_b = 0
+
+        # apply clipping to engine torque
+        T_e = (
+            np.clip(T_e - self.T_e_prev, -Vehicle.dT_e_max, Vehicle.dT_e_max)
+            + self.T_e_prev
+        )
         return T_e, F_b, gear
