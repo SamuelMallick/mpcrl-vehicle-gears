@@ -96,7 +96,7 @@ fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
 x_ref = info["x_ref"]
-if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+if sim_type == "rl_mpc_train":
     cost = info["cost"]
 
 X = list(env.observations)
