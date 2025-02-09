@@ -183,6 +183,7 @@ class DQNAgent(Agent):
         exp_zero_steps: int = 0,
         policy_net_state_dict: dict = {},
         target_net_state_dict: dict = {},
+        info_dict: dict = {},
         start_episode: int = 0,
         start_exp_step: int = 0,
     ) -> tuple[np.ndarray, dict]:
@@ -191,6 +192,12 @@ class DQNAgent(Agent):
             self.policy_net.load_state_dict(policy_net_state_dict)
         if target_net_state_dict:
             self.target_net.load_state_dict(target_net_state_dict)
+        if info_dict:
+            self.cost = info_dict["cost"]
+            self.fuel = info_dict["fuel"]
+            self.engine_torque = info_dict["T_e"]
+            self.engine_speed = info_dict["w_e"]
+            self.x_ref = info_dict["x_ref"]
         seeds = map(
             int, np.random.SeedSequence(seed + start_episode).generate_state(episodes)
         )

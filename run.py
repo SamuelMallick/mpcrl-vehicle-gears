@@ -21,7 +21,7 @@ PLOT = True
 
 sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "miqp_mpc"
+] = "rl_mpc_train"
 
 
 vehicle = Vehicle()
@@ -44,6 +44,8 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             "results/N_5/target_net_ep_49999.pth",
             weights_only=True,
         )
+        with open("results/N_5/data_ep_49999.pkl", "rb") as f:
+            info = pickle.load(f)
         num_eps = 100000
         returns, info = agent.train(
             env,
@@ -54,6 +56,7 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             seed=seed,
             policy_net_state_dict=policy_state_dict,
             target_net_state_dict=target_state_dict,
+            info_dict=info,
             start_episode=50000,
             start_exp_step=int(ep_length * 50000),
         )
