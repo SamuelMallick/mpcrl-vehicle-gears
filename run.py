@@ -36,14 +36,26 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(N, convexify_fuel=False))
     agent = DQNAgent(mpc, N, np_random)
     if sim_type == "rl_mpc_train":
-        num_eps = 50000
+        policy_state_dict = torch.load(
+            "results/N_5/policy_net_ep_49999.pth",
+            weights_only=True,
+        )
+        target_state_dict = torch.load(
+            "results/N_5/target_net_ep_49999.pth",
+            weights_only=True,
+        )
+        num_eps = 100000
         returns, info = agent.train(
             env,
             episodes=num_eps,
-            exp_zero_steps=int(ep_length * num_eps / 2),
+            exp_zero_steps=int(ep_length * 50000 / 2),
             save_freq=1000,
-            save_path="results",
+            save_path="results/N_5",
             seed=seed,
+            policy_net_state_dict=policy_state_dict,
+            target_net_state_dict=target_state_dict,
+            start_episode=50000,
+            start_exp_step=int(ep_length * 50000),
         )
     else:
         state_dict = torch.load(

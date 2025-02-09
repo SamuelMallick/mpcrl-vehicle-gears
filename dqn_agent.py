@@ -181,15 +181,26 @@ class DQNAgent(Agent):
         save_freq: int = 0,
         save_path: str = "",
         exp_zero_steps: int = 0,
+        policy_net_state_dict: dict = {},
+        target_net_state_dict: dict = {},
+        start_episode: int = 0,
+        start_exp_step: int = 0,
     ) -> tuple[np.ndarray, dict]:
         # TODO add docstring
-        seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
+        if policy_net_state_dict:
+            self.policy_net.load_state_dict(policy_net_state_dict)
+        if target_net_state_dict:
+            self.target_net.load_state_dict(target_net_state_dict)
+        seeds = map(
+            int, np.random.SeedSequence(seed + start_episode).generate_state(episodes)
+        )
         returns = np.zeros(episodes)
 
         self.decay_rate = np.log(1 / 1e-3) / exp_zero_steps
 
         self.on_train_start()
-        for episode, seed in zip(range(episodes), seeds):
+        self.steps_done = start_exp_step
+        for episode, seed in zip(range(start_episode, episodes), seeds):
             print(f"Train: Episode {episode}")
             state, info = env.reset(seed=seed)
             self.on_episode_start(state, env)
@@ -491,6 +502,7 @@ class DQNAgent(Agent):
     def on_train_start(self):
         # TODO add docstring
         self.train_flag = True
+        self.steps_done = 0
         self.cost = []
 
     def on_validation_start(self):
