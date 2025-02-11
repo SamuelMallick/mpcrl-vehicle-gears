@@ -55,10 +55,12 @@ class DQNAgent(Agent):
 
     cost: list[list[float]] = []
 
-    def __init__(self, mpc, N: int, np_random: np.random.Generator):
+    def __init__(self, mpc, N: int, np_random: np.random.Generator, expert_mpc=None):
         # TODO add docstring
         super().__init__(mpc)
         self.train_flag = True
+
+        self.expert_mpc = expert_mpc
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device.type == "cuda":
@@ -117,11 +119,23 @@ class DQNAgent(Agent):
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
         # TODO add docstring
         if self.first_time_step:
-            gear_choice_binary = np.zeros((self.n_gears, self.N))
-            for i in range(self.N):  # TODO remove loop
-                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
-                    1  # TODO is int cast needed?
+            if self.expert_mpc:
+                expert_sol = self.expert_mpc.solve(
+                    {
+                        "x_0": state,
+                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        "T_e_prev": self.T_e_prev,
+                        "gear_prev": self.gear_prev,
+                    }
                 )
+                gear_choice_binary = expert_sol.vals["gear"].full()
+                self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
+            else:
+                gear_choice_binary = np.zeros((self.n_gears, self.N))
+                for i in range(self.N):  # TODO remove loop
+                    gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
+                        1  # TODO is int cast needed?
+                    )
             self.first_time_step = False
         else:
             nn_state = self.relative_state(
@@ -269,10 +283,23 @@ class DQNAgent(Agent):
             time_step = 0
 
             # TODO does all this stuff outside of the loop need to be done?
-            gear = self.gear_from_velocity(state[1])
-            gear_choice_init_explicit = np.ones((self.N,)) * gear
-            gear_choice_init_binary = np.zeros((self.n_gears, self.N))
-            gear_choice_init_binary[gear] = 1
+            if self.expert_mpc:
+                expert_sol = self.expert_mpc.solve(
+                    {
+                        "x_0": state,
+                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        "T_e_prev": self.T_e_prev,
+                        "gear_prev": self.gear_prev,
+                    }
+                )
+                gear_choice_init_binary = expert_sol.vals["gear"].full()
+                gear_choice_init_explicit = np.argmax(gear_choice_init_binary, axis=0)
+                gear = gear_choice_init_explicit[0]
+            else:
+                gear = self.gear_from_velocity(state[1])
+                gear_choice_init_explicit = np.ones((self.N,)) * gear
+                gear_choice_init_binary = np.zeros((self.n_gears, self.N))
+                gear_choice_init_binary[gear] = 1
 
             # solve mpc with fixed gear choice
             sol = self.mpc.solve(
