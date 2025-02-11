@@ -55,10 +55,12 @@ class DQNAgent(Agent):
 
     cost: list[list[float]] = []
 
-    def __init__(self, mpc, N: int, np_random: np.random.Generator):
+    def __init__(self, mpc, N: int, np_random: np.random.Generator, expert_mpc=None):
         # TODO add docstring
         super().__init__(mpc)
         self.train_flag = True
+
+        self.expert_mpc = expert_mpc
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device.type == "cuda":
@@ -117,11 +119,23 @@ class DQNAgent(Agent):
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
         # TODO add docstring
         if self.first_time_step:
-            gear_choice_binary = np.zeros((self.n_gears, self.N))
-            for i in range(self.N):  # TODO remove loop
-                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
-                    1  # TODO is int cast needed?
+            if self.expert_mpc:
+                expert_sol = self.expert_mpc.solve(
+                    {
+                        "x_0": state,
+                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        "T_e_prev": self.T_e_prev,
+                        "gear_prev": self.gear_prev,
+                    }
                 )
+                gear_choice_binary = expert_sol.vals["gear"].full()
+                self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
+            else:
+                gear_choice_binary = np.zeros((self.n_gears, self.N))
+                for i in range(self.N):  # TODO remove loop
+                    gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
+                        1  # TODO is int cast needed?
+                    )
             self.first_time_step = False
         else:
             nn_state = self.relative_state(
@@ -157,7 +171,13 @@ class DQNAgent(Agent):
             }
         )
         if not sol.success:
-            raise RuntimeError("Infeasible action selected during eval")
+            sol, self.gear_choice_explicit = self.backup_1(state)
+            if not sol.success:
+                sol, self.gear_choice_explicit = self.backup_2(state)
+                if not sol.success:
+                    raise RuntimeError(
+                        "Backup gear solutions were still infeasible in eval"
+                    )
         self.T_e = torch.tensor(
             sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
         )
@@ -171,7 +191,56 @@ class DQNAgent(Agent):
             sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
         )
         self.gear = int(self.gear_choice_explicit[0])
+        self.last_gear_choice_explicit = self.gear_choice_explicit
         return sol.vals["T_e"].full()[0, 0], sol.vals["F_b"].full()[0, 0], self.gear
+
+    def backup_1(self, state: np.ndarray):
+        gear_choice_explicit = (
+            np.concatenate(  # TODO is there a cleaner way to do this?
+                (
+                    self.last_gear_choice_explicit[1:],
+                    self.last_gear_choice_explicit[[-1]],
+                ),
+                0,
+            )
+        )
+        gear_choice_binary = np.zeros((self.n_gears, self.N))  # remove loop
+        for i in range(self.N):
+            gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
+
+        return (
+            self.mpc.solve(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear": gear_choice_binary,
+                }
+            ),
+            gear_choice_explicit,
+        )
+
+    def backup_2(self, state: np.ndarray):
+        gear = self.gear_from_velocity(state[1])
+
+        # assume all time step have the same gear choice
+        gear_choice_explicit = np.ones((self.N,)) * gear
+        gear_choice_binary = np.zeros((self.n_gears, self.N))
+        # set value for gear choice binary
+        for i in range(self.N):  # TODO remove loop
+            gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
+
+        return (
+            self.mpc.solve(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear": gear_choice_binary,
+                }
+            ),
+            gear_choice_explicit,
+        )
 
     def train(
         self,
@@ -214,10 +283,23 @@ class DQNAgent(Agent):
             time_step = 0
 
             # TODO does all this stuff outside of the loop need to be done?
-            gear = self.gear_from_velocity(state[1])
-            gear_choice_init_explicit = np.ones((self.N,)) * gear
-            gear_choice_init_binary = np.zeros((self.n_gears, self.N))
-            gear_choice_init_binary[gear] = 1
+            if self.expert_mpc:
+                expert_sol = self.expert_mpc.solve(
+                    {
+                        "x_0": state,
+                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        "T_e_prev": self.T_e_prev,
+                        "gear_prev": self.gear_prev,
+                    }
+                )
+                gear_choice_init_binary = expert_sol.vals["gear"].full()
+                gear_choice_init_explicit = np.argmax(gear_choice_init_binary, axis=0)
+                gear = gear_choice_init_explicit[0]
+            else:
+                gear = self.gear_from_velocity(state[1])
+                gear_choice_init_explicit = np.ones((self.N,)) * gear
+                gear_choice_init_binary = np.zeros((self.n_gears, self.N))
+                gear_choice_init_binary[gear] = 1
 
             # solve mpc with fixed gear choice
             sol = self.mpc.solve(
@@ -255,7 +337,7 @@ class DQNAgent(Agent):
                 .unsqueeze(1)
                 .to(self.device),
             )
-            last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
+            self.last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
 
             state, reward, truncated, terminated, info = env.step(
                 (T_e[0].item(), F_b[0].item(), gear)
@@ -299,48 +381,11 @@ class DQNAgent(Agent):
                 )
                 if not sol.success:
                     # backup sol 1: use previous gear choice shifted
-                    penalty += self.infeas_pen
-                    gear_choice_explicit = (
-                        np.concatenate(  # TODO is there a cleaner way to do this?
-                            (
-                                last_gear_choice_explicit[1:],
-                                last_gear_choice_explicit[[-1]],
-                            ),
-                            0,
-                        )
-                    )
-                    gear_choice_binary = np.zeros((self.n_gears, self.N))  # remove loop
-                    for i in range(self.N):
-                        gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
-
-                    sol = self.mpc.solve(
-                        {
-                            "x_0": state,
-                            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                            "T_e_prev": self.T_e_prev,
-                            "gear": gear_choice_binary,
-                        }
-                    )
+                    sol, gear_choice_explicit = self.backup_1(state)
 
                     if not sol.success:
                         # backup sol 2: use the same gear for all time steps
-                        gear = self.gear_from_velocity(state[1])
-
-                        # assume all time step have the same gear choice
-                        gear_choice_explicit = np.ones((self.N,)) * gear
-                        gear_choice_binary = np.zeros((self.n_gears, self.N))
-                        # set value for gear choice binary
-                        for i in range(self.N):  # TODO remove loop
-                            gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
-
-                        sol = self.mpc.solve(
-                            {
-                                "x_0": state,
-                                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                                "T_e_prev": self.T_e_prev,
-                                "gear": gear_choice_binary,
-                            }
-                        )
+                        sol, gear_choice_explicit = self.backup_2(state)
 
                         if not sol.success:
                             # raise RuntimeError(
@@ -387,7 +432,9 @@ class DQNAgent(Agent):
 
                 # Move to the next state
                 nn_state = nn_next_state
-                last_gear_choice_explicit = gear_choice_explicit  # TODO type hint issue
+                self.last_gear_choice_explicit = (
+                    gear_choice_explicit  # TODO type hint issue
+                )
 
                 self.optimize_model()
 

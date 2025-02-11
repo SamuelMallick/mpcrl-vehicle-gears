@@ -33,8 +33,9 @@ env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_l
 np_random = np.random.default_rng(seed)
 
 if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+    expert_mpc = SolverTimeRecorder(HybridTrackingMpc(N, optimize_fuel=True))
     mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(N, convexify_fuel=False))
-    agent = DQNAgent(mpc, N, np_random)
+    agent = DQNAgent(mpc, N, np_random, expert_mpc=expert_mpc)
     if sim_type == "rl_mpc_train":
         policy_state_dict = torch.load(
             "results/N_5/policy_net_ep_49999.pth",
@@ -96,7 +97,7 @@ fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
 x_ref = info["x_ref"]
-if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+if sim_type == "rl_mpc_train":
     cost = info["cost"]
 
 X = list(env.observations)
