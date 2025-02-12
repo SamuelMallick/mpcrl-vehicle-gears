@@ -380,6 +380,7 @@ class DQNAgent(Agent):
                     }
                 )
                 if not sol.success:
+                    penalty += self.infeas_pen
                     # backup sol 1: use previous gear choice shifted
                     sol, gear_choice_explicit = self.backup_1(state)
 
