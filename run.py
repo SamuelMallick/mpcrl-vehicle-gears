@@ -21,7 +21,7 @@ PLOT = True
 
 sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "rl_mpc_train"
+] = "miqp_mpc"
 
 
 vehicle = Vehicle()
@@ -29,7 +29,17 @@ ep_length = 100
 num_eval_eps = 1
 N = 5
 seed = 0
-env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
+env = MonitorEpisodes(
+    TimeLimit(
+        VehicleTracking(
+            vehicle,
+            episode_len=ep_length,
+            prediction_horizon=N,
+            trajectory_type="type_3",
+        ),
+        max_episode_steps=ep_length,
+    )
+)
 np_random = np.random.default_rng(seed)
 
 if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
@@ -41,16 +51,6 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(N, convexify_fuel=False))
     agent = DQNAgent(mpc, N, np_random, expert_mpc=expert_mpc)
     if sim_type == "rl_mpc_train":
-        # policy_state_dict = torch.load(
-        #     "results/N_5/policy_net_ep_49999.pth",
-        #     weights_only=True,
-        # )
-        # target_state_dict = torch.load(
-        #     "results/N_5/target_net_ep_49999.pth",
-        #     weights_only=True,
-        # )
-        # with open("results/N_5/data_ep_49999.pkl", "rb") as f:
-        #     info = pickle.load(f)
         num_eps = 100000
         returns, info = agent.train(
             env,
@@ -59,11 +59,6 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             save_freq=1000,
             save_path="results/N_5",
             seed=seed,
-            # policy_net_state_dict=policy_state_dict,
-            # target_net_state_dict=target_state_dict,
-            # info_dict=info,
-            # start_episode=50000,
-            # start_exp_step=int(ep_length * 50000),
         )
     else:
         state_dict = torch.load(
