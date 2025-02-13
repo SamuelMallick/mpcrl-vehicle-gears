@@ -1,10 +1,13 @@
-from typing import Any, Optional, TypeVar
+from typing import Optional
 import casadi as cs
 from csnlp.wrappers.mpc.mpc import Mpc
 from csnlp import Nlp, Solution
-from vehicle import Vehicle
 import numpy as np
 from utils.solver_options import solver_options
+
+# ---------------------- Vehicle parameters ----------------------
+# these parameters are (identical or not) copies of those in vehicle.py, allowing
+# for the MPC controllers to be defined with incorrect parameters
 
 m = 1500  # mass of the vehicle (kg)
 C_wind = 0.4071  # wind resistance coefficient
@@ -21,10 +24,13 @@ T_e_idle = 15  # engine idle torque (Nm)
 w_e_idle = 900  # engine idle speed (rpm)
 F_b_max = 9000  # maximum braking force (N)
 
-dt = 1
+dt = 1  # time step (s)
 
+# maximum and minimu velocity: calculated from maximum engine speed: w_e = (z_f * z_t[gear] * 60)/(r_r * 2 * pi)
 v_max = (w_e_max * r_r * 2 * np.pi) / (z_t[-1] * z_f * 60)
 v_min = (w_e_idle * r_r * 2 * np.pi) / (z_t[0] * z_f * 60)
+
+# maximum values of F_r in T_e *n = F_r + F_b
 F_r_max = (
     g * mu * m * np.cos(0)
     + g * m * np.sin(0)
@@ -49,19 +55,37 @@ b = beta - alpha * ((C_wind * v_max**2 - beta) / (v_max - alpha))
 p_0 = 0.04918
 p_1 = 0.001897
 p_2 = 4.5232e-5
-gamma = 0.1  # weight for tracking in cost
 
+# adjacency matrix for gear shift constraints
 A = np.zeros((6, 6))
 np.fill_diagonal(A, 1)
 np.fill_diagonal(A[1:], 1)
 np.fill_diagonal(A[:, 1:], 1)
 
+# cost matrix for tracking
 Q = cs.diag([1, 0.1])
+gamma = 0.1  # weight for tracking in cost
 
 
-def nonlinear_hybrid_model(x, u, dt, alpha):
-    # TODO add docstring
-    # u = [T_e, F_b, gear_1, gear_2, gear_3, gear_4, gear_5, gear_6]"
+def nonlinear_hybrid_model(x: cs.SX, u: cs.SX, dt: float, alpha: float) -> cs.SX:
+    """Function for the nonlinear hybrid vehicle dynamics x^+ = f(x, u).
+
+    Parameters
+    ----------
+    x : cs.SX
+        State vector [d, v] (m, m/s).
+    u : cs.SX
+        Input vector [T_e, F_b, gear_1, gear_2, gear_3, gear_4, gear_5, gear_6].
+    dt : float
+        Time step (s).
+    alpha : float
+        Road gradient (radians).
+
+    Returns
+    -------
+    cs.SX
+        New state vector [d, v] (m, m/s).
+    """
     n = (z_f / r_r) * sum([z_t[i] * u[i + 2] for i in range(6)])
     a = (
         u[0] * n / m
@@ -73,13 +97,48 @@ def nonlinear_hybrid_model(x, u, dt, alpha):
     return x + cs.vertcat(x[1], a) * dt
 
 
-def nonlinear_model(x, u, dt, alpha):
-    # TODO add docstring
+def nonlinear_model(x: cs.SX, u: cs.SX, dt: float, alpha: float) -> cs.SX:
+    """Function for the nonlinear vehicle dynamics x^+ = f(x, u).
+
+    Parameters
+    ----------
+    x : cs.SX
+        State vector [d, v] (m, m/s).
+    u : cs.SX
+        Input F_trac.
+    dt : float
+        Time step (s).
+    alpha : float
+        Road gradient (radians).
+
+    Returns
+    -------
+    cs.SX
+        New state vector [d, v] (m, m/s)."""
     a = u / m - C_wind * x[1] ** 2 / m - g * mu * np.cos(alpha) - g * np.sin(alpha)
     return x + cs.vertcat(x[1], a) * dt
 
 
 class HybridTrackingMpc(Mpc):
+    """An mpc controller for controlling the vehicle with the nonlinear hybrid model.
+    The controller minimizes a sum of tracking (if optimize_fuel is True) and fuel costs,
+    with tracking weighted by gamma. By default the optimization problem is constructed
+    as an MINLP, however; if the fuel and dynamics are convexified, the problem is
+    an MIQP. Appropriate solvers are initialized based on the convexification settings.
+
+    Parameters
+    ----------
+    prediction_horizon : int
+        The length of the prediction horizon.
+    optimize_fuel : bool, optional
+        Whether to optimize fuel consumption, by default False.
+    convexify_fuel : bool, optional
+        Whether to convexify the fuel cost, using a McCormick relaxation, by default False.
+    convexify_dynamics : bool, optional
+        Whether to convexify the dynamics, by default False. If true, the quadratic
+        friction term is replaced with a piecewise linear function with two segments.
+        Further, the bilinear term multiplying the gear by T_e is modelled with mixed
+        integer inequalities."""
 
     def __init__(
         self,
@@ -88,7 +147,6 @@ class HybridTrackingMpc(Mpc):
         convexify_fuel: bool = False,
         convexify_dynamics: bool = False,
     ):
-        # TODO add docstring for this whole file
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 
@@ -122,40 +180,50 @@ class HybridTrackingMpc(Mpc):
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
         )
-        # comment this section
-        if convexify_dynamics:
+
+        if (
+            convexify_dynamics
+        ):  # dyanmics are added manually via mixed integer inequalities
+
+            # equality constraint for position dynamics
             self.constraint("pos_dynam", x[0, 1:], "==", x[0, :-1] + x[1, :-1] * dt)
 
+            # delta are binary variables that select region of piecewise affine approximation
+            # of the quadratic friction term
             delta, _ = self.action("delta", 2, discrete=True, lb=0, ub=1)
+            # constraint such that one region active at each time step
             self.constraint("delta_constraint", cs.sum1(delta), "==", 1)
+            # z are auxillary variables z = \delta * v
             z, _, _ = self.variable("z", (2, prediction_horizon))
 
             a = (x[1, 1:] - x[1, :-1]) / dt
             F_r = (
                 g * mu * m * np.cos(0)
                 + g * m * np.sin(0)
-                # + C_wind * x[1, :-1] ** 2
                 + C_wind * (a1 * z[0, :])
                 + C_wind * (a2 * z[1, :] + delta[1, :] * b)
                 + m * a
             )
-            for i in range(2):  # TODO get ride of loop
-                self.constraint(
-                    f"drag_gear_{i}_1",
-                    z[i, :],
-                    "<=",
-                    x[1, :-1] - (1 - delta[i, :]) * v_min,
-                )
-                self.constraint(
-                    f"drag_gear_{i}_2",
-                    z[i, :],
-                    ">=",
-                    x[1, :-1] - (1 - delta[i, :]) * v_max,
-                )
-                self.constraint(f"drag_gear_{i}_3", z[i, :], "<=", delta[i, :] * v_max)
-                self.constraint(f"drag_gear_{i}_4", z[i, :], ">=", delta[i, :] * v_min)
-            for i in range(6):  # TODO get rid of loop
+
+            # the following four constraint enforce the relation z_i = \delta_i * v
+            self.constraint(
+                f"z_constraint_1",
+                z,
+                "<=",
+                cs.repmat(x[1, :-1], 2, 1) - (1 - delta) * v_min,
+            )
+            self.constraint(
+                f"z_constraint_2",
+                z,
+                ">=",
+                cs.repmat(x[1, :-1], 2, 1) - (1 - delta) * v_max,
+            )
+            self.constraint(f"z_constraint_3", z, "<=", delta * v_max)
+            self.constraint(f"z_constraint_4", z, ">=", delta * v_min)
+
+            for i in range(6):
                 n_i = z_f * z_t[i] / r_r
+                # the following two constraints enforce the relation w_e = n[i] * v
                 self.constraint(
                     f"engine_speed_gear_{i}_1",
                     w_e + (1 - gear[i, :]) * (n_i * v_max * 60 / (2 * np.pi)),
@@ -168,6 +236,7 @@ class HybridTrackingMpc(Mpc):
                     "<=",
                     n_i * x[1, :-1] * 60 / (2 * np.pi),
                 )
+                # the following two constraints enforce the relation T_e * n[i] = F_r + F_b
                 self.constraint(
                     f"dynam_gear_{i}_1",
                     T_e * n_i + (1 - gear[i, :]) * (F_r_max + F_b_max),
@@ -189,6 +258,7 @@ class HybridTrackingMpc(Mpc):
 
         if optimize_fuel:
             if convexify_fuel:
+                # the following two constraints are a McCormick relaxation of the bilinear term P = T_e * w_e
                 P, _, _ = self.variable("P", (1, prediction_horizon))
                 self.constraint(
                     "P_lb_1",
@@ -242,17 +312,33 @@ class HybridTrackingMpc(Mpc):
         pars: dict,
         vals0: Optional[dict] = None,
     ) -> Solution:
-        # TODO add docstring
         vals0 = {
             "w_e": np.full((1, self.prediction_horizon), w_e_idle),
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
-        }  # TODO is this warm start badly biasing
+        }
         return self.nlp.solve(pars, vals0)
 
 
 class HybridTrackingFuelMpcFixedGear(Mpc):
+    """An mpc controller for controlling the vehicle with the nonlinear hybrid model.
+    The controller minimizes a sum of tracking (if optimize_fuel is True) and fuel costs,
+    with tracking weighted by gamma. The gears are assumed to be fixed, and must be
+    provided as parameters to the solve method. The optimization probem is constructed
+    as an NLP.
 
-    def __init__(self, prediction_horizon: int, convexify_fuel: bool = False):
+    Parameters
+    ----------
+    prediction_horizon : int
+        The length of the prediction horizon.
+    optimize_fuel : bool, optional
+        Whether to optimize fuel consumption, by default False.
+    convexify_fuel : bool, optional
+        Whether to convexify the fuel cost, using a McCormick relaxation, by default False.
+    """
+
+    def __init__(
+        self, prediction_horizon: int, optimize_fuel: bool, convexify_fuel: bool = False
+    ):
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 
@@ -295,27 +381,33 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         X_next = cs.horzcat(*X_next)
         self.constraint("dynamics", x[:, 1:], "==", X_next)
 
-        if convexify_fuel:
-            P, _, _ = self.variable("P", (1, prediction_horizon))
-            self.constraint(
-                "P_lb_1", P, ">=", T_e_idle * w_e + w_e_idle * T_e - w_e_idle * T_e_idle
-            )
-            self.constraint(
-                "P_lb_2", P, ">=", T_e_max * w_e + w_e_max * T_e - w_e_max * T_e_max
-            )
-            fuel_cost = sum(
-                [
-                    dt * (p_0 + p_1 * w_e[i] + p_2 * P[i])
-                    for i in range(prediction_horizon)
-                ]
-            )
+        if optimize_fuel:
+            if convexify_fuel:
+                P, _, _ = self.variable("P", (1, prediction_horizon))
+                self.constraint(
+                    "P_lb_1",
+                    P,
+                    ">=",
+                    T_e_idle * w_e + w_e_idle * T_e - w_e_idle * T_e_idle,
+                )
+                self.constraint(
+                    "P_lb_2", P, ">=", T_e_max * w_e + w_e_max * T_e - w_e_max * T_e_max
+                )
+                fuel_cost = sum(
+                    [
+                        dt * (p_0 + p_1 * w_e[i] + p_2 * P[i])
+                        for i in range(prediction_horizon)
+                    ]
+                )
+            else:
+                fuel_cost = sum(
+                    [
+                        dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
+                        for i in range(prediction_horizon)
+                    ]
+                )
         else:
-            fuel_cost = sum(
-                [
-                    dt * (p_0 + p_1 * w_e[i] + p_2 * w_e[i] * T_e[i])
-                    for i in range(prediction_horizon)
-                ]
-            )
+            fuel_cost = 0
 
         self.minimize(
             sum(
@@ -333,7 +425,6 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         pars: dict,
         vals0: Optional[dict] = None,
     ) -> Solution:
-        # TODO add docstring
         gear = pars["gear"]
         if not all(
             np.isclose(np.sum(gear[:, i], axis=0), 1) for i in range(gear.shape[1])
@@ -342,14 +433,22 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         vals0 = {
             "w_e": np.full((1, self.prediction_horizon), w_e_idle),
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
-        }  # TODO is this warm start badly biasing
+        }
         return self.nlp.solve(pars, vals0)
 
 
 class TrackingMpc(Mpc):
+    """An mpc controller for controlling the vehicle with the nonlinear model. Fuel
+    consumption can not be optimized, as the engine dynamics are not modelled.
+    The optimization probem is constructed as an NLP.
+
+    Parameters
+    ----------
+    prediction_horizon : int
+        The length of the prediction horizon.
+    """
 
     def __init__(self, prediction_horizon: int):
-        # TODO add docstring for this whole file
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 
@@ -358,7 +457,7 @@ class TrackingMpc(Mpc):
         F_trac_max = self.parameter("F_trac_max", (1, 1))
         F_trac, _ = self.action(
             "F_trac", 1, lb=T_e_idle * z_t[-1] * z_f / r_r - F_b_max
-        )  # TODO add torque rate constraint
+        )
         self.constraint("traction_force", F_trac, "<=", F_trac_max)
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
