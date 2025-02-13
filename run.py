@@ -16,7 +16,7 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = True
+SAVE = False
 PLOT = True
 
 sim_type: Literal[
@@ -26,44 +26,48 @@ sim_type: Literal[
 
 vehicle = Vehicle()
 ep_length = 100
-num_eval_eps = 100
+num_eval_eps = 1
 N = 5
 seed = 0
 env = MonitorEpisodes(TimeLimit(VehicleTracking(vehicle), max_episode_steps=ep_length))
 np_random = np.random.default_rng(seed)
 
 if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
-    expert_mpc = SolverTimeRecorder(HybridTrackingMpc(N, optimize_fuel=True))
+    expert_mpc = SolverTimeRecorder(
+        HybridTrackingMpc(
+            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
+        )
+    )
     mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(N, convexify_fuel=False))
     agent = DQNAgent(mpc, N, np_random, expert_mpc=expert_mpc)
     if sim_type == "rl_mpc_train":
-        policy_state_dict = torch.load(
-            "results/N_5/policy_net_ep_49999.pth",
-            weights_only=True,
-        )
-        target_state_dict = torch.load(
-            "results/N_5/target_net_ep_49999.pth",
-            weights_only=True,
-        )
-        with open("results/N_5/data_ep_49999.pkl", "rb") as f:
-            info = pickle.load(f)
+        # policy_state_dict = torch.load(
+        #     "results/N_5/policy_net_ep_49999.pth",
+        #     weights_only=True,
+        # )
+        # target_state_dict = torch.load(
+        #     "results/N_5/target_net_ep_49999.pth",
+        #     weights_only=True,
+        # )
+        # with open("results/N_5/data_ep_49999.pkl", "rb") as f:
+        #     info = pickle.load(f)
         num_eps = 100000
         returns, info = agent.train(
             env,
             episodes=num_eps,
-            exp_zero_steps=int(ep_length * 50000 / 2),
+            exp_zero_steps=int(ep_length * num_eps / 2),
             save_freq=1000,
             save_path="results/N_5",
             seed=seed,
-            policy_net_state_dict=policy_state_dict,
-            target_net_state_dict=target_state_dict,
-            info_dict=info,
-            start_episode=50000,
-            start_exp_step=int(ep_length * 50000),
+            # policy_net_state_dict=policy_state_dict,
+            # target_net_state_dict=target_state_dict,
+            # info_dict=info,
+            # start_episode=50000,
+            # start_exp_step=int(ep_length * 50000),
         )
     else:
         state_dict = torch.load(
-            "results/many_traj_N_5/policy_net_ep_49000.pth",
+            "results/N_5_prev_slope_and_IC/policy_net_ep_49999.pth",
             weights_only=True,
             map_location="cpu",
         )

@@ -272,7 +272,7 @@ class DQNAgent(Agent):
         )
         returns = np.zeros(episodes)
 
-        self.decay_rate = np.log(1 / 1e-3) / exp_zero_steps
+        self.decay_rate = np.log(self.eps_start / 1e-3) / exp_zero_steps
 
         self.on_train_start()
         self.steps_done = start_exp_step

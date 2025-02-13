@@ -80,17 +80,17 @@ class VehicleTracking(gym.Env):
         # TODO add docstring
         len = 150  # TODO get rid of hard code 500
         x_ref = np.zeros((len, 2, 1))
-        # v = self.np_random.uniform(Vehicle.v_min + 5, Vehicle.v_max - 5)
-        v = self.np_random.uniform(15, 25)
-        # d = self.np_random.uniform(-50, 50)
-        d = 0
+        v = self.np_random.uniform(Vehicle.v_min + 5, Vehicle.v_max - 5)
+        # v = self.np_random.uniform(15, 25)
+        d = self.np_random.uniform(-50, 50)
+        # d = 0
         x_ref[0] = np.array([[d], [v]])
         change_points = np.sort(self.np_random.integers(0, 100, size=5))
         # change_points = np.sort(self.np_random.integers(-5, 5, size=4))
-        # slopes = self.np_random.uniform(2, 2, size=3)
-        slopes = self.np_random.uniform(-0.6, 0.6, size=3)
+        slopes = self.np_random.uniform(2, 2, size=3)
+        # slopes = self.np_random.uniform(-0.6, 0.6, size=3)
 
-        for k in range(change_points[0]):
+        for k in range(change_points[0]):  # TODO remove hard coded clipping
             x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
         for k in range(change_points[0], change_points[1]):
             v = max(min(35, v + slopes[0]), 5)

@@ -47,6 +47,7 @@ class Vehicle:
             print("Engine torque below idle. Setting to idle.")
             T_e = self.T_e_idle
         self._T_e = T_e
+        # TODO check for T_e over max
 
         n = self.z_f * self.z_t[gear] / self.r_r
         a = (
@@ -66,7 +67,7 @@ class Vehicle:
 
         fuel = self.fuel_rate(T_e, w_e) * dt
 
-        # check velocity bound
+        # check velocity bound  # TODO make this not a temp solution
         if self.x[1] + dt * a < self.v_min:
             print("Velocity below minimum. Adjusting braking force.")
             a = (self.v_min - self.x[1]) / dt
