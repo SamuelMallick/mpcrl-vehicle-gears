@@ -7,10 +7,11 @@ def plot_training(
     fuel: list,
     tracking: list,
     penalty: list,
+    reward: list,
     average_interval: int = 100,
 ):
     # TODO add docstring
-    fig, ax = plt.subplots(4, 1, sharex=True)
+    fig, ax = plt.subplots(5, 1, sharex=True)
     # ax[0].plot(cost)
     ax[0].plot(
         np.convolve(cost, np.ones(average_interval) / average_interval, mode="valid")
@@ -34,6 +35,11 @@ def plot_training(
     )
     ax[3].set_ylabel("Penalty")
     # ax[3].set_yscale("log")
+    ax[4].plot(reward)
+    ax[4].plot(
+        np.convolve(reward, np.ones(average_interval) / average_interval, mode="valid")
+    )
+    ax[4].set_ylabel("Reward")
     plt.show()
 
 

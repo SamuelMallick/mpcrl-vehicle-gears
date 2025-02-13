@@ -4,7 +4,7 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-type = "heuristic_mpc"
+type = "rl_mpc_eval"
 baseline_type = "miqp_mpc"
 N = 5
 file_name = f"results/evaluations/easy_{type}_N_{N}.pkl"

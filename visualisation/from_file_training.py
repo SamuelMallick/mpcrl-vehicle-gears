@@ -4,7 +4,8 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/many_traj_N_15_no_clip_pen/data_ep_20000.pkl"
+file_name = "results/N_5_prev_slope_and_IC/data_ep_49999.pkl"
+# file_name = "results/N_5/data_ep_49999.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
@@ -17,7 +18,7 @@ x_ref = data["x_ref"]
 engine_torque = data["T_e"]
 engine_speed = data["w_e"]
 
-ep = 18999
+# ep = 49671
 # plot_evaluation(
 #     x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
 # )
@@ -27,4 +28,5 @@ plot_training(
     [sum(fuel[i]) for i in range(len(fuel))],
     [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
     [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
+    [sum(R[i]) for i in range(len(R))],
 )
