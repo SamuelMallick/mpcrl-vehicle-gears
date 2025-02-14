@@ -15,13 +15,14 @@ from mpc import (
 import torch
 import pickle
 from typing import Literal
+from config_files.base import Config
 
 SAVE = False
 PLOT = True
 
 sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "heuristic_mpc"
+] = "rl_mpc_train"
 
 
 vehicle = Vehicle()
@@ -43,15 +44,11 @@ env = MonitorEpisodes(
 np_random = np.random.default_rng(seed)
 
 if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
-    expert_mpc = SolverTimeRecorder(
-        HybridTrackingMpc(
-            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
-        )
-    )
     mpc = SolverTimeRecorder(
         HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
     )
-    agent = DQNAgent(mpc, N, np_random, expert_mpc=expert_mpc)
+    config = Config()
+    agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
         num_eps = 100000
         returns, info = agent.train(
