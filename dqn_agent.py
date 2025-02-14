@@ -1,21 +1,29 @@
 from collections import deque, namedtuple
-import random
+
+from csnlp import Solution
 from agent import Agent
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from env import VehicleTracking
+from mpc import HybridTrackingMpc
 from vehicle import Vehicle
 import pickle
+from config_files.base import Config
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
 
 class ReplayMemory(object):
-    # TODO docstring
+    """A cyclic buffer of bounded size that holds the transitions observed recently.
 
-    def __init__(self, capacity):
+    Parameters
+    ----------
+    capacity : int
+        The maximum number of transitions that can be stored in the memory."""
+
+    def __init__(self, capacity: int):
         self.memory = deque([], maxlen=capacity)
 
     def push(self, *args):
@@ -23,27 +31,37 @@ class ReplayMemory(object):
 
     def sample(
         self, batch_size: int, np_random: np.random.Generator
-    ):  # TODO add return type
-        return random.sample(
-            self.memory, batch_size
-        )  # TODO make this a seeded operation
-        # return np_random.choice(list(self.memory), batch_size, replace=False)
+    ) -> list[Transition]:
+        index_samples = np_random.choice(len(self.memory), batch_size, replace=False)
+        return [self.memory[i] for i in index_samples]
 
     def __len__(self):
         return len(self.memory)
 
 
 class DRQN(nn.Module):
-    # TODO docstring
+    """A deep recurrent Q-network (DRQN) that maps state sequences to Q-values for
+    gear shifts. The architecture is a bidirectional RNN followed by a fully connected
+    layer.
 
-    def __init__(
-        self, input_size, hidden_size, num_actions=3, num_layers=1
-    ):  # three actions : downshift, no shift, upshift
+    Parameters
+    ----------
+    input_size : int
+        The size of the input state vector.
+    hidden_size : int
+        The number of features in the hidden state of the RNN.
+    num_actions : int, optional
+        The number of actions that can be taken, by default 3.
+        Three actions : downshift, no shift, upshift.
+    num_layers : int, optional
+        The number of recurrent layers, by default 1."""
+
+    def __init__(self, input_size, hidden_size, num_actions=3, num_layers=1):
         super(DRQN, self).__init__()
-        self.fc = nn.Linear(hidden_size * 2, num_actions)  # fully connected layer
+        self.fc = nn.Linear(hidden_size * 2, num_actions)
         self.rnn = nn.RNN(
             input_size, hidden_size, num_layers, batch_first=True, bidirectional=True
-        )  # recurrent layer
+        )
 
     def forward(self, x):
         drqn_out, _ = self.rnn(x)
@@ -52,49 +70,66 @@ class DRQN(nn.Module):
 
 
 class DQNAgent(Agent):
+    """An RL agent that use deep Q-learning to learn a policy for gear shifting.
 
-    cost: list[list[float]] = []
+    Parameters
+    ----------
+    mpc : HybridTrackingMpc
+        The MPC controller used to simulate the vehicle. Gear choice made by the
+        agent are passed to this MPC controller, which then decides on the engine
+        torque and brake force.
+    np_random : np.random.Generator
+        A random number generator used for exploration and sampling.
+    config : Config
+        A configuration object that specifies hyperparameters and architecture of the
+        neural network and agent, by default None. See config_files/base.py for the
+        configuration details
+    """
 
-    def __init__(self, mpc, N: int, np_random: np.random.Generator, expert_mpc=None):
-        # TODO add docstring
+    cost: list[list[float]] = []  # store the incurred cost: env.reward + penalties
+
+    def __init__(
+        self, mpc: HybridTrackingMpc, np_random: np.random.Generator, config: Config
+    ):
         super().__init__(mpc)
-        self.train_flag = True
+        self.train_flag = False
+        self.first_time_step: bool = True  # gets set to True in on_episode_start
+        self.np_random = np_random
+        self.n_gears = 6
 
-        self.expert_mpc = expert_mpc
+        self.expert_mpc = config.expert_mpc
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device.type == "cuda":
             print("Using GPU")
 
         # hyperparameters
-        self.gamma = 0.9
-        self.learning_rate = 0.001
-        self.tau = 0.001
+        self.gamma = config.gamma
+        self.learning_rate = config.learning_rate
+        self.tau = config.tau
 
         # archticeture
-        self.n_states = 7
-        self.n_hidden = 64
-        self.n_actions = 3
-        self.n_layers = 2
-        self.N = N
-        self.n_gears = 6
+        self.n_states = config.n_states
+        self.n_hidden = config.n_hidden
+        self.n_actions = config.n_actions
+        self.n_layers = config.n_layers
+        self.N = config.N
 
         # exploration
-        self.eps_start = 0.99
+        self.eps_start = config.eps_start
         self.steps_done = 0
-        self.decay_rate = 0
+        self.decay_rate = 0  # gets decided at the start of training
 
         # penalties
-        self.clip_pen = 0
-        self.infeas_pen = 1e4
+        self.clip_pen = config.clip_pen
+        self.infeas_pen = config.infeas_pen
 
         # memory
-        self.memory_size = 100000
+        self.memory_size = config.memory_size
         self.memory = ReplayMemory(self.memory_size)
-        self.batch_size = 128
+        self.batch_size = config.batch_size
 
-        self.np_random = np_random
-
+        # seeded initialization of networks
         seed = np_random.integers(0, 2**32 - 1)
         if self.device.type == "cuda":
             torch.cuda.manual_seed(seed)
@@ -109,15 +144,30 @@ class DQNAgent(Agent):
         ).to(self.device)
         self.optimizer = optim.Adam(
             self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
-        )  # TODO what is amsgrad?
+        )  # amsgrad is a variant of Adam with guaranteed convergence
 
     def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
+        # TODO add docstring after agent doc string is done
         if policy_net_state_dict:
             self.policy_net.load_state_dict(policy_net_state_dict)
         return super().evaluate(env, episodes, seed)
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
-        # TODO add docstring
+        """Get the MPC action for the given state. Gears are chosen by
+        the neural network, while the engine torque and brake force are
+        then chosen by the MPC controller. If the gear choice is infeasible,
+        the agent will attempt two backup solutions (See backup_1 and backup_2).
+
+        Parameters
+        ----------
+        state : np.ndarray
+            The current state of the vehicle.
+
+        Returns
+        -------
+        tuple[float, float, int]
+            The engine torque, brake force, and gear chosen by the agent."""
+        # get gears either from heuristic or from expert mpc for first time step
         if self.first_time_step:
             if self.expert_mpc:
                 expert_sol = self.expert_mpc.solve(
@@ -128,15 +178,18 @@ class DQNAgent(Agent):
                         "gear_prev": self.gear_prev,
                     }
                 )
+                if not expert_sol.success:
+                    raise RuntimeError(
+                        "Initial gear choice from expert mpc was infeasible"
+                    )
                 gear_choice_binary = expert_sol.vals["gear"].full()
                 self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
             else:
-                gear_choice_binary = np.zeros((self.n_gears, self.N))
-                for i in range(self.N):  # TODO remove loop
-                    gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
-                        1  # TODO is int cast needed?
-                    )
+                gear_choice_binary = self.binary_from_explicit(
+                    self.gear_choice_explicit
+                )
             self.first_time_step = False
+        # get gears from network for non-first time steps
         else:
             nn_state = self.relative_state(
                 self.x,
@@ -147,21 +200,8 @@ class DQNAgent(Agent):
                 .unsqueeze(1)
                 .to(self.device),
             )
-            with torch.no_grad():
-                q_values = self.policy_net(nn_state)
-                action = q_values.argmax(2)
+            gear_choice_binary = self.get_binary_gear_choice(nn_state)
 
-            gear_shift = action - 1
-            gear_shift = gear_shift.cpu().numpy()
-            self.gear_choice_explicit = np.array(
-                [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
-            )
-            self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
-            gear_choice_binary = np.zeros((self.n_gears, self.N))
-            for i in range(self.N):  # TODO remove loop
-                gear_choice_binary[int(self.gear_choice_explicit[i]), i] = (
-                    1  # TODO is int cast needed?
-                )
         sol = self.mpc.solve(
             {
                 "x_0": state,
@@ -178,36 +218,29 @@ class DQNAgent(Agent):
                     raise RuntimeError(
                         "Backup gear solutions were still infeasible in eval"
                     )
-        self.T_e = torch.tensor(
-            sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
-        )
-        self.F_b = torch.tensor(
-            sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
-        )
-        self.w_e = torch.tensor(
-            sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
-        )
-        self.x = torch.tensor(
-            sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
-        )
+        self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
+
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
         return sol.vals["T_e"].full()[0, 0], sol.vals["F_b"].full()[0, 0], self.gear
 
-    def backup_1(self, state: np.ndarray):
-        gear_choice_explicit = (
-            np.concatenate(  # TODO is there a cleaner way to do this?
-                (
-                    self.last_gear_choice_explicit[1:],
-                    self.last_gear_choice_explicit[[-1]],
-                ),
-                0,
-            )
-        )
-        gear_choice_binary = np.zeros((self.n_gears, self.N))  # remove loop
-        for i in range(self.N):
-            gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
+    def backup_1(self, state: np.ndarray) -> tuple[Solution, np.ndarray]:
+        """A backup solution for when the MPC solver fails to find a feasible solution.
+        The agent will use the previous gear choice and shift it, appending the last entry.
 
+        Parameters
+        ----------
+        state : np.ndarray
+            The current state of the vehicle.
+
+        Returns
+        -------
+        tuple
+            The solution to the MPC problem and the explicit gear choice."""
+        gear_choice_explicit = np.concatenate(
+            (self.last_gear_choice_explicit[1:], [self.last_gear_choice_explicit[-1]])
+        )
+        gear_choice_binary = self.binary_from_explicit(gear_choice_explicit)
         return (
             self.mpc.solve(
                 {
@@ -220,16 +253,23 @@ class DQNAgent(Agent):
             gear_choice_explicit,
         )
 
-    def backup_2(self, state: np.ndarray):
+    def backup_2(self, state: np.ndarray) -> tuple[Solution, np.ndarray]:
+        """A backup solution for when the MPC solver fails to find a feasible solution.
+        The agent will use the same gear for all time steps, with the gear determined
+        by the velocity of the vehicle.
+
+        Parameters
+        ----------
+        state : np.ndarray
+            The current state of the vehicle.
+
+        Returns
+        -------
+        tuple
+            The solution to the MPC problem and the explicit gear choice."""
         gear = self.gear_from_velocity(state[1])
-
-        # assume all time step have the same gear choice
         gear_choice_explicit = np.ones((self.N,)) * gear
-        gear_choice_binary = np.zeros((self.n_gears, self.N))
-        # set value for gear choice binary
-        for i in range(self.N):  # TODO remove loop
-            gear_choice_binary[int(gear_choice_explicit[i]), i] = 1
-
+        gear_choice_binary = self.binary_from_explicit(gear_choice_explicit)
         return (
             self.mpc.solve(
                 {
@@ -250,39 +290,35 @@ class DQNAgent(Agent):
         save_freq: int = 0,
         save_path: str = "",
         exp_zero_steps: int = 0,
-        policy_net_state_dict: dict = {},
-        target_net_state_dict: dict = {},
-        info_dict: dict = {},
-        start_episode: int = 0,
-        start_exp_step: int = 0,
     ) -> tuple[np.ndarray, dict]:
-        # TODO add docstring
-        if policy_net_state_dict:
-            self.policy_net.load_state_dict(policy_net_state_dict)
-        if target_net_state_dict:
-            self.target_net.load_state_dict(target_net_state_dict)
-        if info_dict:
-            self.cost = info_dict["cost"]
-            self.fuel = info_dict["fuel"]
-            self.engine_torque = info_dict["T_e"]
-            self.engine_speed = info_dict["w_e"]
-            self.x_ref = info_dict["x_ref"]
-        seeds = map(
-            int, np.random.SeedSequence(seed + start_episode).generate_state(episodes)
-        )
-        returns = np.zeros(episodes)
+        """Train the policy on the environment using deep Q-learning.
 
+        Parameters
+        ----------
+        env : VehicleTracking
+            The vehicle tracking environment on which the policy is trained.
+        episodes : int
+            The number of episodes to train the policy for.
+        seed : int, optional
+            The seed for the random number generator, by default 0.
+        save_freq : int, optional
+            The episode frequency at which to save the policy, by default 0.
+        save_path : str, optional
+            The path to the folder where the data and models are saved.
+        exp_zero_steps : int, optional
+            The number of steps at which the exploration rate is desired to be
+            approximately zero (1e-3), by default 0 (no exploration)."""
+        seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
+        returns = np.zeros(episodes)
         self.decay_rate = np.log(self.eps_start / 1e-3) / exp_zero_steps
 
         self.on_train_start()
-        self.steps_done = start_exp_step
-        for episode, seed in zip(range(start_episode, episodes), seeds):
+        for episode, seed in zip(range(episodes), seeds):
             print(f"Train: Episode {episode}")
             state, info = env.reset(seed=seed)
             self.on_episode_start(state, env)
             time_step = 0
 
-            # TODO does all this stuff outside of the loop need to be done?
             if self.expert_mpc:
                 expert_sol = self.expert_mpc.solve(
                     {
@@ -292,14 +328,13 @@ class DQNAgent(Agent):
                         "gear_prev": self.gear_prev,
                     }
                 )
-                gear_choice_init_binary = expert_sol.vals["gear"].full()
-                gear_choice_init_explicit = np.argmax(gear_choice_init_binary, axis=0)
-                gear = gear_choice_init_explicit[0]
+                gear_choice_binary = expert_sol.vals["gear"].full()
+                self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
+                self.gear = self.gear_choice_explicit[0]
             else:
-                gear = self.gear_from_velocity(state[1])
-                gear_choice_init_explicit = np.ones((self.N,)) * gear
-                gear_choice_init_binary = np.zeros((self.n_gears, self.N))
-                gear_choice_init_binary[gear] = 1
+                self.gear = self.gear_from_velocity(state[1])
+                self.gear_choice_explicit = np.ones((self.N,)) * self.gear
+                gear_choice_binary = self.binary_from_explicit(self.gear_choice_explicit)
 
             # solve mpc with fixed gear choice
             sol = self.mpc.solve(
@@ -307,7 +342,7 @@ class DQNAgent(Agent):
                     "x_0": state,
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                     "T_e_prev": self.T_e_prev,
-                    "gear": gear_choice_init_binary,
+                    "gear": gear_choice_binary,
                 }
             )
             if not sol.success:
@@ -348,6 +383,8 @@ class DQNAgent(Agent):
             time_step += 1
 
             while not (terminated or truncated):
+                if time_step == 1:
+                    
                 penalty = 0
 
                 network_action = self.network_action(nn_state)
@@ -467,28 +504,21 @@ class DQNAgent(Agent):
 
     def network_action(self, state):
         # TODO add docstring
-        if self.train_flag:  # epsilon greedy exploration
-            eps_threshold = self.eps_start * np.exp(-self.decay_rate * self.steps_done)
-        else:
-            eps_threshold = 0
-
+        eps_threshold = self.eps_start * np.exp(-self.decay_rate * self.steps_done)
         self.steps_done += 1
         sample = self.np_random.random()
-        if sample > eps_threshold:
+        # dont explore if greater than threshold or if not training
+        if sample > eps_threshold or not self.train_flag:
             with torch.no_grad():
                 q_values = self.policy_net(state)
-                actions = q_values.argmax(2)
-        else:  # this random action does not make sense # TODO what does this comment mean?
-            actions = torch.tensor(
-                [
-                    self.np_random.integers(0, self.n_actions)
-                    for _ in range(state.shape[1])
-                ],
-                device=self.device,
-                dtype=torch.long,  # why long?
-            )
-            actions = actions.unsqueeze(0)
-        return actions
+                return q_values.argmax(2)
+
+        actions = torch.tensor(
+            [self.np_random.integers(0, self.n_actions) for _ in range(state.shape[1])],
+            device=self.device,
+            dtype=torch.long,  # TODO why long?
+        )
+        return actions.unsqueeze(0)
 
     def optimize_model(self):
         # TODO add docstring
@@ -566,15 +596,14 @@ class DQNAgent(Agent):
         self.F_b = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
         self.w_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
         self.x = torch.empty((2, self.N), device=self.device, dtype=torch.float32)
-        self.gear_choice_explicit = np.empty((self.N,))
         return super().on_validation_start()
 
     def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
-        self.first_time_step = True
+        self.first_time_step: bool = True
         self.cost.append([])
-        if not self.train_flag:
-            self.gear = self.gear_from_velocity(state[1])
-            self.gear_choice_explicit = np.ones((self.N,)) * self.gear
+        # store a default gear based on velocity when episode starts
+        self.gear = self.gear_from_velocity(state[1])
+        self.gear_choice_explicit: np.ndarray = np.ones((self.N,)) * self.gear
         return super().on_episode_start(state, env)
 
     def on_timestep_end(self, cost: float):
@@ -619,3 +648,45 @@ class DQNAgent(Agent):
                 },
                 f,
             )
+
+    def binary_from_explicit(self, explicit: np.ndarray) -> np.ndarray:
+        """Converts the explicit gear choice to a one-hot binary representation.
+
+        Parameters
+        ----------
+        explicit : np.ndarray
+            The explicit gear choice, (N,) with integers 0-5
+
+        Returns
+        -------
+        np.ndarray
+            The binary gear choice, (6, N) with 1s at the explicit gear choice"""
+        binary = np.zeros((self.n_gears, self.N))
+        binary[explicit.astype(int), np.arange(self.N)] = 1
+        return binary
+
+    def get_binary_gear_choice(self, nn_state: torch.Tensor) -> np.ndarray:
+        network_action = self.network_action(nn_state)
+        gear_shift = (network_action - 1).cpu().numpy()
+        self.gear_choice_explicit = np.array(
+            [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
+        )
+        self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
+        return self.binary_from_explicit(self.gear_choice_explicit)
+
+    def get_vals_from_sol(
+        self, sol
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        T_e = torch.tensor(
+            sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+        )
+        F_b = torch.tensor(
+            sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
+        )
+        w_e = torch.tensor(
+            sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+        )
+        x = torch.tensor(
+            sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
+        )
+        return T_e, F_b, w_e, x
