@@ -152,7 +152,7 @@ class DQNAgent(Agent):
             self.policy_net.load_state_dict(policy_net_state_dict)
         return super().evaluate(env, episodes, seed)
 
-    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the MPC action for the given state. Gears are chosen by
         the neural network, while the engine torque and brake force are
         then chosen by the MPC controller. If the gear choice is infeasible,
@@ -165,9 +165,11 @@ class DQNAgent(Agent):
 
         Returns
         -------
-        tuple[float, float, int]
-            The engine torque, brake force, and gear chosen by the agent."""
+        tuple[float, float, int, dict]
+            The engine torque, brake force, and gear chosen by the agent, and an
+            info dict containing network state and action."""
         # get gears either from heuristic or from expert mpc for first time step
+        infeas_flag = False
         if self.first_time_step:
             if self.expert_mpc:
                 expert_sol = self.expert_mpc.solve(
@@ -200,7 +202,7 @@ class DQNAgent(Agent):
                 .unsqueeze(1)
                 .to(self.device),
             )
-            gear_choice_binary = self.get_binary_gear_choice(nn_state)
+            gear_choice_binary, network_action = self.get_binary_gear_choice(nn_state)
 
         sol = self.mpc.solve(
             {
@@ -211,6 +213,7 @@ class DQNAgent(Agent):
             }
         )
         if not sol.success:
+            infeas_flag = True
             sol, self.gear_choice_explicit = self.backup_1(state)
             if not sol.success:
                 sol, self.gear_choice_explicit = self.backup_2(state)
@@ -222,7 +225,16 @@ class DQNAgent(Agent):
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
-        return sol.vals["T_e"].full()[0, 0], sol.vals["F_b"].full()[0, 0], self.gear
+        return (
+            sol.vals["T_e"].full()[0, 0],
+            sol.vals["F_b"].full()[0, 0],
+            self.gear,
+            {
+                "nn_state": nn_state,
+                "network_action": network_action,
+                "infeas": infeas_flag,
+            },
+        )
 
     def backup_1(self, state: np.ndarray) -> tuple[Solution, np.ndarray]:
         """A backup solution for when the MPC solver fails to find a feasible solution.
@@ -319,159 +331,30 @@ class DQNAgent(Agent):
             self.on_episode_start(state, env)
             time_step = 0
 
-            if self.expert_mpc:
-                expert_sol = self.expert_mpc.solve(
-                    {
-                        "x_0": state,
-                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                        "T_e_prev": self.T_e_prev,
-                        "gear_prev": self.gear_prev,
-                    }
-                )
-                gear_choice_binary = expert_sol.vals["gear"].full()
-                self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
-                self.gear = self.gear_choice_explicit[0]
-            else:
-                self.gear = self.gear_from_velocity(state[1])
-                self.gear_choice_explicit = np.ones((self.N,)) * self.gear
-                gear_choice_binary = self.binary_from_explicit(self.gear_choice_explicit)
-
-            # solve mpc with fixed gear choice
-            sol = self.mpc.solve(
-                {
-                    "x_0": state,
-                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                    "T_e_prev": self.T_e_prev,
-                    "gear": gear_choice_binary,
-                }
-            )
-            if not sol.success:
-                raise RuntimeError(
-                    f"Initial gear choice for episode {episode} was infeasible"
-                )
-
-            T_e = torch.tensor(
-                sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
-            )
-            F_b = torch.tensor(
-                sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
-            )
-            w_e = torch.tensor(
-                sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
-            )
-            x = torch.tensor(
-                sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
-            )
-
-            nn_state = self.relative_state(
-                x,
-                T_e,
-                F_b,
-                w_e,
-                torch.from_numpy(gear_choice_init_explicit)
-                .unsqueeze(1)
-                .to(self.device),
-            )
-            self.last_gear_choice_explicit = gear_choice_init_explicit  # TODO remove the need for explicit and binary
-
-            state, reward, truncated, terminated, info = env.step(
-                (T_e[0].item(), F_b[0].item(), gear)
-            )
-            returns[episode] += reward
-            self.on_env_step(env, episode, info)
-            self.on_timestep_end(reward)
-            time_step += 1
-
             while not (terminated or truncated):
-                if time_step == 1:
-                    
-                penalty = 0
+                T_e, F_b, gear, info = self.get_action(state)
+                penalty = self.infeas_pen if info["infeas"] else 0
 
-                network_action = self.network_action(nn_state)
-
-                gear_shift = network_action - 1
-                # NOTE this is different to what Qizhang did, he shifted from previous gear sequence (which was not known by NN)
-                gear_shift = gear_shift.cpu().numpy()
-                gear_choice_explicit = np.array(
-                    [gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
-                )
-
-                # clip gears to be within range
-                # penalty += self.clip_pen * np.sum(
-                #     gear_choice_explicit < 0
-                # ) + self.clip_pen * np.sum(gear_choice_explicit > 5)
-                gear_choice_explicit = np.clip(gear_choice_explicit, 0, 5)
-
-                gear_choice_binary = np.zeros((self.n_gears, self.N))
-                for i in range(self.N):  # TODO remove loop
-                    gear_choice_binary[int(gear_choice_explicit[i]), i] = (
-                        1  # TODO is int cast needed?
-                    )
-
-                sol = self.mpc.solve(
-                    {
-                        "x_0": state,
-                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                        "T_e_prev": self.T_e_prev,
-                        "gear": gear_choice_binary,
-                    }
-                )
-                if not sol.success:
-                    penalty += self.infeas_pen
-                    # backup sol 1: use previous gear choice shifted
-                    sol, gear_choice_explicit = self.backup_1(state)
-
-                    if not sol.success:
-                        # backup sol 2: use the same gear for all time steps
-                        sol, gear_choice_explicit = self.backup_2(state)
-
-                        if not sol.success:
-                            # raise RuntimeError(
-                            #     "Backup gear solution was still infeasible, reconsider theory. Oh no."
-                            # )
-                            pass
-                T_e = torch.tensor(
-                    sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
-                )
-                F_b = torch.tensor(
-                    sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
-                )
-                w_e = torch.tensor(
-                    sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
-                )
-                x = torch.tensor(
-                    sol.vals["x"][:, :-1].full().T,
-                    dtype=torch.float32,
-                    device=self.device,
-                )
-                gear = int(gear_choice_explicit[0])
-
-                state, reward, truncated, terminated, info = env.step(
-                    (T_e[0].item(), F_b[0].item(), gear)
-                )
+                state, reward, truncated, terminated, info = env.step((T_e, F_b, gear))
                 returns[episode] += reward
                 self.on_env_step(env, episode, info)
 
                 nn_next_state = self.relative_state(
-                    x,
-                    T_e,
-                    F_b,
-                    w_e,
-                    torch.from_numpy(gear_choice_explicit).unsqueeze(1).to(self.device),
+                    self.x,
+                    self.T_e,
+                    self.F_b,
+                    self.w_e,
+                    torch.from_numpy(self.gear_choice_explicit)
+                    .unsqueeze(1)
+                    .to(self.device),
                 )
 
                 # Store the transition in memory
                 self.memory.push(
-                    nn_state,
-                    network_action,
+                    info["nn_state"],
+                    info["network_action"],
                     nn_next_state,
                     torch.tensor([reward + penalty]),
-                )
-
-                # Move to the next state
-                nn_state = nn_next_state
-                self.last_gear_choice_explicit = (
-                    gear_choice_explicit  # TODO type hint issue
                 )
 
                 self.optimize_model()
@@ -665,14 +548,16 @@ class DQNAgent(Agent):
         binary[explicit.astype(int), np.arange(self.N)] = 1
         return binary
 
-    def get_binary_gear_choice(self, nn_state: torch.Tensor) -> np.ndarray:
+    def get_binary_gear_choice(
+        self, nn_state: torch.Tensor
+    ) -> tuple[np.ndarray, torch.Tensor]:
         network_action = self.network_action(nn_state)
         gear_shift = (network_action - 1).cpu().numpy()
         self.gear_choice_explicit = np.array(
             [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
         )
         self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
-        return self.binary_from_explicit(self.gear_choice_explicit)
+        return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_vals_from_sol(
         self, sol

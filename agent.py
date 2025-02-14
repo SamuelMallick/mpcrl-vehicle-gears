@@ -17,7 +17,7 @@ class Agent:
     def __init__(self, mpc: Mpc):
         self.mpc = mpc
 
-    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         raise NotImplementedError
 
     def evaluate(
@@ -100,7 +100,7 @@ class Agent:
 
 
 class MINLPAgent(Agent):
-    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         sol = self.mpc.solve(
             {
                 "x_0": state,
@@ -114,7 +114,7 @@ class MINLPAgent(Agent):
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
-        return T_e, F_b, gear
+        return T_e, F_b, gear, {}
 
 
 class HeuristicGearAgent(Agent):
@@ -138,7 +138,7 @@ class HeuristicGearAgent(Agent):
                 return i
         raise ValueError("No gear found")
 
-    def get_action(self, state: np.ndarray) -> tuple[float, float, int]:
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         # get lowet allowed gear for the given velocity, then use that to limit the traction force
         idx = bisect_right(self.max_v_per_gear, state[1])
         n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
@@ -171,4 +171,4 @@ class HeuristicGearAgent(Agent):
             np.clip(T_e - self.T_e_prev, -Vehicle.dT_e_max, Vehicle.dT_e_max)
             + self.T_e_prev
         )
-        return T_e, F_b, gear
+        return T_e, F_b, gear, {}
