@@ -453,6 +453,8 @@ class TrackingMpc(Mpc):
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
+        self.constraint("v_ub", x[1, :], "<=", v_max)
+        self.constraint("v_lb", x[1, :], ">=", v_min)
 
         F_trac_max = self.parameter("F_trac_max", (1, 1))
         F_trac, _ = self.action(
