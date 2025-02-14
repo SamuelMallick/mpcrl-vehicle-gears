@@ -92,7 +92,7 @@ class VehicleTracking(gym.Env):
     def generate_x_ref(
         self, trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1"
     ):
-        len = self.episode_len + self.prediction_horizon
+        len = self.episode_len + self.prediction_horizon + 1
         if trajectory_type == "type_1":
             d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, len)).reshape(
                 len, 1, 1

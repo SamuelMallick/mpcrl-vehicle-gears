@@ -21,7 +21,7 @@ PLOT = True
 
 sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "miqp_mpc"
+] = "heuristic_mpc"
 
 
 vehicle = Vehicle()
@@ -48,7 +48,9 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
         )
     )
-    mpc = SolverTimeRecorder(HybridTrackingFuelMpcFixedGear(N, convexify_fuel=False))
+    mpc = SolverTimeRecorder(
+        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+    )
     agent = DQNAgent(mpc, N, np_random, expert_mpc=expert_mpc)
     if sim_type == "rl_mpc_train":
         num_eps = 100000

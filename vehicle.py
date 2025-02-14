@@ -91,7 +91,7 @@ class Vehicle:
         n = self.z_f * self.z_t[gear] / self.r_r
         a = (
             T_e * n / self.m
-            - self.C_wind * self.x[1] ** 2 / self.m
+            - self.C_wind * self.x[1, 0] ** 2 / self.m
             - self.g * self.mu * np.cos(alpha)
             - self.g * np.sin(alpha)
             - F_b / self.m
@@ -113,14 +113,14 @@ class Vehicle:
             if self.raise_errors:
                 raise ValueError("Velocity exceeds limits.")
             if self.x[1] + dt * a < self.v_min:
-                a = (self.v_min - self.x[1]) / dt
+                a = (self.v_min - self.x[1, 0]) / dt
             else:
-                a = (self.v_max - self.x[1]) / dt
+                a = (self.v_max - self.x[1, 0]) / dt
             T_e = (1 / n) * (
                 self.g * self.mu * np.cos(alpha)
                 + self.g * np.sin(alpha)
                 + F_b
-                + self.C_wind * self.x[1] ** 2
+                + self.C_wind * self.x[1, 0] ** 2
                 + self.m * a
             )
             if T_e < self.T_e_idle or T_e > self.T_e_max:
@@ -129,7 +129,7 @@ class Vehicle:
                 )
 
         for _ in range(substeps):
-            self.x = self.x + np.array([self.x[1], a]) * dt / substeps
+            self.x = self.x + np.array([[self.x[1, 0]], [a]]) * dt / substeps
         return self.x, float(fuel), T_e, w_e
 
     def fuel_rate(self, T_e: float, w_e: float) -> float:
