@@ -50,13 +50,13 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     config = Config()
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
-        num_eps = 100000
+        num_eps = 3
         returns, info = agent.train(
             env,
             episodes=num_eps,
             exp_zero_steps=int(ep_length * num_eps / 2),
             save_freq=1000,
-            save_path="results/N_5",
+            save_path="results",
             seed=seed,
         )
     else:

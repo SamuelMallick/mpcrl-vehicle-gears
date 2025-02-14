@@ -171,6 +171,8 @@ class DQNAgent(Agent):
         # get gears either from heuristic or from expert mpc for first time step
         infeas_flag = False
         if self.first_time_step:
+            nn_state = None
+            network_action = None
             if self.expert_mpc:
                 expert_sol = self.expert_mpc.solve(
                     {
@@ -327,17 +329,20 @@ class DQNAgent(Agent):
         self.on_train_start()
         for episode, seed in zip(range(episodes), seeds):
             print(f"Train: Episode {episode}")
-            state, info = env.reset(seed=seed)
+            state, step_info = env.reset(seed=seed)
             self.on_episode_start(state, env)
             time_step = 0
+            terminated = truncated = False
 
             while not (terminated or truncated):
-                T_e, F_b, gear, info = self.get_action(state)
-                penalty = self.infeas_pen if info["infeas"] else 0
+                T_e, F_b, gear, action_info = self.get_action(state)
+                penalty = self.infeas_pen if action_info["infeas"] else 0
 
-                state, reward, truncated, terminated, info = env.step((T_e, F_b, gear))
+                state, reward, truncated, terminated, step_info = env.step(
+                    (T_e, F_b, gear)
+                )
                 returns[episode] += reward
-                self.on_env_step(env, episode, info)
+                self.on_env_step(env, episode, step_info)
 
                 nn_next_state = self.relative_state(
                     self.x,
@@ -350,12 +355,13 @@ class DQNAgent(Agent):
                 )
 
                 # Store the transition in memory
-                self.memory.push(
-                    info["nn_state"],
-                    info["network_action"],
-                    nn_next_state,
-                    torch.tensor([reward + penalty]),
-                )
+                if action_info["nn_state"] is not None:  # is None for first time step
+                    self.memory.push(
+                        action_info["nn_state"],
+                        action_info["network_action"],
+                        nn_next_state,
+                        torch.tensor([reward + penalty]),
+                    )
 
                 self.optimize_model()
 
