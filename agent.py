@@ -38,7 +38,7 @@ class Agent:
             self.on_episode_start(state, env)
 
             while not (truncated or terminated):
-                action = self.get_action(state)
+                *action, _ = self.get_action(state)
                 state, reward, truncated, terminated, info = env.step(action)
                 self.on_env_step(env, episode, info)
 
