@@ -1,8 +1,12 @@
 from mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+import os, sys
+
+sys.path.append(os.getcwd())
+from config_files.base import ConfigDefault
 
 
-class Config:
+class Config(ConfigDefault):
     id = "5"  # base with no bidirectional
 
     # -----------general parameters----------------

@@ -4,7 +4,8 @@ import numpy as np
 from vehicle import Vehicle
 
 DEBUG = False
-PLOT = True
+PLOT = False
+
 
 class VehicleTracking(gym.Env):
     """An environment simulating a vehicle tracking a reference trajectory.

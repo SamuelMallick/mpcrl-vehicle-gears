@@ -1,4 +1,6 @@
+import importlib
 import os
+import sys
 from agent import Agent, MINLPAgent, HeuristicGearAgent
 from dqn_agent import DQNAgent
 from env import VehicleTracking
@@ -16,7 +18,6 @@ from mpc import (
 import torch
 import pickle
 from typing import Literal
-from config_files.base import Config
 
 SAVE = True
 PLOT = False
@@ -25,7 +26,16 @@ sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
 ] = "rl_mpc_train"
 
-config = Config(sim_type)
+# if a config file passed on command line, otherwise use default config file
+if len(sys.argv) > 1:
+    config_file = sys.argv[1]
+    mod = importlib.import_module(f"config_files.{config_file}")
+    config = mod.Config(sim_type)
+else:
+    from config_files.c1 import Config  # type: ignore
+
+    config = Config(sim_type)
+
 vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 1

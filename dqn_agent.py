@@ -10,7 +10,7 @@ from env import VehicleTracking
 from mpc import HybridTrackingMpc
 from vehicle import Vehicle
 import pickle
-from config_files.base import Config
+from config_files.base import ConfigDefault
 
 Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
@@ -96,7 +96,10 @@ class DQNAgent(Agent):
     infeasible: list[list[float]] = []  # store if the gear choice was infeasible
 
     def __init__(
-        self, mpc: HybridTrackingMpc, np_random: np.random.Generator, config: Config
+        self,
+        mpc: HybridTrackingMpc,
+        np_random: np.random.Generator,
+        config: ConfigDefault,
     ):
         super().__init__(mpc)
         self.train_flag = False

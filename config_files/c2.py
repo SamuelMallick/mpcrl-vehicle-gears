@@ -1,8 +1,12 @@
 from mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+import os, sys
+
+sys.path.append(os.getcwd())
+from config_files.base import ConfigDefault
 
 
-class Config:
+class Config(ConfigDefault):
     # config with type 2 trajectory
 
     id = "2"
