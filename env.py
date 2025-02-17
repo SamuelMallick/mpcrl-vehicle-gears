@@ -3,6 +3,8 @@ import gymnasium as gym
 import numpy as np
 from vehicle import Vehicle
 
+DEBUG = False
+
 
 class VehicleTracking(gym.Env):
     """An environment simulating a vehicle tracking a reference trajectory.
@@ -92,41 +94,57 @@ class VehicleTracking(gym.Env):
     def generate_x_ref(
         self, trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1"
     ):
-        len = self.episode_len + self.prediction_horizon + 1
+        len = self.episode_len + self.prediction_horizon
+        x_ref = np.zeros((len, 2, 1))
+
+        # constant velocity
         if trajectory_type == "type_1":
             d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, len)).reshape(
                 len, 1, 1
             )
             v_ref = np.full((len, 1, 1), 20)
-            return np.concatenate((d_ref, v_ref), axis=1)
+            x_ref = np.concatenate((d_ref, v_ref), axis=1)
+            return x_ref
+
+        # variable velocity
         else:
-            x_ref = np.zeros((len, 2, 1))
+            n_segments = 5
+            intermediate_change_points = np.sort(
+                self.np_random.integers(0, len - 1, size=n_segments - 1)
+            )
+            change_points = np.concatenate(([0], intermediate_change_points, [len - 1]))
+            v_clip_range = [5, 35]
+
+            # generate initial conditions and acceleration profiles
             if trajectory_type == "type_2":
                 v = self.np_random.uniform(15, 25)
                 d = 0.0
-                slopes = self.np_random.uniform(-0.6, 0.6, size=3)
-            else:
-                v = self.np_random.uniform(Vehicle.v_min + 5, Vehicle.v_max - 5)
+                slopes = self.np_random.uniform(-0.6, 0.6, size=n_segments - 2)
+                slopes = np.concatenate(([0], slopes, [0]))
+            elif trajectory_type == "type_3":
+                v = self.np_random.uniform(v_clip_range[0], v_clip_range[1])
                 d = self.np_random.uniform(-50, 50)
-                slopes = self.np_random.uniform(2, 2, size=3)
+                slopes = self.np_random.uniform(-2, 2, size=n_segments)
+            else:
+                raise ValueError("Invalid trajectory type.")
 
             x_ref[0] = np.array([[d], [v]])
-            change_points = np.sort(self.np_random.integers(0, 100, size=5))
 
-            v_clip_range = [5, 35]
+            # trajectory generation
+            change_point_prev = change_points[0]
+            for idx, change_point in enumerate(change_points[1:]):
+                for k in range(change_point_prev, change_point):
+                    if DEBUG:
+                        print(
+                            f"step: {k} \t| prev point: {change_point_prev} \t| ",
+                            f"next point: {change_point} \t| slope: {slopes[idx]}"
+                        )
+                    v = np.clip(v + slopes[idx], v_clip_range[0], v_clip_range[1])
+                    x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
+                change_point_prev = change_point
 
-            for k in range(change_points[0]):
-                x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-            for k in range(change_points[0], change_points[1]):
-                v = np.clip(v + slopes[0], v_clip_range[0], v_clip_range[1])
-                x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-            for k in range(change_points[1], change_points[2]):
-                v = np.clip(v + slopes[1], v_clip_range[0], v_clip_range[1])
-                x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-            for k in range(change_points[2], change_points[3]):
-                v = np.clip(v + slopes[2], v_clip_range[0], v_clip_range[1])
-                x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-            for k in range(change_points[3], len - 1):
-                x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
+            if DEBUG:
+                from visualisation.plot import plot_reference_traj
+                plot_reference_traj(x_ref, change_points=change_points)
 
             return x_ref
