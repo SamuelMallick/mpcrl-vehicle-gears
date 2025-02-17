@@ -246,9 +246,10 @@ class DQNAgent(Agent):
                             "Backup gear solutions were still infeasible."
                         )
                     else:  # TODO  should we put heuristic mpc here?
-                        raise RuntimeError(
-                            "Backup gear solutions were still infeasible."
-                        )
+                        pass
+                        # raise RuntimeError(
+                        #     "Backup gear solutions were still infeasible."
+                        # )
                     # expert_sol = self.expert_mpc.solve(
                     #     {
                     #         "x_0": state,
