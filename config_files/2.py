@@ -3,13 +3,15 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 
 
 class Config:
-    id = "base"
+    # config with type 2 trajectory
+
+    id = "2"
 
     # -----------general parameters----------------
     N = 5
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_3"
+    trajectory_type = "type_2"
 
     # -----------network parameters----------------
     # hyperparameters

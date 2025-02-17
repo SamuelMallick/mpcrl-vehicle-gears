@@ -3,7 +3,7 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 
 
 class Config:
-    id = "base"
+    id = "5"  # base with no bidirectional
 
     # -----------general parameters----------------
     N = 5
@@ -22,7 +22,7 @@ class Config:
     n_hidden = 64
     n_actions = 3
     n_layers = 2
-    bidirectional = True
+    bidirectional = False
     normalize = False
 
     # exploration

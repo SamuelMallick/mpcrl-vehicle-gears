@@ -100,7 +100,9 @@ class Agent:
     def gear_from_velocity(self, v: float, current_gear: int | None = None) -> int:
         if current_gear is not None:
             for i in reversed(
-                range(max(current_gear - 1, 0), min(current_gear + 2, 6))   # +2 because range is exclusive
+                range(
+                    max(current_gear - 1, 0), min(current_gear + 2, 6)
+                )  # +2 because range is exclusive
             ):  # TODO get rid of loop
                 n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
                 if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:

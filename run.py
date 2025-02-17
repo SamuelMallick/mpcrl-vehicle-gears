@@ -1,3 +1,4 @@
+import os
 from agent import Agent, MINLPAgent, HeuristicGearAgent
 from dqn_agent import DQNAgent
 from env import VehicleTracking
@@ -17,8 +18,8 @@ import pickle
 from typing import Literal
 from config_files.base import Config
 
-SAVE = False
-PLOT = True
+SAVE = True
+PLOT = False
 
 sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
@@ -36,7 +37,7 @@ env = MonitorEpisodes(
             vehicle,
             episode_len=ep_length,
             prediction_horizon=N,
-            trajectory_type="type_3",
+            trajectory_type=config.trajectory_type,
         ),
         max_episode_steps=ep_length,
     )
@@ -49,14 +50,16 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     )
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
+        os.makedirs(f"results/{config.id}", exist_ok=True)
+
         num_eps = config.num_eps
         returns, info = agent.train(
             env,
             episodes=num_eps,
             ep_len=ep_length,
-            exp_zero_steps=int(ep_length * num_eps / 2),
+            exp_zero_steps=config.esp_zero_steps,
             save_freq=1000,
-            save_path="results",
+            save_path=f"results/{config.id}",
             seed=seed,
         )
     else:

@@ -3,7 +3,7 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 
 
 class Config:
-    id = "base"
+    id = "3"  # base with normalization
 
     # -----------general parameters----------------
     N = 5
@@ -23,7 +23,7 @@ class Config:
     n_actions = 3
     n_layers = 2
     bidirectional = True
-    normalize = False
+    normalize = True
 
     # exploration
     eps_start = 0.99

@@ -3,10 +3,10 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 
 
 class Config:
-    id = "base"
+    id = "4"  # base with horizon 15
 
     # -----------general parameters----------------
-    N = 5
+    N = 15
     ep_len = 100
     num_eps = 50000
     trajectory_type = "type_3"
