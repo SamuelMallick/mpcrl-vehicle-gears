@@ -4,7 +4,7 @@ import numpy as np
 from vehicle import Vehicle
 
 DEBUG = False
-
+PLOT = True
 
 class VehicleTracking(gym.Env):
     """An environment simulating a vehicle tracking a reference trajectory.
@@ -145,7 +145,7 @@ class VehicleTracking(gym.Env):
                     x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
                 change_point_prev = change_point
 
-            if DEBUG:
+            if PLOT:
                 from visualisation.plot import plot_reference_traj
 
                 plot_reference_traj(x_ref, change_points=change_points)

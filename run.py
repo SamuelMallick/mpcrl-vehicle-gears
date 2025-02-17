@@ -25,7 +25,7 @@ sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
 ] = "rl_mpc_train"
 
-config = Config()
+config = Config(sim_type)
 vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 1

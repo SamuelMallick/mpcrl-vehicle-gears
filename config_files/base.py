@@ -37,10 +37,14 @@ class Config:
     memory_size = 100000
     batch_size = 128
 
-    # used for generating gears at first time step of episodes
-    # expert_mpc = None
-    expert_mpc = SolverTimeRecorder(
-        HybridTrackingMpc(
-            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
-        )
-    )
+    def __init__(self, sim_type: str):
+        # used for generating gears at first time step of episodes
+        if sim_type == "minlp_mpc":
+            # TODO: check if there are other cases that should be handled here
+            self.expert_mpc = None  
+        else:
+            self.expert_mpc = SolverTimeRecorder(
+                HybridTrackingMpc(
+                    self.N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
+                )
+            )
