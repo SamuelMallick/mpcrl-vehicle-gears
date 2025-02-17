@@ -29,6 +29,7 @@ dt = 1  # time step (s)
 # maximum and minimu velocity: calculated from maximum engine speed: w_e = (z_f * z_t[gear] * 60)/(r_r * 2 * pi)
 v_max = (w_e_max * r_r * 2 * np.pi) / (z_t[-1] * z_f * 60)
 v_min = (w_e_idle * r_r * 2 * np.pi) / (z_t[0] * z_f * 60)
+a_max = 3  # maximum acceleration (deceleration) (m/s^2)
 
 # maximum values of F_r in T_e *n = F_r + F_b
 F_r_max = (
@@ -151,6 +152,8 @@ class HybridTrackingMpc(Mpc):
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
+        self.constraint("a_ub", x[1, 1:] - x[1, :-1], "<=", a_max * dt)
+        self.constraint("a_lb", x[1, 1:] - x[1, :-1], ">=", -a_max * dt)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
         T_e_prev = self.parameter("T_e_prev", (1, 1))
@@ -343,6 +346,8 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
+        self.constraint("a_ub", x[1, 1:] - x[1, :-1], "<=", a_max * dt)
+        self.constraint("a_lb", x[1, 1:] - x[1, :-1], ">=", -a_max * dt)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
         T_e_prev = self.parameter("T_e_prev", (1, 1))
@@ -453,6 +458,8 @@ class TrackingMpc(Mpc):
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
+        self.constraint("a_ub", x[1, 1:] - x[1, :-1], "<=", a_max * dt)
+        self.constraint("a_lb", x[1, 1:] - x[1, :-1], ">=", -a_max * dt)
         self.constraint("v_ub", x[1, :], "<=", v_max)
         self.constraint("v_lb", x[1, :], ">=", v_min)
 
