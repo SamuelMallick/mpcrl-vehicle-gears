@@ -94,7 +94,9 @@ class VehicleTracking(gym.Env):
     def generate_x_ref(
         self, trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1"
     ):
-        len = self.episode_len + self.prediction_horizon
+        len = (
+            self.episode_len + self.prediction_horizon + 1
+        )  # +1 requiered to generate NN state (over horizon) for ep_len + 1'th timestep
         x_ref = np.zeros((len, 2, 1))
 
         # constant velocity
@@ -137,7 +139,7 @@ class VehicleTracking(gym.Env):
                     if DEBUG:
                         print(
                             f"step: {k} \t| prev point: {change_point_prev} \t| ",
-                            f"next point: {change_point} \t| slope: {slopes[idx]}"
+                            f"next point: {change_point} \t| slope: {slopes[idx]}",
                         )
                     v = np.clip(v + slopes[idx], v_clip_range[0], v_clip_range[1])
                     x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
@@ -145,6 +147,7 @@ class VehicleTracking(gym.Env):
 
             if DEBUG:
                 from visualisation.plot import plot_reference_traj
+
                 plot_reference_traj(x_ref, change_points=change_points)
 
             return x_ref
