@@ -30,9 +30,9 @@ class Config:
     batch_size = 128
 
     # used for generating gears at first time step of episodes
-    expert_mpc = None
-    # expert_mpc = SolverTimeRecorder(
-    #     HybridTrackingMpc(
-    #         N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
-    #     )
-    # )
+    # expert_mpc = None
+    expert_mpc = SolverTimeRecorder(
+        HybridTrackingMpc(
+            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
+        )
+    )
