@@ -97,6 +97,7 @@ engine_speed = info["w_e"]
 x_ref = info["x_ref"]
 if sim_type == "rl_mpc_train":
     cost = info["cost"]
+    infeasible = info["infeasible"]
 
 X = list(env.observations)
 U = list(env.actions)
@@ -125,7 +126,18 @@ if SAVE:
 if PLOT:
     ep = 0
     plot_evaluation(
-        x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
+        x_ref[ep],
+        X[ep],
+        U[ep],
+        R[ep],
+        fuel[ep],
+        engine_torque[ep],
+        engine_speed[ep],
+        (
+            infeasible[ep]
+            if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval"
+            else None
+        ),
     )
     # plot_training(
     #     [sum(cost[i]) for i in range(len(cost))],

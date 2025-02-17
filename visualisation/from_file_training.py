@@ -17,12 +17,21 @@ U = data["U"]
 x_ref = data["x_ref"]
 engine_torque = data["T_e"]
 engine_speed = data["w_e"]
+if "infeasible" in data:
+    infeasible = data["infeasible"]
 
-# for ep in range(62000, 63000):
-# # ep = 32667
-#     plot_evaluation(
-#         x_ref[ep], X[ep], U[ep], R[ep], fuel[ep], engine_torque[ep], engine_speed[ep]
-#     )
+for ep in range(62000, 63000):
+    # ep = 32667
+    plot_evaluation(
+        x_ref[ep],
+        X[ep],
+        U[ep],
+        R[ep],
+        fuel[ep],
+        engine_torque[ep],
+        engine_speed[ep],
+        infeasible[ep] if "infeasible" in data else None,
+    )
 
 plot_training(
     [sum(cost[i]) for i in range(len(cost))],

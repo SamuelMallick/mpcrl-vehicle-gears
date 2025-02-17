@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def plot_training(
     cost: list,
     fuel: list,
@@ -55,6 +56,7 @@ def plot_evaluation(
     fuel: np.ndarray,
     T_e: np.ndarray,
     w_e: np.ndarray,
+    infeasible: np.ndarray | None = None,
 ):
     # TODO add docstring
     fig, ax = plt.subplots(5, 1, sharex=True)
@@ -84,6 +86,16 @@ def plot_evaluation(
     ax[2].set_ylabel("F_b (N)")
     ax[3].plot(U[:, 2])
     ax[3].set_ylabel("gear")
+    if infeasible is not None:
+        ax[3].fill_between(
+            np.arange(U.shape[0]),
+            0,
+            5,
+            where=infeasible,
+            color="red",
+            alpha=1,
+            label="Shaded Region",
+        )
     ax[3].set_xticks([i for i in range(len(U))])
     ax[3].set_yticks([i for i in range(6)])
     ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
