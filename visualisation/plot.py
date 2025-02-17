@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 def plot_training(
     cost: list,
     fuel: list,
@@ -137,4 +136,23 @@ def plot_comparison(
     ax[3].set_xticks([i for i in range(len(U))])
     ax[3].set_yticks([i for i in range(6)])
     ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
+    plt.show()
+
+
+def plot_reference_traj(x_ref: list[np.ndarray], change_points=None) -> None:
+    """
+    Plot reference trajectory (position and speed).
+    :param: x_ref: n x 2 ndarray with reference position trajectory (index 0) and
+    reference speed trajectory (index 1)
+    :param: change_points: m x 1 ndarray of acceleration change points (as time steps)
+    """
+    _, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(x_ref[:, 0])
+    ax[0].set_ylabel("d (m)")
+    ax[1].plot(x_ref[:, 1])
+    ax[1].set_ylabel("v (m/s)")
+    if change_points is not None:
+        for cp in change_points:
+            ax[0].scatter(cp, x_ref[cp, 0], color="r")
+            ax[1].scatter(cp, x_ref[cp, 1], color="r")
     plt.show()
