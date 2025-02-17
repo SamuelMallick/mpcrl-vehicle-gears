@@ -240,8 +240,18 @@ class DQNAgent(Agent):
                         raise RuntimeError(
                             "Backup gear solutions were still infeasible."
                         )
-                    else:  # TODO fix, why is this still happening
-                        pass
+                    else:  # TODO  should we put heuristic mpc here?
+                         raise RuntimeError(
+                            "Backup gear solutions were still infeasible."
+                        )
+                        # expert_sol = self.expert_mpc.solve(
+                        #     {
+                        #         "x_0": state,
+                        #         "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        #         "T_e_prev": self.T_e_prev,
+                        #         "gear_prev": self.gear_prev,
+                        #     }
+                        # )
         self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
 
         self.gear = int(self.gear_choice_explicit[0])
@@ -300,7 +310,7 @@ class DQNAgent(Agent):
         -------
         tuple
             The solution to the MPC problem and the explicit gear choice."""
-        gear = self.gear_from_velocity(state[1])
+        gear = self.gear_from_velocity(state[1], self.gear)
         gear_choice_explicit = np.ones((self.N,)) * gear
         gear_choice_binary = self.binary_from_explicit(gear_choice_explicit)
         return (

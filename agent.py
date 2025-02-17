@@ -4,6 +4,11 @@ from csnlp.wrappers.mpc.mpc import Mpc
 from vehicle import Vehicle
 from bisect import bisect_right
 
+max_v_per_gear = [
+    (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi) / (Vehicle.z_t[i] * Vehicle.z_f * 60)
+    for i in range(6)
+]
+
 
 class Agent:
     fuel: list[list[float]] = []
@@ -92,12 +97,19 @@ class Agent:
         self.gear_prev = np.zeros((6, 1))
         self.gear_prev[gear] = 1  # TODO make one line
 
-    def gear_from_velocity(self, v: float) -> int:
-        # TODO add docstring
-        for i in range(6):  # TODO get rid of loop
-            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:
-                return i
+    def gear_from_velocity(self, v: float, current_gear: int | None = None) -> int:
+        if current_gear is not None:
+            for i in reversed(
+                range(max(current_gear - 1, 0), min(current_gear + 2, 6))   # +2 because range is exclusive
+            ):  # TODO get rid of loop
+                n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
+                if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:
+                    return i
+        else:
+            for i in reversed(range(6)):
+                n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
+                if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:
+                    return i
         raise ValueError("No gear found")
 
 
@@ -121,15 +133,6 @@ class MINLPAgent(Agent):
 
 class HeuristicGearAgent(Agent):
 
-    # def __init__(self, mpc: Mpc, vehicle: Vehicle):
-    #     super().__init__(mpc)
-    #     self.vehicle = vehicle
-    max_v_per_gear = [
-        (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi)
-        / (Vehicle.z_t[i] * Vehicle.z_f * 60)
-        for i in range(6)
-    ]
-
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
         for i in range(6):
             n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
@@ -142,7 +145,7 @@ class HeuristicGearAgent(Agent):
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         # get lowet allowed gear for the given velocity, then use that to limit the traction force
-        idx = bisect_right(self.max_v_per_gear, state[1])
+        idx = bisect_right(max_v_per_gear, state[1])
         n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
         F_trac_max = Vehicle.T_e_max * n
 
