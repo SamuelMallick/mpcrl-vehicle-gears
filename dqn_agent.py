@@ -549,10 +549,10 @@ class DQNAgent(Agent):
         self.steps_done += 1
         if self.normalize:
             self.position_error[episode, timestep] = (
-                self.x[0, 0] - self.x_ref_predicition[0, 0]
+                self.x[0, 0].cpu() - self.x_ref_predicition[0, 0]
             ).item()
             self.velocity_error[episode, timestep] = (
-                self.x[0, 1] - self.x_ref_predicition[0, 1]
+                self.x[0, 1].cpu() - self.x_ref_predicition[0, 1]
             ).item()
         self.infeasible[-1].append(info["infeas"])
         return super().on_env_step(env, episode, timestep, info)
