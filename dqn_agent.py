@@ -502,7 +502,7 @@ class DQNAgent(Agent):
             )
 
         # Compute the expected Q values, extend the reward to the length of the sequence
-        reward_batch = reward_batch.unsqueeze(1).expand(-1, self.N)
+        reward_batch = reward_batch.unsqueeze(1).expand(-1, self.N).to(self.device)
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
         # Compute Huber loss``
         criterion = nn.SmoothL1Loss()
