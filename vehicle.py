@@ -124,9 +124,17 @@ class Vehicle:
                 + self.C_wind * self.x[1, 0] ** 2
                 + self.m * a
             )
-            if T_e < self.T_e_idle or T_e > self.T_e_max:
+            if T_e < self.T_e_idle:
+                T_e = self.T_e_idle
+                F_b = T_e * n - (
+                    self.g * self.mu * np.cos(alpha)
+                    + self.g * np.sin(alpha)
+                    + self.C_wind * self.x[1, 0] ** 2
+                    + self.m * a
+                )
+            if F_b > self.F_b_max or T_e > self.T_e_max:
                 raise ValueError(
-                    "Engine torque exceeds limits after adjusting for speed."
+                    "Engine torque or break force exceeds limits after adjusting for speed."
                 )
 
         for _ in range(substeps):
