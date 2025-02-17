@@ -28,6 +28,7 @@ class Vehicle:
     T_e_idle = 15  # engine idle torque (Nm)
     w_e_idle = 900  # engine idle speed (rpm)
     T_e_max = 300  # maximum engine torque (Nm)
+    F_b_max = 9000  # maximum braking force (N)
 
     # maximum and minimu velocity: calculated from maximum engine speed: w_e = (z_f * z_t[gear] * 60)/(r_r * 2 * pi)
     v_max = (w_e_max * 2 * np.pi * r_r) / (60 * z_f * z_t[-1])

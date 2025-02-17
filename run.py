@@ -24,11 +24,11 @@ sim_type: Literal[
     "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
 ] = "rl_mpc_train"
 
-
+config = Config()
 vehicle = Vehicle()
-ep_length = 100
+ep_length = config.ep_len
 num_eval_eps = 1
-N = 5
+N = config.N
 seed = 0
 env = MonitorEpisodes(
     TimeLimit(
@@ -47,13 +47,13 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     mpc = SolverTimeRecorder(
         HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
     )
-    config = Config()
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
-        num_eps = 3
+        num_eps = config.num_eps
         returns, info = agent.train(
             env,
             episodes=num_eps,
+            ep_len=ep_length,
             exp_zero_steps=int(ep_length * num_eps / 2),
             save_freq=1000,
             save_path="results",

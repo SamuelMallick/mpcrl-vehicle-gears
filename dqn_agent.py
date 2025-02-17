@@ -41,7 +41,7 @@ class ReplayMemory(object):
 
 class DRQN(nn.Module):
     """A deep recurrent Q-network (DRQN) that maps state sequences to Q-values for
-    gear shifts. The architecture is a bidirectional RNN followed by a fully connected
+    gear shifts. The architecture is a (bidirectional) RNN followed by a fully connected
     layer.
 
     Parameters
@@ -56,11 +56,17 @@ class DRQN(nn.Module):
     num_layers : int, optional
         The number of recurrent layers, by default 1."""
 
-    def __init__(self, input_size, hidden_size, num_actions=3, num_layers=1):
+    def __init__(
+        self, input_size, hidden_size, num_actions=3, num_layers=1, bidirectional=False
+    ):
         super(DRQN, self).__init__()
         self.fc = nn.Linear(hidden_size * 2, num_actions)
         self.rnn = nn.RNN(
-            input_size, hidden_size, num_layers, batch_first=True, bidirectional=True
+            input_size,
+            hidden_size,
+            num_layers,
+            batch_first=True,
+            bidirectional=bidirectional,
         )
 
     def forward(self, x):
@@ -87,6 +93,7 @@ class DQNAgent(Agent):
     """
 
     cost: list[list[float]] = []  # store the incurred cost: env.reward + penalties
+    infeasible: list[list[float]] = []  # store if the gear choice was infeasible
 
     def __init__(
         self, mpc: HybridTrackingMpc, np_random: np.random.Generator, config: Config
@@ -114,6 +121,7 @@ class DQNAgent(Agent):
         self.n_actions = config.n_actions
         self.n_layers = config.n_layers
         self.N = config.N
+        self.normalize = config.normalize
 
         # exploration
         self.eps_start = config.eps_start
@@ -137,10 +145,18 @@ class DQNAgent(Agent):
         else:
             torch.manual_seed(seed)
         self.policy_net = DRQN(
-            self.n_states, self.n_hidden, self.n_actions, self.n_layers
+            self.n_states,
+            self.n_hidden,
+            self.n_actions,
+            self.n_layers,
+            bidirectional=config.bidirectional,
         ).to(self.device)
         self.target_net = DRQN(
-            self.n_states, self.n_hidden, self.n_actions, self.n_layers
+            self.n_states,
+            self.n_hidden,
+            self.n_actions,
+            self.n_layers,
+            bidirectional=config.bidirectional,
         ).to(self.device)
         self.optimizer = optim.Adam(
             self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
@@ -220,9 +236,12 @@ class DQNAgent(Agent):
             if not sol.success:
                 sol, self.gear_choice_explicit = self.backup_2(state)
                 if not sol.success:
-                    raise RuntimeError(
-                        "Backup gear solutions were still infeasible in eval"
-                    )
+                    if not self.train_flag:
+                        raise RuntimeError(
+                            "Backup gear solutions were still infeasible."
+                        )
+                    else:  # TODO fix, why is this still happening
+                        pass
         self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
 
         self.gear = int(self.gear_choice_explicit[0])
@@ -300,6 +319,7 @@ class DQNAgent(Agent):
         self,
         env: VehicleTracking,
         episodes: int,
+        ep_len: int,
         seed: int = 0,
         save_freq: int = 0,
         save_path: str = "",
@@ -313,6 +333,8 @@ class DQNAgent(Agent):
             The vehicle tracking environment on which the policy is trained.
         episodes : int
             The number of episodes to train the policy for.
+        ep_len : int
+            The number of time steps in each episode.
         seed : int, optional
             The seed for the random number generator, by default 0.
         save_freq : int, optional
@@ -322,6 +344,10 @@ class DQNAgent(Agent):
         exp_zero_steps : int, optional
             The number of steps at which the exploration rate is desired to be
             approximately zero (1e-3), by default 0 (no exploration)."""
+        if self.normalize:
+            self.position_error = np.zeros((episodes, ep_len))
+            self.velocity_error = np.zeros((episodes, ep_len))
+
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
         returns = np.zeros(episodes)
         self.decay_rate = np.log(self.eps_start / 1e-3) / exp_zero_steps
@@ -342,7 +368,7 @@ class DQNAgent(Agent):
                     (T_e, F_b, gear)
                 )
                 returns[episode] += reward
-                self.on_env_step(env, episode, step_info)
+                self.on_env_step(env, episode, time_step, step_info | action_info)
 
                 nn_next_state = self.relative_state(
                     self.x,
@@ -389,12 +415,25 @@ class DQNAgent(Agent):
             "w_e": self.engine_speed,
             "x_ref": self.x_ref,
             "cost": self.cost,
+            "infeasible": self.infeasible,
         }
 
-    def network_action(self, state):
-        # TODO add docstring
+    def network_action(self, state: torch.Tensor) -> torch.Tensor:
+        """Get the action from the policy network for the given state.
+        An epsilon-greedy policy is used for exploration, based on
+        self.decay_rate, self.eps_start, and self.steps_done. If exploring,
+        the action is chosen randomly.
+
+        Parameters
+        ----------
+        state : torch.Tensor
+            The state of the vehicle.
+
+        Returns
+        -------
+        torch.Tensor
+            The action chosen by the policy network (or random action)."""
         eps_threshold = self.eps_start * np.exp(-self.decay_rate * self.steps_done)
-        self.steps_done += 1
         sample = self.np_random.random()
         # dont explore if greater than threshold or if not training
         if sample > eps_threshold or not self.train_flag:
@@ -405,12 +444,12 @@ class DQNAgent(Agent):
         actions = torch.tensor(
             [self.np_random.integers(0, self.n_actions) for _ in range(state.shape[1])],
             device=self.device,
-            dtype=torch.long,  # TODO why long?
+            dtype=torch.long,  # long -> integers
         )
         return actions.unsqueeze(0)
 
     def optimize_model(self):
-        # TODO add docstring
+        """Apply a policy update based on the current memory buffer"""
         if len(self.memory) < self.batch_size:
             return
         transitions = self.memory.sample(self.batch_size, self.np_random)
@@ -450,14 +489,8 @@ class DQNAgent(Agent):
             )
 
         # Compute the expected Q values, extend the reward to the length of the sequence
-        reward_batch = reward_batch.unsqueeze(-1)  # TODO combine lines
-        reward_batch = reward_batch.unsqueeze(-1)
-        reward_batch_extended = reward_batch.expand(-1, self.N, -1).to(self.device)
-
-        # Compute the expected Q values (All steps of each sequence are used)
-        expected_state_action_values = (
-            next_state_values * self.gamma
-        ) + reward_batch_extended.squeeze(-1)
+        reward_batch = reward_batch.unsqueeze(1).expand(-1, self.N)
+        expected_state_action_values = (next_state_values * self.gamma) + reward_batch
         # Compute Huber loss``
         criterion = nn.SmoothL1Loss()
         # loss = criterion(state_action_values[:,0,:], expected_state_action_values.unsqueeze(-1))
@@ -474,10 +507,10 @@ class DQNAgent(Agent):
         self.optimizer.step()
 
     def on_train_start(self):
-        # TODO add docstring
         self.train_flag = True
         self.steps_done = 0
         self.cost = []
+        self.infeasible = []
 
     def on_validation_start(self):
         self.train_flag = False
@@ -488,8 +521,9 @@ class DQNAgent(Agent):
         return super().on_validation_start()
 
     def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
-        self.first_time_step: bool = True
+        self.first_time_step = True
         self.cost.append([])
+        self.infeasible.append([])
         # store a default gear based on velocity when episode starts
         self.gear = self.gear_from_velocity(state[1])
         self.gear_choice_explicit: np.ndarray = np.ones((self.N,)) * self.gear
@@ -497,6 +531,18 @@ class DQNAgent(Agent):
 
     def on_timestep_end(self, cost: float):
         self.cost[-1].append(cost)
+
+    def on_env_step(self, env, episode, timestep, info):
+        self.steps_done += 1
+        if self.normalize:
+            self.position_error[episode, timestep] = (
+                self.x[0, 0] - self.x_ref_predicition[0, 0]
+            ).item()
+            self.velocity_error[episode, timestep] = (
+                self.x[0, 1] - self.x_ref_predicition[0, 1]
+            ).item()
+        self.infeasible[-1].append(info["infeas"])
+        return super().on_env_step(env, episode, timestep, info)
 
     def relative_state(
         self,
@@ -506,19 +552,29 @@ class DQNAgent(Agent):
         w_e: torch.Tensor,
         gear: torch.Tensor,
     ) -> torch.Tensor:
-        # TODO add docstring
         d_rel = x[:, [0]] - torch.from_numpy(self.x_ref_predicition[:-1, 0]).to(
             self.device
         )
         v_rel = x[:, [1]] - torch.from_numpy(self.x_ref_predicition[:-1, 1]).to(
             self.device
         )
+        if self.normalize and self.steps_done > 1:
+            d_rel = (
+                d_rel - np.mean(self.position_error.flatten()[: self.steps_done])
+            ) / (np.std(self.position_error.flatten()[: self.steps_done]) + 1e-6)
+            v_rel = (
+                v_rel - np.mean(self.velocity_error.flatten()[: self.steps_done])
+            ) / (np.std(self.velocity_error.flatten()[: self.steps_done]) + 1e-6)
+            T_e = (T_e - Vehicle.T_e_idle) / (Vehicle.T_e_max - Vehicle.T_e_idle)
+            F_b = F_b / Vehicle.F_b_max  # min is zero
+            w_e = (w_e - Vehicle.w_e_idle) / (Vehicle.w_e_max - Vehicle.w_e_idle)
+            gear = gear / 5
         v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
         return (
             torch.cat((d_rel, v_rel, v_norm, T_e, F_b, w_e, gear), dim=1)
             .unsqueeze(0)
             .to(torch.float32)
-        )  # TODO should we normalize the gears and stuff?
+        )
 
     def save(self, env: VehicleTracking, ep: int, path: str = ""):
         torch.save(self.policy_net.state_dict(), path + f"/policy_net_ep_{ep}.pth")
@@ -531,6 +587,7 @@ class DQNAgent(Agent):
                     "T_e": self.engine_torque,
                     "w_e": self.engine_speed,
                     "x_ref": self.x_ref,
+                    "infeasible": self.infeasible,
                     "R": list(env.rewards),
                     "X": list(env.observations),
                     "U": list(env.actions),

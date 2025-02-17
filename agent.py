@@ -10,7 +10,7 @@ class Agent:
     engine_torque: list[list[float]] = []
     engine_speed: list[list[float]] = []
     x_ref: list[np.ndarray] = []
-    x_ref_predicition: np.ndarray = np.empty((0, 2, 1))  # TODO is right shape?
+    x_ref_predicition: np.ndarray = np.empty((0, 2, 1))
     T_e_prev = Vehicle.T_e_idle
     gear_prev: np.ndarray = np.empty((6, 1))
 
@@ -38,9 +38,9 @@ class Agent:
             self.on_episode_start(state, env)
 
             while not (truncated or terminated):
-                *action, _ = self.get_action(state)
-                state, reward, truncated, terminated, info = env.step(action)
-                self.on_env_step(env, episode, info)
+                *action, action_info = self.get_action(state)
+                state, reward, truncated, terminated, step_info = env.step(action)
+                self.on_env_step(env, episode, timestep, action_info | step_info)
 
                 returns[episode] += reward
                 timestep += 1
@@ -75,7 +75,9 @@ class Agent:
         self.gear_prev = np.zeros((6, 1))
         self.gear_prev[gear] = 1  # TODO make one line
 
-    def on_env_step(self, env: VehicleTracking, episode: int, info: dict):
+    def on_env_step(
+        self, env: VehicleTracking, episode: int, timestep: int, info: dict
+    ):
         self.fuel[episode].append(info["fuel"])
         self.engine_torque[episode].append(info["T_e"])
         self.engine_speed[episode].append(info["w_e"])

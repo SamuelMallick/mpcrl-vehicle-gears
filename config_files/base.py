@@ -5,6 +5,8 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 class Config:
     # -----------general parameters----------------
     N = 5
+    ep_len = 100
+    num_eps = 2
 
     # -----------network parameters----------------
     # hyperparameters
@@ -17,6 +19,8 @@ class Config:
     n_hidden = 64
     n_actions = 3
     n_layers = 2
+    bidirectional = True
+    normalize = True
 
     # exploration
     eps_start = 0.99
