@@ -60,7 +60,9 @@ class DRQN(nn.Module):
         self, input_size, hidden_size, num_actions=3, num_layers=1, bidirectional=False
     ):
         super(DRQN, self).__init__()
-        self.fc = nn.Linear(hidden_size * 2, num_actions)
+        self.fc = nn.Linear(
+            hidden_size * 2 if bidirectional else hidden_size, num_actions
+        )
         self.rnn = nn.RNN(
             input_size,
             hidden_size,
