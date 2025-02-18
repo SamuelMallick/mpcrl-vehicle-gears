@@ -105,13 +105,13 @@ class Agent:
                 )  # +2 because range is exclusive
             ):  # TODO get rid of loop
                 n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-                if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:
+                if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
                     return i
-        else:
-            for i in reversed(range(6)):
-                n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-                if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3:
-                    return i
+
+        for i in reversed(range(6)):
+            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
+            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
+                return i
         raise ValueError("No gear found")
 
 
