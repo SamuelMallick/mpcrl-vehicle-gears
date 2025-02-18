@@ -11,6 +11,10 @@ max_v_per_gear = [
     (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi) / (Vehicle.z_t[i] * Vehicle.z_f * 60)
     for i in range(6)
 ]
+min_v_per_gear = [
+    (Vehicle.w_e_idle * Vehicle.r_r * 2 * np.pi) / (Vehicle.z_t[i] * Vehicle.z_f * 60)
+    for i in range(6)
+]
 
 
 class Agent:
@@ -152,9 +156,16 @@ class Agent:
         -------
         int
             The gear that the vehicle should be in."""
+        if v < Vehicle.v_min or v > Vehicle.v_max:
+            if np.isclose(v, Vehicle.v_min) or np.isclose(v, Vehicle.v_max):
+                v = np.clip(v, Vehicle.v_min, Vehicle.v_max)
+            else:
+                raise ValueError("Velocity out of bounds")
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
             <= Vehicle.w_e_max
+            and (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
+            >= Vehicle.w_e_idle
             for i in range(6)
         ]
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
@@ -212,8 +223,9 @@ class HeuristicGearAgent(Agent):
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            <= Vehicle.w_e_max
-            and F_trac / (Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r) <= Vehicle.T_e_max
+            <= Vehicle.w_e_max + 1e-3
+            and F_trac / (Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r)
+            <= Vehicle.T_e_max + 1e-3
             for i in range(6)
         ]
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
