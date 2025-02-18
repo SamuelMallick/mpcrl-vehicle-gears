@@ -316,7 +316,7 @@ class DQNAgent(Agent):
         -------
         tuple
             The solution to the MPC problem and the explicit gear choice."""
-        gear = self.gear_from_velocity(state[1], self.gear)
+        gear = self.gear_from_velocity(state[1])
         gear_choice_explicit = np.ones((self.N,)) * gear
         gear_choice_binary = self.binary_from_explicit(gear_choice_explicit)
         return (
