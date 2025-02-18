@@ -1,9 +1,11 @@
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
+from mpc import HybridTrackingMpc, TrackingMpc
 from vehicle import Vehicle
 from bisect import bisect_right
 
+# the max velocity allowed by each gear while respecting the engine speed limit
 max_v_per_gear = [
     (Vehicle.w_e_max * Vehicle.r_r * 2 * np.pi) / (Vehicle.z_t[i] * Vehicle.z_f * 60)
     for i in range(6)
@@ -11,6 +13,18 @@ max_v_per_gear = [
 
 
 class Agent:
+    """A base class for agents that control the vehicle. interact with the
+    environment.
+
+    Parameters
+    ----------
+    mpc : Mpc
+        The model predictive controller used to solve the optimization problem.
+        Can be a mixed-integer optimization problem, solving for gears as well
+        as continuous variables, or a parametric optimization problem with the
+        gears as parameters. The specific MPC used depends on the subclass."""
+
+    # data tracked over episodes of training or evaluation
     fuel: list[list[float]] = []
     engine_torque: list[list[float]] = []
     engine_speed: list[list[float]] = []
@@ -23,12 +37,38 @@ class Agent:
         self.mpc = mpc
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        """Get the vehicle action, given its current state.
+
+        Parameters
+        ----------
+        state : np.ndarray
+            The current state of the vehicle, as a numpy array (position, velocity).
+
+        Returns
+        -------
+        tuple[float, float, int, dict]
+            The action to take, as a tuple of the engine torque, braking force, and gear.
+            The action is also accompanied by a dictionary of additional information."""
         raise NotImplementedError
 
     def evaluate(
         self, env: VehicleTracking, episodes: int, seed: int = 0
     ) -> tuple[np.ndarray, dict]:
-        # TODO add docstring
+        """Evaluate the agent on the vehicle tracking environment for a number of episodes.
+
+        Parameters
+        ----------
+        env : VehicleTracking
+            The vehicle tracking environment to evaluate the agent on.
+        episodes : int
+            The number of episodes to evaluate the agent for.
+        seed : int, optional
+            The seed to use for the random number generator, by default 0.
+
+        Returns
+        -------
+        tuple[np.ndarray, dict]
+            The returns for each episode, and a dictionary of additional information."""
 
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
 
@@ -76,9 +116,9 @@ class Agent:
             self.mpc.prediction_horizon + 1
         )
         self.T_e_prev = Vehicle.T_e_idle
-        gear = self.gear_from_velocity(state[1])
+        gear = self.gear_from_velocity(state[1].item())
         self.gear_prev = np.zeros((6, 1))
-        self.gear_prev[gear] = 1  # TODO make one line
+        self.gear_prev[gear] = 1
 
     def on_env_step(
         self, env: VehicleTracking, episode: int, timestep: int, info: dict
@@ -95,7 +135,7 @@ class Agent:
         self.T_e_prev = info["T_e"]
         gear = info["gear"]
         self.gear_prev = np.zeros((6, 1))
-        self.gear_prev[gear] = 1  # TODO make one line
+        self.gear_prev[gear] = 1
 
     def gear_from_velocity(self, v: float) -> int:
         """Get the gear that the vehicle should be in, given its velocity. The gear
@@ -123,6 +163,13 @@ class Agent:
 
 
 class MINLPAgent(Agent):
+    """An agent that uses a mixed-integer nonlinear programming solver to solve
+    the optimization problem. The solver is used to find the optimal engine torque,
+    braking force, and gear for the vehicle."""
+
+    def __init__(self, mpc: HybridTrackingMpc):
+        super().__init__(mpc)
+
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         sol = self.mpc.solve(
             {
@@ -141,9 +188,24 @@ class MINLPAgent(Agent):
 
 
 class HeuristicGearAgent(Agent):
+    """An agent that solves a continuous optimization problem with an approximate
+    model, considering only continuous variables. Then it uses a heuristic to
+    determine the gear to use, based on the engine speed and traction force.
+
+    Parameters
+    ----------
+    mpc : TrackingMpc
+        The model predictive controller used to solve the optimization problem.
+    favour_higher_gears : bool, optional
+        Whether to favour higher gears (lower numbers) when selecting the gear,
+        by default False."""
+
+    def __init__(self, mpc: TrackingMpc, favour_higher_gears: bool = False):
+        self.favour_higher_gears = favour_higher_gears
+        super().__init__(mpc)
 
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
-        for i in range(6):
+        for i in range(6) if self.favour_higher_gears else reversed(range(6)):
             n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
             if (
                 F_trac / n <= Vehicle.T_e_max + 1e-3
@@ -153,8 +215,8 @@ class HeuristicGearAgent(Agent):
         raise ValueError("No gear found")
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
-        # get lowet allowed gear for the given velocity, then use that to limit the traction force
-        idx = bisect_right(max_v_per_gear, state[1])
+        # get highest allowed gear for the given velocity, then use that to limit the traction force
+        idx = bisect_right(max_v_per_gear, state[1].item())
         n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
         F_trac_max = Vehicle.T_e_max * n
 

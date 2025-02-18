@@ -105,7 +105,7 @@ class DQNAgent(Agent):
     ):
         super().__init__(mpc)
         self.train_flag = False
-        self.first_time_step: bool = True  # gets set to True in on_episode_start
+        self.first_timestep: bool = True  # gets set to True in on_episode_start
         self.np_random = np_random
         self.n_gears = 6
 
@@ -191,7 +191,7 @@ class DQNAgent(Agent):
             info dict containing network state and action."""
         # get gears either from heuristic or from expert mpc for first time step
         infeas_flag = False
-        if self.first_time_step:
+        if self.first_timestep:
             nn_state = None
             network_action = None
             if self.expert_mpc:
@@ -213,7 +213,7 @@ class DQNAgent(Agent):
                 gear_choice_binary = self.binary_from_explicit(
                     self.gear_choice_explicit
                 )
-            self.first_time_step = False
+            self.first_timestep = False
         # get gears from network for non-first time steps
         else:
             nn_state = self.relative_state(
@@ -373,7 +373,7 @@ class DQNAgent(Agent):
             print(f"Train: Episode {episode}")
             state, step_info = env.reset(seed=seed)
             self.on_episode_start(state, env)
-            time_step = 0
+            timestep = 0
             terminated = truncated = False
 
             while not (terminated or truncated):
@@ -384,7 +384,7 @@ class DQNAgent(Agent):
                     (T_e, F_b, gear)
                 )
                 returns[episode] += reward
-                self.on_env_step(env, episode, time_step, step_info | action_info)
+                self.on_env_step(env, episode, timestep, step_info | action_info)
 
                 nn_next_state = self.relative_state(
                     self.x,
@@ -418,7 +418,7 @@ class DQNAgent(Agent):
                 self.target_net.load_state_dict(target_net_state_dict)
 
                 self.on_timestep_end(reward + penalty)
-                time_step += 1
+                timestep += 1
 
             if save_freq and episode % save_freq == 0:
                 self.save(env=env, ep=episode, path=save_path)
@@ -537,7 +537,7 @@ class DQNAgent(Agent):
         return super().on_validation_start()
 
     def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
-        self.first_time_step = True
+        self.first_timestep = True
         self.cost.append([])
         self.infeasible.append([])
         # store a default gear based on velocity when episode starts
