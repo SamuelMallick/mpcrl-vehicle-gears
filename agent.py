@@ -1,3 +1,4 @@
+from typing import Literal
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
@@ -196,23 +197,33 @@ class HeuristicGearAgent(Agent):
     ----------
     mpc : TrackingMpc
         The model predictive controller used to solve the optimization problem.
-    favour_higher_gears : bool, optional
-        Whether to favour higher gears (lower numbers) when selecting the gear,
-        by default False."""
+    gear_priority : Literal["low", "high", "mid"], optional
+        The priority of the gear to use, by default "mid". If "low", the agent
+        will favour lower gears, if "high", the agent will favour higher gears,
+        and if "mid", the agent will favour the middle gear that satisfies the
+        engine speed limit."""
 
-    def __init__(self, mpc: TrackingMpc, favour_higher_gears: bool = False):
-        self.favour_higher_gears = favour_higher_gears
+    def __init__(
+        self, mpc: TrackingMpc, gear_priority: Literal["low", "high", "mid"] = "mid"
+    ):
+        self.gear_priority = gear_priority
         super().__init__(mpc)
 
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
-        for i in range(6) if self.favour_higher_gears else reversed(range(6)):
-            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-            if (
-                F_trac / n <= Vehicle.T_e_max + 1e-3
-                and v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max + 1e-3
-            ):
-                return i
-        raise ValueError("No gear found")
+        valid_gears = [
+            (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
+            <= Vehicle.w_e_max
+            and F_trac / (Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r) <= Vehicle.T_e_max
+            for i in range(6)
+        ]
+        valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
+        if not valid_indices:
+            raise ValueError("No gear found")
+        if self.gear_priority == "high":
+            return valid_indices[0]
+        if self.gear_priority == "low":
+            return valid_indices[-1]
+        return valid_indices[len(valid_indices) // 2]
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         # get highest allowed gear for the given velocity, then use that to limit the traction force
