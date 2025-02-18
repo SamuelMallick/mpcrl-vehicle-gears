@@ -142,6 +142,9 @@ class DQNAgent(Agent):
         self.memory = ReplayMemory(self.memory_size)
         self.batch_size = config.batch_size
 
+        # max gradient value to avoid exploding gradients
+        self.max_grad = config.max_grad
+
         # seeded initialization of networks
         seed = np_random.integers(0, 2**32 - 1)
         if self.device.type == "cuda":
@@ -168,7 +171,25 @@ class DQNAgent(Agent):
         )  # amsgrad is a variant of Adam with guaranteed convergence
 
     def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
-        # TODO add docstring after agent doc string is done
+        """Evaluate the agent on the vehicle tracking environment for a number of episodes.
+        If a policy_net_state_dict is provided, the agent will use the weights from that
+        for its policy network.
+
+        Parameters
+        ----------
+        env : VehicleTracking
+            The vehicle tracking environment to evaluate the agent on.
+        episodes : int
+            The number of episodes to evaluate the agent for.
+        seed : int, optional
+            The seed to use for the random number generator, by default 0.
+        policy_net_state_dict : dict, optional
+            The state dictionary of the policy network, by default {}.
+
+        Returns
+        -------
+        tuple[np.ndarray, dict]
+            The returns for each episode, and a dictionary of additional information."""
         if policy_net_state_dict:
             self.policy_net.load_state_dict(policy_net_state_dict)
         return super().evaluate(env, episodes, seed)
@@ -517,9 +538,7 @@ class DQNAgent(Agent):
         self.optimizer.zero_grad()
         loss.backward()
         # In-place gradient clipping
-        torch.nn.utils.clip_grad_value_(
-            self.policy_net.parameters(), 100
-        )  # TODO what is this value?
+        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), self.max_grad)
         self.optimizer.step()
 
     def on_train_start(self):

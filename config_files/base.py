@@ -39,6 +39,8 @@ class ConfigDefault:
     memory_size = 100000
     batch_size = 128
 
+    max_grad = 100
+
     def __init__(self, sim_type: str):
         # used for generating gears at first time step of episodes
         if sim_type == "minlp_mpc":
