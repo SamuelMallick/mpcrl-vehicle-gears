@@ -12,7 +12,6 @@ def plot_training(
     log_scales: bool = False,
     only_averages: bool = False,
 ):
-    # TODO add docstring
     fig, ax = plt.subplots(5, 1, sharex=True)
     if not only_averages:
         ax[0].plot(cost)
@@ -58,7 +57,6 @@ def plot_evaluation(
     w_e: np.ndarray,
     infeasible: np.ndarray | None = None,
 ):
-    # TODO add docstring
     fig, ax = plt.subplots(5, 1, sharex=True)
     ax[0].plot(x_ref[:, 0] - X[:-1, 0])
     ax[0].set_ylabel("d_e (m)")

@@ -44,7 +44,6 @@ class ConfigDefault:
     def __init__(self, sim_type: str):
         # used for generating gears at first time step of episodes
         if sim_type == "minlp_mpc":
-            # TODO: check if there are other cases that should be handled here
             self.expert_mpc = None
         else:
             self.expert_mpc = SolverTimeRecorder(
