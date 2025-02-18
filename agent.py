@@ -97,22 +97,29 @@ class Agent:
         self.gear_prev = np.zeros((6, 1))
         self.gear_prev[gear] = 1  # TODO make one line
 
-    def gear_from_velocity(self, v: float, current_gear: int | None = None) -> int:
-        if current_gear is not None:
-            for i in reversed(
-                range(
-                    max(current_gear - 1, 0), min(current_gear + 2, 6)
-                )  # +2 because range is exclusive
-            ):  # TODO get rid of loop
-                n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-                if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
-                    return i
+    def gear_from_velocity(self, v: float) -> int:
+        """Get the gear that the vehicle should be in, given its velocity. The gear
+        is chosen such that the engine speed limit is not exceeded. The gear is
+        chosen as the middle gear that satisfies the engine speed limit.
 
-        for i in reversed(range(6)):
-            n = Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r
-            if v * n * 60 / (2 * np.pi) <= Vehicle.w_e_max:
-                return i
-        raise ValueError("No gear found")
+        Parameters
+        ----------
+        v : float
+            The velocity of the vehicle.
+
+        Returns
+        -------
+        int
+            The gear that the vehicle should be in."""
+        valid_gears = [
+            (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
+            <= Vehicle.w_e_max
+            for i in range(6)
+        ]
+        valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
+        if not valid_indices:
+            raise ValueError("No gear found")
+        return valid_indices[len(valid_indices) // 2]
 
 
 class MINLPAgent(Agent):
