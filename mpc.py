@@ -397,8 +397,14 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
         )
+        w_e_plus, _, _ = self.variable(
+            "w_e_plus", (1, prediction_horizon - 1), lb=w_e_idle, ub=w_e_max
+        )
         n = (z_f / r_r) * sum([z_t[i] * gear[i, :] for i in range(6)])
         self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
+        self.constraint(
+            "engine_speed_plus", w_e_plus, "==", x[1, 1:-1] * n[:-1] * 60 / (2 * np.pi)
+        )
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
 
