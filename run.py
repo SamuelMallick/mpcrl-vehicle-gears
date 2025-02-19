@@ -54,7 +54,12 @@ env = MonitorEpisodes(
 )
 np_random = np.random.default_rng(seed)
 
-if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval" or sim_type == "sl_data":
+if (
+    sim_type == "rl_mpc_train"
+    or sim_type == "rl_mpc_eval"
+    or sim_type == "sl_data"
+    or sim_type == "sl_train"
+):
     mpc = SolverTimeRecorder(
         HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
     )
@@ -74,15 +79,15 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval" or sim_type == "sl_da
         )
     elif sim_type == "rl_mpc_eval":
         state_dict = torch.load(
-            "results/N_5_prev_slope_and_IC/policy_net_ep_49999.pth",
+            "results/policy_net_supervised_100.pth",
             weights_only=True,
             map_location="cpu",
         )
         returns, info = agent.evaluate(
             env, episodes=num_eval_eps, policy_net_state_dict=state_dict, seed=seed
         )
-    else:
-        num_data_gather_eps = 100
+    elif sim_type == "sl_data":
+        num_data_gather_eps = 1000
         nn_inputs, nn_targets = agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
@@ -98,6 +103,12 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval" or sim_type == "sl_da
             f"results/{config.id}_nn_targets_{num_data_gather_eps}.pkl", "wb"
         ) as f:
             pickle.dump(nn_targets, f)
+    else:
+        with open(f"results/{config.id}_nn_inputs_100.pkl", "rb") as f:
+            nn_inputs = pickle.load(f)
+        with open(f"results/{config.id}_nn_targets_100.pkl", "rb") as f:
+            nn_targets = pickle.load(f)
+        agent.train_supervised(nn_inputs, nn_targets, train_epochs=1000)
 
 elif sim_type == "miqp_mpc":
     mpc = SolverTimeRecorder(

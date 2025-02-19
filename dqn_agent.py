@@ -170,6 +170,50 @@ class DQNAgent(Agent):
             self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
         )  # amsgrad is a variant of Adam with guaranteed convergence
 
+    def train_supervised(
+        self,
+        nn_inputs: torch.Tensor,
+        nn_targets: torch.Tensor,
+        batch_size: int = 128,
+        train_epochs: int = 100,
+    ):
+        # TODO add docstring and outputs
+        self.policy_net.to(self.device)
+        self.policy_net.train()  # set model to training mode
+        nn_targets = torch.argmax(nn_targets, 3)
+        s_train_tensor = torch.tensor(
+            nn_inputs.reshape(-1, nn_inputs.shape[2], nn_inputs.shape[3]),
+            dtype=torch.float32,
+        ).to(self.device)
+        a_train_tensor = torch.tensor(
+            nn_targets.reshape(-1, nn_targets.shape[2]), dtype=torch.long
+        ).to(self.device)
+        dataset = TensorDataset(s_train_tensor, a_train_tensor)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        loss_history = np.empty(train_epochs, dtype=float)
+        criterion = nn.CrossEntropyLoss()
+
+        start_time = time.time()
+        for epoch in range(train_epochs):
+            running_loss = 0.0
+            for inputs, labels in dataloader:
+                self.optimizer.zero_grad()
+                # Forward pass
+                outputs = self.policy_net(inputs)
+                # Compute loss
+                loss = criterion(outputs.transpose(1, 2), labels)
+                # Backward pass
+                loss.backward()
+                # Update weights
+                self.optimizer.step()
+                running_loss += loss.item()
+            loss_history[epoch] = running_loss
+            print(f"Epoch [{epoch+1}/{train_epochs}], Loss: {running_loss}")
+        end_time = time.time()
+        print(f"NN training took {end_time-start_time} seconds")
+        torch.save(self.policy_net.state_dict(), f"policy_net_ep_{train_epochs}.pth")
+        return running_loss, loss_history
+
     def generate_supervised_data(
         self,
         env: VehicleTracking,
