@@ -19,12 +19,12 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = True
-PLOT = False
+SAVE = False
+PLOT = True
 
 sim_type: Literal[
-    "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "rl_mpc_train"
+    "sl_data", "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
+] = "sl_data"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -38,7 +38,7 @@ else:
 
 vehicle = Vehicle()
 ep_length = config.ep_len
-num_eval_eps = 1
+num_eval_eps = 100
 N = config.N
 seed = 0
 env = MonitorEpisodes(
@@ -54,7 +54,7 @@ env = MonitorEpisodes(
 )
 np_random = np.random.default_rng(seed)
 
-if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval" or sim_type == "sl_data":
     mpc = SolverTimeRecorder(
         HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
     )
@@ -72,7 +72,7 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             save_path=f"results/{config.id}",
             seed=seed,
         )
-    else:
+    elif sim_type == "rl_mpc_eval":
         state_dict = torch.load(
             "results/N_5_prev_slope_and_IC/policy_net_ep_49999.pth",
             weights_only=True,
@@ -81,6 +81,23 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
         returns, info = agent.evaluate(
             env, episodes=num_eval_eps, policy_net_state_dict=state_dict, seed=seed
         )
+    else:
+        num_data_gather_eps = 100
+        nn_inputs, nn_targets = agent.generate_supervised_data(
+            env,
+            episodes=num_data_gather_eps,
+            ep_len=ep_length,
+            mpc=config.expert_mpc,
+            seed=seed,
+        )
+        with open(
+            f"results/{config.id}_nn_inputs_{num_data_gather_eps}.pkl", "wb"
+        ) as f:
+            pickle.dump(nn_inputs, f)
+        with open(
+            f"results/{config.id}_nn_targets_{num_data_gather_eps}.pkl", "wb"
+        ) as f:
+            pickle.dump(nn_targets, f)
 
 elif sim_type == "miqp_mpc":
     mpc = SolverTimeRecorder(
@@ -100,7 +117,7 @@ elif sim_type == "minlp_mpc":
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
-    agent = HeuristicGearAgent(mpc)
+    agent = HeuristicGearAgent(mpc, gear_priority="high")
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 
 
@@ -121,7 +138,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"results/evaluations/{sim_type}_N_{N}.pkl", "wb") as f:
+    with open(f"results/{sim_type}_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,

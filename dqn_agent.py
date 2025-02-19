@@ -170,6 +170,78 @@ class DQNAgent(Agent):
             self.policy_net.parameters(), lr=self.learning_rate, amsgrad=True
         )  # amsgrad is a variant of Adam with guaranteed convergence
 
+    def generate_supervised_data(
+        self,
+        env: VehicleTracking,
+        episodes: int,
+        ep_len: int,
+        mpc: HybridTrackingMpc,
+        seed: int = 0,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        # TODO docstring
+        seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
+
+        # self.reset()
+        nn_inputs = torch.empty(
+            (episodes, ep_len - 1, self.N, self.n_states)
+        )  # -1 because the first state is not used
+        nn_targets = torch.empty((episodes, ep_len - 1, self.N, self.n_actions))
+        self.on_validation_start()
+
+        for episode, seed in zip(range(episodes), seeds):
+            print(f"Supervised data: Episode {episode}")
+            state, _ = env.reset(seed=seed)
+            truncated, terminated, timestep = False, False, 0
+            self.on_episode_start(state, env)
+
+            while not (truncated or terminated):
+                sol = mpc.solve(
+                    {
+                        "x_0": state,
+                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                        "T_e_prev": self.T_e_prev,
+                        "gear_prev": self.gear_prev,
+                    }
+                )
+                if not sol.success:
+                    raise ValueError("MPC failed to solve")
+                if timestep != 0:
+                    optimal_gears = np.insert(
+                        np.argmax(sol.vals["gear"].full(), 0), 0, self.gear
+                    )
+                    gear_shift = optimal_gears[1:] - optimal_gears[:-1]
+                    action = torch.zeros((self.N, self.n_actions), dtype=torch.float32)
+                    action[range(self.N), gear_shift + 1] = 1
+                    nn_inputs[episode, timestep - 1] = nn_state
+                    nn_targets[episode, timestep - 1] = action
+                    # here calculate the gear shift signal from the current gear choice and the optimized gears
+                self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
+                nn_state = self.relative_state(
+                    self.x,
+                    self.T_e,
+                    self.F_b,
+                    self.w_e,
+                    torch.from_numpy(np.argmax(sol.vals["gear"].full(), 0))
+                    .unsqueeze(1)
+                    .to(self.device),
+                )
+                self.gear = int(np.argmax(sol.vals["gear"].full(), 0)[0])
+                action = (
+                    sol.vals["T_e"].full()[0, 0],
+                    sol.vals["F_b"].full()[0, 0],
+                    self.gear,
+                )
+                state, reward, truncated, terminated, step_info = env.step(action)
+                self.on_env_step(env, episode, timestep, step_info)
+
+                timestep += 1
+                # self.on_timestep_end()
+
+            # self.on_episode_end()
+
+        # self.on_validation_end()
+        return nn_inputs, nn_targets
+
     def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
         If a policy_net_state_dict is provided, the agent will use the weights from that
@@ -576,7 +648,8 @@ class DQNAgent(Agent):
             self.velocity_error[episode, timestep] = (
                 self.x[0, 1].cpu() - self.x_ref_predicition[0, 1]
             ).item()
-        self.infeasible[-1].append(info["infeas"])
+        if "infeas" in info:
+            self.infeasible[-1].append(info["infeas"])
         return super().on_env_step(env, episode, timestep, info)
 
     def relative_state(
