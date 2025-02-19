@@ -175,13 +175,18 @@ class HybridTrackingMpc(Mpc):
         gear, _ = self.action("gear", 6, discrete=True, lb=0, ub=1)
         gear_prev = self.parameter("gear_prev", (6, 1))
         self.constraint("gear_constraint", cs.sum1(gear), "==", 1)
-        # self.constraint("gear_shift_constraint", A @ gear[:, :-1], ">=", gear[:, 1:])
         self.constraint(
             "gear_shift_constraint", A @ cs.horzcat(gear_prev, gear[:, :-1]), ">=", gear
         )
 
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
+        )
+        # w_e_plus is an auxillary variable to check that the engine speed
+        # constraints are satisfied at the next time step, such that they
+        # are constrained between timesteps aswell
+        w_e_plus, _, _ = self.variable(
+            "w_e_plus", (1, prediction_horizon - 1), lb=w_e_idle, ub=w_e_max
         )
 
         if (
@@ -226,7 +231,7 @@ class HybridTrackingMpc(Mpc):
 
             for i in range(6):
                 n_i = z_f * z_t[i] / r_r
-                # the following two constraints enforce the relation w_e = n[i] * v
+                # the following two constraints enforce the relation w_e[k] = n[k] * v[k]
                 self.constraint(
                     f"engine_speed_gear_{i}_1",
                     w_e + (1 - gear[i, :]) * (n_i * v_max * 60 / (2 * np.pi)),
@@ -239,6 +244,21 @@ class HybridTrackingMpc(Mpc):
                     "<=",
                     n_i * x[1, :-1] * 60 / (2 * np.pi),
                 )
+                if i < 5:
+                    # the following two constraints enforce the relation w_e_plus[k+1] = n[k] * v[k+1]
+                    self.constraint(
+                        f"engine_speed_plus_gear_{i}_1",
+                        w_e_plus
+                        + (1 - gear[i, :-1]) * (n_i * v_max * 60 / (2 * np.pi)),
+                        ">=",
+                        n_i * x[1, 1:-1] * 60 / (2 * np.pi),
+                    )
+                    self.constraint(
+                        f"engine_speed_plus_gear_{i}_2",
+                        w_e_plus + (1 - gear[i, :-1]) * (-w_e_max),
+                        "<=",
+                        n_i * x[1, 1:-1] * 60 / (2 * np.pi),
+                    )
                 # the following two constraints enforce the relation T_e * n[i] = F_r + F_b
                 self.constraint(
                     f"dynam_gear_{i}_1",
@@ -255,6 +275,12 @@ class HybridTrackingMpc(Mpc):
         else:
             n = (z_f / r_r) * sum([z_t[i] * gear[i, :] for i in range(6)])
             self.constraint("engine_speed", w_e, "==", x[1, :-1] * n * 60 / (2 * np.pi))
+            self.constraint(
+                "engine_speed_plus",
+                w_e_plus,
+                "==",
+                x[1, 1:-1] * n[:, :-1] * 60 / (2 * np.pi),
+            )
             self.set_nonlinear_dynamics(
                 lambda x, u: nonlinear_hybrid_model(x, u, dt, 0)
             )
