@@ -310,7 +310,8 @@ class DQNAgent(Agent):
             The returns for each episode, and a dictionary of additional information."""
         if policy_net_state_dict:
             self.policy_net.load_state_dict(policy_net_state_dict)
-        return super().evaluate(env, episodes, seed)
+        returns, info = super().evaluate(env, episodes, seed)
+        return returns, {**info, "infeasible": self.infeasible}
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the MPC action for the given state. Gears are chosen by
@@ -564,7 +565,7 @@ class DQNAgent(Agent):
 
         print("Training complete")
         self.save(env=env, ep=episode, path=save_path)
-        return returns, {
+        info = {
             "fuel": self.fuel,
             "T_e": self.engine_torque,
             "w_e": self.engine_speed,
@@ -572,6 +573,14 @@ class DQNAgent(Agent):
             "cost": self.cost,
             "infeasible": self.infeasible,
         }
+        if self.normalize:
+            info["normalization"] = (
+                np.mean(self.position_error),
+                np.std(self.position_error),
+                np.mean(self.velocity_error),
+                np.std(self.velocity_error),
+            )
+        return returns, info
 
     def network_action(self, state: torch.Tensor) -> torch.Tensor:
         """Get the action from the policy network for the given state.
@@ -733,19 +742,27 @@ class DQNAgent(Agent):
     def save(self, env: VehicleTracking, ep: int, path: str = ""):
         torch.save(self.policy_net.state_dict(), path + f"/policy_net_ep_{ep}.pth")
         torch.save(self.target_net.state_dict(), path + f"/target_net_ep_{ep}.pth")
+        info = {
+            "cost": self.cost,
+            "fuel": self.fuel,
+            "T_e": self.engine_torque,
+            "w_e": self.engine_speed,
+            "x_ref": self.x_ref,
+            "infeasible": self.infeasible,
+            "R": list(env.rewards),
+            "X": list(env.observations),
+            "U": list(env.actions),
+        }
+        if self.normalize:
+            info["normalization"] = (
+                np.mean(self.position_error),
+                np.std(self.position_error),
+                np.mean(self.velocity_error),
+                np.std(self.velocity),
+            )
         with open(path + f"/data_ep_{ep}.pkl", "wb") as f:
             pickle.dump(
-                {
-                    "cost": self.cost,
-                    "fuel": self.fuel,
-                    "T_e": self.engine_torque,
-                    "w_e": self.engine_speed,
-                    "x_ref": self.x_ref,
-                    "infeasible": self.infeasible,
-                    "R": list(env.rewards),
-                    "X": list(env.observations),
-                    "U": list(env.actions),
-                },
+                info,
                 f,
             )
 

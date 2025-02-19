@@ -221,6 +221,7 @@ class HeuristicGearAgent(Agent):
         super().__init__(mpc)
 
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
+        # TODO enforce gear switch of only 1
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
             <= Vehicle.w_e_max + 1e-3

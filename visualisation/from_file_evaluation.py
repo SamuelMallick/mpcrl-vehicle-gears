@@ -4,11 +4,13 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-type = "rl_mpc_eval"
+# type = "heuristic_mpc_high"
+type = "supervised_rl_mpc_eval"
 baseline_type = "miqp_mpc"
 N = 5
-file_name = f"results/evaluations/easy_{type}_N_{N}.pkl"
-baseline_file_name = f"results/evaluations/easy_{baseline_type}_N_{N}.pkl"
+config = "c_1"
+file_name = f"results/evaluations/{type}_N_{N}_{config}.pkl"
+baseline_file_name = f"results/evaluations/{baseline_type}_N_{N}_{config}.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 with open(baseline_file_name, "rb") as f:

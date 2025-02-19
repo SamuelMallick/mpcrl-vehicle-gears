@@ -469,6 +469,7 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
             raise ValueError("More than one gear selected for a time step.")
         vals0 = {
             "w_e": np.full((1, self.prediction_horizon), w_e_idle),
+            "w_e_plus": np.full((1, self.prediction_horizon - 1), w_e_idle),
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
         }
         return self.nlp.solve(pars, vals0)

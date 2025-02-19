@@ -19,12 +19,18 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = False
-PLOT = True
+SAVE = True
+PLOT = False
 
 sim_type: Literal[
-    "sl_data", "rl_mpc_train", "rl_mpc_eval", "miqp_mpc", "minlp_mpc", "heuristic_mpc"
-] = "sl_data"
+    "sl_train",
+    "sl_data",
+    "rl_mpc_train",
+    "rl_mpc_eval",
+    "miqp_mpc",
+    "minlp_mpc",
+    "heuristic_mpc",
+] = "miqp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -32,7 +38,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c2 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -136,7 +142,7 @@ fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
 x_ref = info["x_ref"]
-if sim_type == "rl_mpc_train":
+if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     cost = info["cost"]
     infeasible = info["infeasible"]
 
