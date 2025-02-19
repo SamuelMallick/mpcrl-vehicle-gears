@@ -175,10 +175,10 @@ class HybridTrackingMpc(Mpc):
         gear, _ = self.action("gear", 6, discrete=True, lb=0, ub=1)
         gear_prev = self.parameter("gear_prev", (6, 1))
         self.constraint("gear_constraint", cs.sum1(gear), "==", 1)
-        self.constraint("gear_shift_constraint", A @ gear[:, :-1], ">=", gear[:, 1:])
-        # self.constraint(
-        #     "gear_shift_constraint", A @ cs.horzcat(gear_prev, gear[:, :-1]), ">=", gear
-        # )
+        # self.constraint("gear_shift_constraint", A @ gear[:, :-1], ">=", gear[:, 1:])
+        self.constraint(
+            "gear_shift_constraint", A @ cs.horzcat(gear_prev, gear[:, :-1]), ">=", gear
+        )
 
         w_e, _, _ = self.variable(
             "w_e", (1, prediction_horizon), lb=w_e_idle, ub=w_e_max
