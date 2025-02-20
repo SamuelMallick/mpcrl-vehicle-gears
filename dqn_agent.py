@@ -231,7 +231,9 @@ class DQNAgent(Agent):
         nn_inputs = torch.empty(
             (episodes, ep_len - 1, self.N, self.n_states)
         )  # -1 because the first state is not used
-        nn_targets = torch.empty((episodes, ep_len - 1, self.N, self.n_actions))
+        nn_targets = torch.empty(
+            (episodes, ep_len - 1, self.N, self.n_actions)
+        )  # indicate data type
         self.on_validation_start()
 
         for episode, seed in zip(range(episodes), seeds):

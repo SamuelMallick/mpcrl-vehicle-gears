@@ -4,7 +4,7 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/N_5_expert_mpc/data_ep_66000.pkl"
+file_name = "results/1/data_ep_42000.pkl"
 # file_name = "results/N_5/data_ep_49999.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
@@ -20,7 +20,8 @@ engine_speed = data["w_e"]
 if "infeasible" in data:
     infeasible = data["infeasible"]
 
-for ep in range(62000, 63000):
+# for ep in range(35212, 35219):
+for ep in range(13555, 13565):
     # ep = 32667
     plot_evaluation(
         x_ref[ep],
@@ -39,7 +40,7 @@ plot_training(
     [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
     [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
     [sum(R[i]) for i in range(len(R))],
-    only_averages=True,
-    log_scales=True,
-    average_interval=1000,
+    only_averages=False,
+    log_scales=False,
+    average_interval=100,
 )

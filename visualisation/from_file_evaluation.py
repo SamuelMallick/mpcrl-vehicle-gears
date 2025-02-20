@@ -4,11 +4,12 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-# type = "heuristic_mpc_high"
-type = "supervised_rl_mpc_eval"
+type = "heuristic_mpc_low"
+# type = "supervised_rl_mpc_eval"
+# type = "rl_mpc_eval"
 baseline_type = "miqp_mpc"
 N = 5
-config = "c_1"
+config = "c_2"
 file_name = f"results/evaluations/{type}_N_{N}_{config}.pkl"
 baseline_file_name = f"results/evaluations/{baseline_type}_N_{N}_{config}.pkl"
 with open(file_name, "rb") as f:

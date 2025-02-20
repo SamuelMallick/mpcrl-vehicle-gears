@@ -30,7 +30,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "miqp_mpc"
+] = "sl_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -38,7 +38,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c2 import Config  # type: ignore
+    from config_files.c1 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -85,7 +85,7 @@ if (
         )
     elif sim_type == "rl_mpc_eval":
         state_dict = torch.load(
-            "results/policy_net_supervised_100.pth",
+            f"results/{config.id}/policy_net_ep_27000.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -110,9 +110,9 @@ if (
         ) as f:
             pickle.dump(nn_targets, f)
     else:
-        with open(f"results/{config.id}_nn_inputs_100.pkl", "rb") as f:
+        with open(f"results/{config.id}_nn_inputs_1000.pkl", "rb") as f:
             nn_inputs = pickle.load(f)
-        with open(f"results/{config.id}_nn_targets_100.pkl", "rb") as f:
+        with open(f"results/{config.id}_nn_targets_1000.pkl", "rb") as f:
             nn_targets = pickle.load(f)
         agent.train_supervised(nn_inputs, nn_targets, train_epochs=1000)
 
@@ -134,7 +134,7 @@ elif sim_type == "minlp_mpc":
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
-    agent = HeuristicGearAgent(mpc, gear_priority="high")
+    agent = HeuristicGearAgent(mpc, gear_priority="low")
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 
 
@@ -142,8 +142,9 @@ fuel = info["fuel"]
 engine_torque = info["T_e"]
 engine_speed = info["w_e"]
 x_ref = info["x_ref"]
-if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+if "cost" in info:
     cost = info["cost"]
+if "infeasible" in info:
     infeasible = info["infeasible"]
 
 X = list(env.observations)
@@ -155,7 +156,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"results/{sim_type}_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"results/{sim_type}_low_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
