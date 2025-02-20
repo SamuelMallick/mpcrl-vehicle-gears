@@ -93,13 +93,15 @@ if (
             env, episodes=num_eval_eps, policy_net_state_dict=state_dict, seed=seed
         )
     elif sim_type == "sl_data":
-        num_data_gather_eps = 1000
+        num_data_gather_eps = 10000
         nn_inputs, nn_targets = agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
             ep_len=ep_length,
             mpc=config.expert_mpc,
             seed=seed,
+            save_path=f"results/{config.id}",
+            save_freq=1000,
         )
         with open(
             f"results/{config.id}_nn_inputs_{num_data_gather_eps}.pkl", "wb"
@@ -114,7 +116,9 @@ if (
             nn_inputs = pickle.load(f)
         with open(f"results/{config.id}_nn_targets_1000.pkl", "rb") as f:
             nn_targets = pickle.load(f)
-        agent.train_supervised(nn_inputs, nn_targets, train_epochs=1000)
+        running_loss, loss_history = agent.train_supervised(nn_inputs, nn_targets, train_epochs=5000)
+        with open(f"results/{config.id}_loss_history_5000.pkl", "wb") as f:
+            pickle.dump(loss_history, f)
 
 elif sim_type == "miqp_mpc":
     mpc = SolverTimeRecorder(

@@ -222,6 +222,8 @@ class DQNAgent(Agent):
         episodes: int,
         ep_len: int,
         mpc: HybridTrackingMpc,
+        save_path: str,
+        save_freq: int = 1000,
         seed: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         # TODO docstring
@@ -237,6 +239,15 @@ class DQNAgent(Agent):
         self.on_validation_start()
 
         for episode, seed in zip(range(episodes), seeds):
+            if episode % save_freq == 0:
+                with open(
+                    f"{save_path}_nn_inputs_{episode}.pkl", "wb"
+                ) as f:
+                    pickle.dump(nn_inputs, f)
+                with open(
+                    f"{save_path}_nn_targets_{episode}.pkl", "wb"
+                ) as f:
+                    pickle.dump(nn_targets, f)
             print(f"Supervised data: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0

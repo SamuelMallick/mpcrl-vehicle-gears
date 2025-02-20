@@ -20,14 +20,14 @@ class Config(ConfigDefault):
     # -----------network parameters----------------
     # hyperparameters
     gamma = 0.9
-    learning_rate = 0.001
+    learning_rate = 0.0001
     tau = 0.001
 
     # archticeture
     n_states = 7
-    n_hidden = 64
+    n_hidden = 256
     n_actions = 3
-    n_layers = 2
+    n_layers = 4
     bidirectional = True
     normalize = False
 
