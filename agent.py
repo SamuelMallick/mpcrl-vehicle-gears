@@ -57,7 +57,7 @@ class Agent:
         raise NotImplementedError
 
     def evaluate(
-        self, env: VehicleTracking, episodes: int, seed: int = 0
+        self, env: VehicleTracking, episodes: int, seed: int = 0, allow_failure: bool = False
     ) -> tuple[np.ndarray, dict]:
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
 
@@ -69,6 +69,10 @@ class Agent:
             The number of episodes to evaluate the agent for.
         seed : int, optional
             The seed to use for the random number generator, by default 0.
+        allow_failure : bool, optional
+            If allowed, a failure will cause the episode to be skipped. A 
+            list of non-failed episodes will be returned in the
+            info dict, by default False.
 
         Returns
         -------
@@ -76,6 +80,8 @@ class Agent:
             The returns for each episode, and a dictionary of additional information."""
 
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
+        if allow_failure:
+            valid_episodes = [i for i in range(episodes)]
 
         # self.reset()
         returns = np.zeros(episodes)
@@ -88,7 +94,14 @@ class Agent:
             self.on_episode_start(state, env)
 
             while not (truncated or terminated):
-                *action, action_info = self.get_action(state)
+                if allow_failure:
+                    try:
+                        *action, action_info = self.get_action(state)
+                    except:
+                        valid_episodes.remove(episode)
+                        break
+                else:
+                    *action, action_info = self.get_action(state)
                 state, reward, truncated, terminated, step_info = env.step(action)
                 self.on_env_step(env, episode, timestep, action_info | step_info)
 
@@ -99,12 +112,15 @@ class Agent:
             # self.on_episode_end()
 
         # self.on_validation_end()
-        return returns, {
+        info = {
             "fuel": self.fuel,
             "T_e": self.engine_torque,
             "w_e": self.engine_speed,
             "x_ref": self.x_ref,
         }
+        if allow_failure:
+            info["valid_episodes"] = valid_episodes
+        return returns, info
 
     def on_validation_start(self):
         self.fuel = []
