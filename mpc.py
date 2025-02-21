@@ -65,7 +65,7 @@ np.fill_diagonal(A[:, 1:], 1)
 
 # cost matrix for tracking
 Q = cs.diag([1, 0.1])
-gamma = 0.1  # weight for tracking in cost
+gamma = 0.01  # weight for tracking in cost
 
 
 def nonlinear_hybrid_model(x: cs.SX, u: cs.SX, dt: float, alpha: float) -> cs.SX:
@@ -316,13 +316,15 @@ class HybridTrackingMpc(Mpc):
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
         self.minimize(
-            sum(
+            gamma
+            * sum(
                 [
                     cs.mtimes([(x[:, i] - x_ref[:, i]).T, Q, x[:, i] - x_ref[:, i]])
                     for i in range(prediction_horizon + 1)
                 ]
             )
             + fuel_cost
+            # + sum(0.01 * F_b[i] for i in range(prediction_horizon))
         )
         if (
             convexify_dynamics
@@ -447,7 +449,8 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
             fuel_cost = 0
 
         self.minimize(
-            sum(
+            gamma
+            * sum(
                 [
                     cs.mtimes([(x[:, i] - x_ref[:, i]).T, Q, x[:, i] - x_ref[:, i]])
                     for i in range(prediction_horizon + 1)
@@ -505,7 +508,8 @@ class TrackingMpc(Mpc):
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
         self.set_nonlinear_dynamics(lambda x, u: nonlinear_model(x, u, dt, 0))
         self.minimize(
-            sum(
+            gamma
+            * sum(
                 [
                     cs.mtimes([(x[:, i] - x_ref[:, i]).T, Q, x[:, i] - x_ref[:, i]])
                     for i in range(prediction_horizon + 1)

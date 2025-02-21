@@ -25,7 +25,7 @@ class VehicleTracking(gym.Env):
     ts = 1  # sample time (s)
     alpha = 0  # road inclination (rad)
 
-    gamma = 0.1  # weight for tracking in cost
+    gamma = 0.01  # weight for tracking in cost
     Q = np.array([[1, 0], [0, 0.1]])  # tracking cost weight
 
     def __init__(
@@ -116,7 +116,7 @@ class VehicleTracking(gym.Env):
                 self.np_random.integers(0, len - 1, size=n_segments - 1)
             )
             change_points = np.concatenate(([0], intermediate_change_points, [len - 1]))
-            v_clip_range = [5, 35]
+            v_clip_range = [5, 28]  # 18 - 100 km/h
 
             # generate initial conditions and acceleration profiles
             if trajectory_type == "type_2":
