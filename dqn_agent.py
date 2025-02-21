@@ -240,13 +240,9 @@ class DQNAgent(Agent):
 
         for episode, seed in zip(range(episodes), seeds):
             if episode % save_freq == 0:
-                with open(
-                    f"{save_path}_nn_inputs_{episode}.pkl", "wb"
-                ) as f:
+                with open(f"{save_path}_nn_inputs_{episode}.pkl", "wb") as f:
                     pickle.dump(nn_inputs, f)
-                with open(
-                    f"{save_path}_nn_targets_{episode}.pkl", "wb"
-                ) as f:
+                with open(f"{save_path}_nn_targets_{episode}.pkl", "wb") as f:
                     pickle.dump(nn_targets, f)
             print(f"Supervised data: Episode {episode}")
             state, _ = env.reset(seed=seed)
@@ -265,15 +261,23 @@ class DQNAgent(Agent):
                 if not sol.success:
                     raise ValueError("MPC failed to solve")
                 if timestep != 0:
-                    optimal_gears = np.insert(
-                        np.argmax(sol.vals["gear"].full(), 0), 0, self.gear
-                    )
-                    gear_shift = optimal_gears[1:] - optimal_gears[:-1]
-                    action = torch.zeros((self.N, self.n_actions), dtype=torch.float32)
-                    action[range(self.N), gear_shift + 1] = 1
+                    if self.n_actions == 3:
+                        optimal_gears = np.insert(
+                            np.argmax(sol.vals["gear"].full(), 0), 0, self.gear
+                        )
+                        gear_shift = optimal_gears[1:] - optimal_gears[:-1]
+                        action = torch.zeros(
+                            (self.N, self.n_actions), dtype=torch.float32
+                        )
+                        action[range(self.N), gear_shift + 1] = 1
+                    elif self.n_actions == 6:
+                        optimal_gears = np.argmax(sol.vals["gear"].full(), 0)
+                        action = torch.zeros(
+                            (self.N, self.n_actions), dtype=torch.float32
+                        )
+                        action[range(self.N), optimal_gears] = 1
                     nn_inputs[episode, timestep - 1] = nn_state
                     nn_targets[episode, timestep - 1] = action
-                    # here calculate the gear shift signal from the current gear choice and the optimized gears
                 self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
                 nn_state = self.relative_state(
                     self.x,
@@ -323,6 +327,7 @@ class DQNAgent(Agent):
             The returns for each episode, and a dictionary of additional information."""
         if policy_net_state_dict:
             self.policy_net.load_state_dict(policy_net_state_dict)
+        self.policy_net.eval()
         returns, info = super().evaluate(env, episodes, seed)
         return returns, {**info, "infeasible": self.infeasible}
 
@@ -799,11 +804,14 @@ class DQNAgent(Agent):
         self, nn_state: torch.Tensor
     ) -> tuple[np.ndarray, torch.Tensor]:
         network_action = self.network_action(nn_state)
-        gear_shift = (network_action - 1).cpu().numpy()
-        self.gear_choice_explicit = np.array(
-            [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
-        )
-        self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
+        if self.n_actions == 3:
+            gear_shift = (network_action - 1).cpu().numpy()
+            self.gear_choice_explicit = np.array(
+                [self.gear + np.sum(gear_shift[:, : i + 1]) for i in range(self.N)]
+            )
+            self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
+        elif self.n_actions == 6:
+            self.gear_choice_explicit = network_action.cpu().numpy()
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_vals_from_sol(
