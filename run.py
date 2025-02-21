@@ -30,7 +30,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "minlp_mpc"
+] = "sl_data"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -38,7 +38,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c7 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -101,7 +101,7 @@ if (
             mpc=config.expert_mpc,
             seed=seed,
             save_path=f"results/{config.id}",
-            save_freq=1000,
+            save_freq=100,
         )
         with open(
             f"results/{config.id}_nn_inputs_{num_data_gather_eps}.pkl", "wb"
