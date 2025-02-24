@@ -15,7 +15,7 @@ class Config(ConfigDefault):
     N = 15
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_3"
+    trajectory_type = "type_2"
 
     # -----------network parameters----------------
     # hyperparameters
@@ -25,7 +25,7 @@ class Config(ConfigDefault):
 
     # archticeture
     n_hidden = 256
-    n_actions = 3
+    n_actions = 6
     n_layers = 4
     bidirectional = True
     normalize = False

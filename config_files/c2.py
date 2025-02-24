@@ -1,3 +1,5 @@
+import os
+import sys
 from mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import os, sys
@@ -7,9 +9,7 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    # config with type 2 trajectory
-
-    id = "2"
+    id = "2"  # 1 but with shift actions
 
     # -----------general parameters----------------
     N = 15
@@ -20,12 +20,12 @@ class Config(ConfigDefault):
     # -----------network parameters----------------
     # hyperparameters
     gamma = 0.9
-    learning_rate = 0.001
+    learning_rate = 0.0001
     tau = 0.001
 
     # archticeture
     n_hidden = 256
-    n_actions = 6
+    n_actions = 3
     n_layers = 4
     bidirectional = True
     normalize = False
@@ -42,10 +42,16 @@ class Config(ConfigDefault):
     memory_size = 100000
     batch_size = 128
 
-    # used for generating gears at first time step of episodes
-    # expert_mpc = None
-    expert_mpc = SolverTimeRecorder(
-        HybridTrackingMpc(
-            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
-        )
-    )
+    def __init__(self, sim_type: str):
+        # used for generating gears at first time step of episodes
+        if sim_type == "minlp_mpc":
+            self.expert_mpc = None
+        else:
+            self.expert_mpc = SolverTimeRecorder(
+                HybridTrackingMpc(
+                    self.N,
+                    optimize_fuel=True,
+                    convexify_fuel=True,
+                    convexify_dynamics=True,
+                )
+            )
