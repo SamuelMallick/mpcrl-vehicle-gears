@@ -24,9 +24,9 @@ class Config(ConfigDefault):
     tau = 0.001
 
     # archticeture
-    n_hidden = 64
-    n_actions = 3
-    n_layers = 2
+    n_hidden = 256
+    n_actions = 6
+    n_layers = 4
     bidirectional = True
     normalize = False
 

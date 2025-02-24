@@ -7,13 +7,13 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "3"  # base with normalization
+    id = "3"  # type 2 but with no exp
 
     # -----------general parameters----------------
-    N = 5
+    N = 15
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_3"
+    trajectory_type = "type_2"
 
     # -----------network parameters----------------
     # hyperparameters
@@ -22,14 +22,14 @@ class Config(ConfigDefault):
     tau = 0.001
 
     # archticeture
-    n_hidden = 64
-    n_actions = 3
-    n_layers = 2
+    n_hidden = 256
+    n_actions = 6
+    n_layers = 4
     bidirectional = True
-    normalize = True
+    normalize = False
 
     # exploration
-    eps_start = 0.99
+    eps_start = 0
     esp_zero_steps = int(ep_len * num_eps / 2)
 
     # penalties

@@ -395,7 +395,9 @@ class DQNAgent(Agent):
         # get gears from network for non-first time steps
         else:
             nn_state_prev = self.nn_state
-            gear_choice_binary, network_action = self.get_binary_gear_choice(self.nn_state)
+            gear_choice_binary, network_action = self.get_binary_gear_choice(
+                self.nn_state
+            )
 
         sol = self.mpc.solve(
             {
@@ -517,6 +519,7 @@ class DQNAgent(Agent):
         save_freq: int = 0,
         save_path: str = "",
         exp_zero_steps: int = 0,
+        init_state_dict: dict = {},
     ) -> tuple[np.ndarray, dict]:
         """Train the policy on the environment using deep Q-learning.
 
@@ -536,10 +539,17 @@ class DQNAgent(Agent):
             The path to the folder where the data and models are saved.
         exp_zero_steps : int, optional
             The number of steps at which the exploration rate is desired to be
-            approximately zero (1e-3), by default 0 (no exploration)."""
+            approximately zero (1e-3), by default 0 (no exploration).
+        init_state_dict : dict, optional
+            The initial state dictionary for the Q and target network, by default {}
+            in which case a randomized start is used."""
         if self.normalize:
             self.position_error = np.zeros((episodes, ep_len))
             self.velocity_error = np.zeros((episodes, ep_len))
+
+        if init_state_dict:
+            self.policy_net.load_state_dict(init_state_dict)
+            self.target_net.load_state_dict(init_state_dict)
 
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
         returns = np.zeros(episodes)

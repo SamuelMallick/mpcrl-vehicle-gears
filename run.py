@@ -30,7 +30,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_train"
+] = "rl_mpc_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -38,7 +38,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c7 import Config  # type: ignore
+    from config_files.c2 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -72,6 +72,11 @@ if (
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
         os.makedirs(f"results/{config.id}", exist_ok=True)
+        init_state_dict = torch.load(
+            f"results/sl_data/policy_net_ep_300_epoch_5000.pth",
+            weights_only=True,
+            map_location="cpu",
+        )
 
         num_eps = config.num_eps
         returns, info = agent.train(
@@ -173,6 +178,7 @@ if SAVE:
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
+                "infeasible": info["infeasible"] if "infeasible" in info else None,
             },
             f,
         )
