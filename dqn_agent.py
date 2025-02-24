@@ -764,7 +764,7 @@ class DQNAgent(Agent):
             - Vehicle.v_min
         ) / (Vehicle.v_max - Vehicle.v_min)
         return (
-            torch.cat((d_rel, v_rel, v_norm, T_e, F_b, w_e, gear), dim=1)
+            torch.cat((d_rel, v_rel, v_norm, v_target_norm, T_e, F_b, w_e, gear), dim=1)
             .unsqueeze(0)
             .to(torch.float32)
         )
