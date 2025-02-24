@@ -300,14 +300,10 @@ class DQNAgent(Agent):
                 state, reward, truncated, terminated, step_info = env.step(action)
                 self.on_env_step(env, episode, timestep, step_info)
 
-                self.T_e, self.F_b, self.w_e, self.x, shifted_gear = (
-                    self.get_shifted_values_from_sol(
-                        sol, state, np.argmax(sol.vals["gear"].full(), 0)
-                    )
+                T_e, F_b, w_e, x, shifted_gear = self.get_shifted_values_from_sol(
+                    sol, state, np.argmax(sol.vals["gear"].full(), 0)
                 )
-                nn_state = self.relative_state(
-                    self.x, self.T_e, self.F_b, self.w_e, shifted_gear
-                )
+                nn_state = self.relative_state(x, T_e, F_b, w_e, shifted_gear)
 
                 timestep += 1
                 # self.on_timestep_end()
@@ -369,7 +365,7 @@ class DQNAgent(Agent):
         # get gears either from heuristic or from expert mpc for first time step
         infeas_flag = False
         if self.first_timestep:
-            nn_state_prev = None
+            nn_state = None
             network_action = None
             if self.expert_mpc:
                 expert_sol = self.expert_mpc.solve(
@@ -393,12 +389,19 @@ class DQNAgent(Agent):
             self.first_timestep = False
         # get gears from network for non-first time steps
         else:
-            nn_state_prev = self.nn_state
-            gear_choice_binary, network_action = self.get_binary_gear_choice(
-                self.nn_state
+            T_e, F_b, w_e, x, shifted_gear = self.get_shifted_values_from_sol(
+                self.sol, state, self.last_gear_choice_explicit
             )
+            nn_state = self.relative_state(
+                x,
+                T_e,
+                F_b,
+                w_e,
+                shifted_gear,
+            )
+            gear_choice_binary, network_action = self.get_binary_gear_choice(nn_state)
 
-        sol = self.mpc.solve(
+        self.sol = self.mpc.solve(
             {
                 "x_0": state,
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
@@ -406,12 +409,12 @@ class DQNAgent(Agent):
                 "gear": gear_choice_binary,
             }
         )
-        if not sol.success:
+        if not self.sol.success:
             infeas_flag = True
-            sol, self.gear_choice_explicit = self.backup_1(state)
-            if not sol.success:
-                sol, self.gear_choice_explicit = self.backup_2(state)
-                if not sol.success:
+            self.sol, self.gear_choice_explicit = self.backup_1(state)
+            if not self.sol.success:
+                self.sol, self.gear_choice_explicit = self.backup_2(state)
+                if not self.sol.success:
                     if not self.train_flag:
                         raise RuntimeError(
                             "Backup gear solutions were still infeasible."
@@ -429,25 +432,15 @@ class DQNAgent(Agent):
                     #         "gear_prev": self.gear_prev,
                     #     }
                     # )
-        self.T_e, self.F_b, self.w_e, self.x, shifted_gear = (
-            self.get_shifted_values_from_sol(sol, state, self.gear_choice_explicit)
-        )
-        self.nn_state = self.relative_state(
-            self.x,
-            self.T_e,
-            self.F_b,
-            self.w_e,
-            shifted_gear,
-        )
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
         return (
-            sol.vals["T_e"].full()[0, 0],
-            sol.vals["F_b"].full()[0, 0],
+            self.sol.vals["T_e"].full()[0, 0],
+            self.sol.vals["F_b"].full()[0, 0],
             self.gear,
             {
-                "nn_state": nn_state_prev,
+                "nn_state": nn_state,
                 "network_action": network_action,
                 "infeas": infeas_flag,
             },
@@ -574,14 +567,15 @@ class DQNAgent(Agent):
                 returns[episode] += reward
                 self.on_env_step(env, episode, timestep, step_info | action_info)
 
+                T_e, F_b, w_e, x, shifted_gear = self.get_shifted_values_from_sol(
+                    self.sol, state, self.last_gear_choice_explicit
+                )
                 nn_next_state = self.relative_state(
-                    self.x,
-                    self.T_e,
-                    self.F_b,
-                    self.w_e,
-                    torch.from_numpy(self.gear_choice_explicit)
-                    .unsqueeze(1)
-                    .to(self.device),
+                    x,
+                    T_e,
+                    F_b,
+                    w_e,
+                    shifted_gear,
                 )
 
                 # Store the transition in memory
