@@ -181,6 +181,8 @@ class DQNAgent(Agent):
         save_freq: int = 100,
     ):
         # TODO add docstring and outputs
+        num_eps = nn_inputs.shape[0]
+
         self.policy_net.to(self.device)
         self.policy_net.train()  # set model to training mode
         nn_targets = torch.argmax(nn_targets, 3)
@@ -196,10 +198,12 @@ class DQNAgent(Agent):
         loss_history = np.empty(train_epochs, dtype=float)
         criterion = nn.CrossEntropyLoss()
 
-        start_time = time.time()
         for epoch in range(train_epochs):
             if epoch % save_freq == 0:
-                torch.save(self.policy_net.state_dict(), f"policy_net_ep_{epoch}.pth")
+                torch.save(
+                    self.policy_net.state_dict(),
+                    f"policy_net_ep_{num_eps}_epoch_{epoch}.pth",
+                )
             running_loss = 0.0
             for inputs, labels in dataloader:
                 self.optimizer.zero_grad()
@@ -214,9 +218,10 @@ class DQNAgent(Agent):
                 running_loss += loss.item()
             loss_history[epoch] = running_loss
             print(f"Epoch [{epoch+1}/{train_epochs}], Loss: {running_loss}")
-        end_time = time.time()
-        print(f"NN training took {end_time-start_time} seconds")
-        torch.save(self.policy_net.state_dict(), f"policy_net_ep_{train_epochs}.pth")
+        torch.save(
+            self.policy_net.state_dict(),
+            f"policy_net_ep_{num_eps}_epoch_{train_epochs}.pth",
+        )
         return running_loss, loss_history
 
     def generate_supervised_data(
@@ -228,24 +233,23 @@ class DQNAgent(Agent):
         save_path: str,
         save_freq: int = 1000,
         seed: int = 0,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> None:
         # TODO docstring
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
 
         # self.reset()
         nn_inputs = torch.empty(
-            (episodes, ep_len - 1, self.N, self.n_states)
+            (episodes, ep_len - 1, self.N, self.n_states), dtype=torch.float32
         )  # -1 because the first state is not used
         nn_targets_shift = torch.empty(
-            (episodes, ep_len - 1, self.N, 3)
+            (episodes, ep_len - 1, self.N, 3), dtype=torch.float32
         )  # indicate data type
         nn_targets_explicit = torch.empty(
-            (episodes, ep_len - 1, self.N, 6)
+            (episodes, ep_len - 1, self.N, 6), dtype=torch.float32
         )  # indicate data type
         self.on_validation_start()
-
         for episode, seed in zip(range(episodes), seeds):
-            if episode % save_freq == 0:
+            if episode % save_freq == 0 and episode != 0:
                 torch.save(
                     {
                         "inputs": nn_inputs[:episode],
@@ -308,15 +312,14 @@ class DQNAgent(Agent):
 
                 timestep += 1
                 # self.on_timestep_end()
-
             # self.on_episode_end()
 
         # self.on_validation_end()
         torch.save(
             {
-                "inputs": nn_inputs[:episode],
-                "targets_explicit": nn_targets_explicit[:episode],
-                "targets_shift": nn_targets_shift[:episode],
+                "inputs": nn_inputs,
+                "targets_explicit": nn_targets_explicit,
+                "targets_shift": nn_targets_shift,
             },
             f"{save_path}_nn_data_{episode}.pth",
         )
@@ -832,7 +835,7 @@ class DQNAgent(Agent):
             )
             self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
         elif self.n_actions == 6:
-            self.gear_choice_explicit = network_action.cpu().numpy()
+            self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_vals_from_sol(
