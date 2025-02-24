@@ -103,14 +103,6 @@ if (
             save_path=f"results/{config.id}",
             save_freq=100,
         )
-        with open(
-            f"results/{config.id}_nn_inputs_{num_data_gather_eps}.pkl", "wb"
-        ) as f:
-            pickle.dump(nn_inputs, f)
-        with open(
-            f"results/{config.id}_nn_targets_{num_data_gather_eps}.pkl", "wb"
-        ) as f:
-            pickle.dump(nn_targets, f)
     else:
         with open(f"results/sl_data/2_nn_inputs_augmented_300.pkl", "rb") as f:
             nn_inputs = pickle.load(f)
