@@ -291,16 +291,6 @@ class DQNAgent(Agent):
 
                     nn_inputs[episode, timestep - 1] = nn_state
 
-                self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
-                nn_state = self.relative_state(
-                    self.x,
-                    self.T_e,
-                    self.F_b,
-                    self.w_e,
-                    torch.from_numpy(np.argmax(sol.vals["gear"].full(), 0))
-                    .unsqueeze(1)
-                    .to(self.device),
-                )
                 self.gear = int(np.argmax(sol.vals["gear"].full(), 0)[0])
                 action = (
                     sol.vals["T_e"].full()[0, 0],
@@ -309,6 +299,15 @@ class DQNAgent(Agent):
                 )
                 state, reward, truncated, terminated, step_info = env.step(action)
                 self.on_env_step(env, episode, timestep, step_info)
+
+                self.T_e, self.F_b, self.w_e, self.x, shifted_gear = (
+                    self.get_shifted_values_from_sol(
+                        sol, state, np.argmax(sol.vals["gear"].full(), 0)
+                    )
+                )
+                nn_state = self.relative_state(
+                    self.x, self.T_e, self.F_b, self.w_e, shifted_gear
+                )
 
                 timestep += 1
                 # self.on_timestep_end()
@@ -430,13 +429,15 @@ class DQNAgent(Agent):
                     #         "gear_prev": self.gear_prev,
                     #     }
                     # )
-        self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
+        self.T_e, self.F_b, self.w_e, self.x, shifted_gear = (
+            self.get_shifted_values_from_sol(sol, state, self.gear_choice_explicit)
+        )
         self.nn_state = self.relative_state(
             self.x,
             self.T_e,
             self.F_b,
             self.w_e,
-            torch.from_numpy(self.gear_choice_explicit).unsqueeze(1).to(self.device),
+            shifted_gear,
         )
 
         self.gear = int(self.gear_choice_explicit[0])
@@ -847,19 +848,36 @@ class DQNAgent(Agent):
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
-    def get_vals_from_sol(
-        self, sol
+    def get_shifted_values_from_sol(
+        self, sol, state, gear_choice_explicit
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = sol.vals["x"].full().T
+        T_e = sol.vals["T_e"].full().T
+        F_b = sol.vals["F_b"].full().T
+        w_e = sol.vals["w_e"].full().T
+        x = torch.tensor(
+            np.concatenate((state.T, x[2:])), dtype=torch.float32, device=self.device
+        )
         T_e = torch.tensor(
-            sol.vals["T_e"].full().T, dtype=torch.float32, device=self.device
+            np.concatenate((T_e[1:], T_e[[-1]])),
+            dtype=torch.float32,
+            device=self.device,
         )
         F_b = torch.tensor(
-            sol.vals["F_b"].full().T, dtype=torch.float32, device=self.device
+            np.concatenate((F_b[1:], F_b[[-1]])),
+            dtype=torch.float32,
+            device=self.device,
         )
         w_e = torch.tensor(
-            sol.vals["w_e"].full().T, dtype=torch.float32, device=self.device
+            np.concatenate((w_e[1:], w_e[[-1]])),
+            dtype=torch.float32,
+            device=self.device,
         )
-        x = torch.tensor(
-            sol.vals["x"][:, :-1].full().T, dtype=torch.float32, device=self.device
+        gear = (
+            torch.from_numpy(
+                np.concatenate((gear_choice_explicit[1:], gear_choice_explicit[[-1]]))
+            )
+            .unsqueeze(1)
+            .to(self.device)
         )
-        return T_e, F_b, w_e, x
+        return T_e, F_b, w_e, x, gear
