@@ -370,7 +370,7 @@ class DQNAgent(Agent):
         # get gears either from heuristic or from expert mpc for first time step
         infeas_flag = False
         if self.first_timestep:
-            nn_state = None
+            nn_state_prev = None
             network_action = None
             if self.expert_mpc:
                 expert_sol = self.expert_mpc.solve(
@@ -394,16 +394,8 @@ class DQNAgent(Agent):
             self.first_timestep = False
         # get gears from network for non-first time steps
         else:
-            nn_state = self.relative_state(
-                self.x,
-                self.T_e,
-                self.F_b,
-                self.w_e,
-                torch.from_numpy(self.gear_choice_explicit)
-                .unsqueeze(1)
-                .to(self.device),
-            )
-            gear_choice_binary, network_action = self.get_binary_gear_choice(nn_state)
+            nn_state_prev = self.nn_state
+            gear_choice_binary, network_action = self.get_binary_gear_choice(self.nn_state)
 
         sol = self.mpc.solve(
             {
@@ -437,6 +429,13 @@ class DQNAgent(Agent):
                     #     }
                     # )
         self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
+        self.nn_state = self.relative_state(
+            self.x,
+            self.T_e,
+            self.F_b,
+            self.w_e,
+            torch.from_numpy(self.gear_choice_explicit).unsqueeze(1).to(self.device),
+        )
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
@@ -445,7 +444,7 @@ class DQNAgent(Agent):
             sol.vals["F_b"].full()[0, 0],
             self.gear,
             {
-                "nn_state": nn_state,
+                "nn_state": nn_state_prev,
                 "network_action": network_action,
                 "infeas": infeas_flag,
             },
