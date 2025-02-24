@@ -178,6 +178,7 @@ class DQNAgent(Agent):
         nn_targets: torch.Tensor,
         batch_size: int = 128,
         train_epochs: int = 100,
+        save_freq: int = 100,
     ):
         # TODO add docstring and outputs
         self.policy_net.to(self.device)
@@ -197,6 +198,8 @@ class DQNAgent(Agent):
 
         start_time = time.time()
         for epoch in range(train_epochs):
+            if epoch % save_freq == 0:
+                torch.save(self.policy_net.state_dict(), f"policy_net_ep_{epoch}.pth")
             running_loss = 0.0
             for inputs, labels in dataloader:
                 self.optimizer.zero_grad()
