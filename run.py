@@ -30,7 +30,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_data"
+] = "sl_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -112,11 +112,13 @@ if (
         ) as f:
             pickle.dump(nn_targets, f)
     else:
-        with open(f"results/{config.id}_nn_inputs_1000.pkl", "rb") as f:
+        with open(f"results/sl_data/2_nn_inputs_augmented_300.pkl", "rb") as f:
             nn_inputs = pickle.load(f)
-        with open(f"results/{config.id}_nn_targets_1000.pkl", "rb") as f:
+        with open(f"results/sl_data/2_nn_targets_explicit_300.pkl", "rb") as f:
             nn_targets = pickle.load(f)
-        running_loss, loss_history = agent.train_supervised(nn_inputs, nn_targets, train_epochs=5000)
+        running_loss, loss_history = agent.train_supervised(
+            nn_inputs, nn_targets, train_epochs=5000
+        )
         with open(f"results/{config.id}_loss_history_5000.pkl", "wb") as f:
             pickle.dump(loss_history, f)
 
@@ -135,7 +137,9 @@ elif sim_type == "minlp_mpc":
         )
     )
     agent = MINLPAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed, allow_failure=True)
+    returns, info = agent.evaluate(
+        env, episodes=num_eval_eps, seed=seed, allow_failure=True
+    )
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
     gear_priority = "low"
@@ -174,7 +178,9 @@ if SAVE:
                 "T_e": engine_torque,
                 "w_e": engine_speed,
                 "mpc_solve_time": mpc.solver_time,
-                "valid_episodes": info["valid_episodes"] if "valid_episodes" in info else None,
+                "valid_episodes": (
+                    info["valid_episodes"] if "valid_episodes" in info else None
+                ),
             },
             f,
         )

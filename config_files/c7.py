@@ -9,13 +9,13 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "7"  # base but with 6 actions
+    id = "7"  # base but with 6 actions and traj type 2
 
     # -----------general parameters----------------
     N = 5
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_3"
+    trajectory_type = "type_2"
 
     # -----------network parameters----------------
     # hyperparameters
