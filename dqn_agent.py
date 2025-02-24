@@ -271,21 +271,17 @@ class DQNAgent(Agent):
                         np.argmax(sol.vals["gear"].full(), 0), 0, self.gear
                     )
                     gear_shift = optimal_gears[1:] - optimal_gears[:-1]
-                    action = torch.zeros(
-                        (self.N, 3), dtype=torch.float32
-                    )
+                    action = torch.zeros((self.N, 3), dtype=torch.float32)
                     action[range(self.N), gear_shift + 1] = 1
                     nn_targets_shift[episode, timestep - 1] = action
                     # absolute gear command
                     optimal_gears = np.argmax(sol.vals["gear"].full(), 0)
-                    action = torch.zeros(
-                        (self.N, 6), dtype=torch.float32
-                    )
+                    action = torch.zeros((self.N, 6), dtype=torch.float32)
                     action[range(self.N), optimal_gears] = 1
                     nn_targets_explicit[episode, timestep - 1] = action
 
                     nn_inputs[episode, timestep - 1] = nn_state
-                    
+
                 self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
                 nn_state = self.relative_state(
                     self.x,

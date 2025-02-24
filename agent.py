@@ -57,7 +57,11 @@ class Agent:
         raise NotImplementedError
 
     def evaluate(
-        self, env: VehicleTracking, episodes: int, seed: int = 0, allow_failure: bool = False
+        self,
+        env: VehicleTracking,
+        episodes: int,
+        seed: int = 0,
+        allow_failure: bool = False,
     ) -> tuple[np.ndarray, dict]:
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
 
@@ -70,7 +74,7 @@ class Agent:
         seed : int, optional
             The seed to use for the random number generator, by default 0.
         allow_failure : bool, optional
-            If allowed, a failure will cause the episode to be skipped. A 
+            If allowed, a failure will cause the episode to be skipped. A
             list of non-failed episodes will be returned in the
             info dict, by default False.
 
