@@ -246,12 +246,14 @@ class DQNAgent(Agent):
 
         for episode, seed in zip(range(episodes), seeds):
             if episode % save_freq == 0:
-                with open(f"{save_path}_nn_inputs_{episode}.pkl", "wb") as f:
-                    pickle.dump(nn_inputs, f)
-                with open(f"{save_path}_nn_targets_shift_{episode}.pkl", "wb") as f:
-                    pickle.dump(nn_targets_shift, f)
-                with open(f"{save_path}_nn_targets_explicit_{episode}.pkl", "wb") as f:
-                    pickle.dump(nn_targets_explicit, f)
+                torch.save(
+                    {
+                        "inputs": nn_inputs[:episode],
+                        "targets_explicit": nn_targets_explicit[:episode],
+                        "targets_shift": nn_targets_shift[:episode],
+                    },
+                    f"{save_path}_nn_data_{episode}.pth",
+                )
             print(f"Supervised data: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0
@@ -310,7 +312,15 @@ class DQNAgent(Agent):
             # self.on_episode_end()
 
         # self.on_validation_end()
-        return nn_inputs, nn_targets
+        torch.save(
+            {
+                "inputs": nn_inputs[:episode],
+                "targets_explicit": nn_targets_explicit[:episode],
+                "targets_shift": nn_targets_shift[:episode],
+            },
+            f"{save_path}_nn_data_{episode}.pth",
+        )
+        return
 
     def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
