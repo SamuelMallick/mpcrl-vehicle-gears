@@ -751,6 +751,10 @@ class DQNAgent(Agent):
             w_e = (w_e - Vehicle.w_e_idle) / (Vehicle.w_e_max - Vehicle.w_e_idle)
             gear = gear / 5
         v_norm = (x[:, [1]] - Vehicle.v_min) / (Vehicle.v_max - Vehicle.v_min)
+        v_target_norm = (
+            torch.from_numpy(self.x_ref_predicition[:-1, 1]).to(self.device)
+            - Vehicle.v_min
+        ) / (Vehicle.v_max - Vehicle.v_min)
         return (
             torch.cat((d_rel, v_rel, v_norm, T_e, F_b, w_e, gear), dim=1)
             .unsqueeze(0)

@@ -24,7 +24,6 @@ class Config(ConfigDefault):
     tau = 0.001
 
     # archticeture
-    n_states = 7
     n_hidden = 256
     n_actions = 3
     n_layers = 4
