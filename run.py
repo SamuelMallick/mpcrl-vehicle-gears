@@ -30,7 +30,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_train"
+] = "sl_data"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -38,7 +38,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c7 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -101,7 +101,7 @@ if (
             mpc=config.expert_mpc,
             seed=seed,
             save_path=f"results/{config.id}",
-            save_freq=1000,
+            save_freq=100,
         )
         with open(
             f"results/{config.id}_nn_inputs_{num_data_gather_eps}.pkl", "wb"
@@ -135,10 +135,12 @@ elif sim_type == "minlp_mpc":
         )
     )
     agent = MINLPAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed, allow_failure=True)
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
-    agent = HeuristicGearAgent(mpc, gear_priority="low")
+    gear_priority = "low"
+    sim_type = f"{sim_type}_{gear_priority}"
+    agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
 
 
@@ -150,6 +152,7 @@ if "cost" in info:
     cost = info["cost"]
 if "infeasible" in info:
     infeasible = info["infeasible"]
+
 
 X = list(env.observations)
 U = list(env.actions)
@@ -171,6 +174,7 @@ if SAVE:
                 "T_e": engine_torque,
                 "w_e": engine_speed,
                 "mpc_solve_time": mpc.solver_time,
+                "valid_episodes": info["valid_episodes"] if "valid_episodes" in info else None,
             },
             f,
         )

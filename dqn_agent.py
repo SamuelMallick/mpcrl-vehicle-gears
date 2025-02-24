@@ -233,8 +233,11 @@ class DQNAgent(Agent):
         nn_inputs = torch.empty(
             (episodes, ep_len - 1, self.N, self.n_states)
         )  # -1 because the first state is not used
-        nn_targets = torch.empty(
-            (episodes, ep_len - 1, self.N, self.n_actions)
+        nn_targets_shift = torch.empty(
+            (episodes, ep_len - 1, self.N, 3)
+        )  # indicate data type
+        nn_targets_explicit = torch.empty(
+            (episodes, ep_len - 1, self.N, 6)
         )  # indicate data type
         self.on_validation_start()
 
@@ -242,8 +245,10 @@ class DQNAgent(Agent):
             if episode % save_freq == 0:
                 with open(f"{save_path}_nn_inputs_{episode}.pkl", "wb") as f:
                     pickle.dump(nn_inputs, f)
-                with open(f"{save_path}_nn_targets_{episode}.pkl", "wb") as f:
-                    pickle.dump(nn_targets, f)
+                with open(f"{save_path}_nn_targets_shift_{episode}.pkl", "wb") as f:
+                    pickle.dump(nn_targets_shift, f)
+                with open(f"{save_path}_nn_targets_explicit_{episode}.pkl", "wb") as f:
+                    pickle.dump(nn_targets_explicit, f)
             print(f"Supervised data: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0
@@ -261,23 +266,26 @@ class DQNAgent(Agent):
                 if not sol.success:
                     raise ValueError("MPC failed to solve")
                 if timestep != 0:
-                    if self.n_actions == 3:
-                        optimal_gears = np.insert(
-                            np.argmax(sol.vals["gear"].full(), 0), 0, self.gear
-                        )
-                        gear_shift = optimal_gears[1:] - optimal_gears[:-1]
-                        action = torch.zeros(
-                            (self.N, self.n_actions), dtype=torch.float32
-                        )
-                        action[range(self.N), gear_shift + 1] = 1
-                    elif self.n_actions == 6:
-                        optimal_gears = np.argmax(sol.vals["gear"].full(), 0)
-                        action = torch.zeros(
-                            (self.N, self.n_actions), dtype=torch.float32
-                        )
-                        action[range(self.N), optimal_gears] = 1
+                    # shift command
+                    optimal_gears = np.insert(
+                        np.argmax(sol.vals["gear"].full(), 0), 0, self.gear
+                    )
+                    gear_shift = optimal_gears[1:] - optimal_gears[:-1]
+                    action = torch.zeros(
+                        (self.N, 3), dtype=torch.float32
+                    )
+                    action[range(self.N), gear_shift + 1] = 1
+                    nn_targets_shift[episode, timestep - 1] = action
+                    # absolute gear command
+                    optimal_gears = np.argmax(sol.vals["gear"].full(), 0)
+                    action = torch.zeros(
+                        (self.N, 6), dtype=torch.float32
+                    )
+                    action[range(self.N), optimal_gears] = 1
+                    nn_targets_explicit[episode, timestep - 1] = action
+
                     nn_inputs[episode, timestep - 1] = nn_state
-                    nn_targets[episode, timestep - 1] = action
+                    
                 self.T_e, self.F_b, self.w_e, self.x = self.get_vals_from_sol(sol)
                 nn_state = self.relative_state(
                     self.x,
