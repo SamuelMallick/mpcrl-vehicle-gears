@@ -96,7 +96,7 @@ if (
             seed=seed,
         )
     elif sim_type == "sl_data":
-        num_data_gather_eps = 1
+        num_data_gather_eps = 100
         agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
@@ -107,14 +107,25 @@ if (
             save_freq=100,
         )
     else:
-        data = torch.load(
-            f"results/sl_data/2_nn_data_300_seed_0.pth", map_location="cpu"
-        )
-        nn_inputs = data["inputs"]
-        if config.n_actions == 3:
-            nn_targets = data["targets_shift"]
-        else:
-            nn_targets = data["targets_explicit"]
+        nn_inputs = None
+        nn_targets = None
+        directory = "results/sl_data"
+        for filename in os.listdir(directory):
+            filepath = os.path.join(directory, filename)
+            if os.path.isfile(filepath):
+                data = torch.load(filepath, map_location="cpu")
+                if nn_inputs is None:
+                    nn_inputs = data["inputs"]
+                    if config.n_actions == 3:
+                        nn_targets = data["targets_shift"]
+                    else:
+                        nn_targets = data["targets_explicit"]
+                else:
+                    nn_inputs = torch.cat((nn_inputs, data["inputs"]))
+                    if config.n_actions == 3:
+                        nn_targets = torch.cat((nn_targets, data["targets_shift"]))
+                    else:
+                        nn_targets = torch.cat((nn_targets, data["targets_explicit"]))
         running_loss, loss_history = agent.train_supervised(
             nn_inputs, nn_targets, train_epochs=5000
         )
