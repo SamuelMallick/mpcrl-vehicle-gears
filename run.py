@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_train"
+] = "rl_mpc_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,13 +34,13 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c2 import Config  # type: ignore
+    from config_files.c3 import Config  # type: ignore
 
     config = Config(sim_type)
 
 vehicle = Vehicle()
 ep_length = config.ep_len
-num_eval_eps = 1
+num_eval_eps = 100
 N = config.N
 seed = 0
 env = MonitorEpisodes(
@@ -68,11 +68,7 @@ if (
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
         os.makedirs(f"results/{config.id}", exist_ok=True)
-        # init_state_dict = torch.load(
-        #     f"results/sl_data/policy_net_ep_300_epoch_5000.pth",
-        #     weights_only=True,
-        #     map_location="cpu",
-        # )
+        init_state_dict = config.init_state_dict
 
         num_eps = config.num_eps
         returns, info = agent.train(
@@ -83,19 +79,20 @@ if (
             save_freq=1000,
             save_path=f"results/{config.id}",
             seed=seed,
-            init_state_dict={},
+            init_state_dict=init_state_dict,
         )
     elif sim_type == "rl_mpc_eval":
-        # state_dict = torch.load(
-        #     f"results/sl_data/policy_net_ep_1_epoch_5000.pth",
-        #     weights_only=True,
-        #     map_location="cpu",
-        # )
-        dqn = DRQN(8, 256, 6, 4, True)
+        state_dict = torch.load(
+            f"results/sl_data/shift/policy_net_ep_300_epoch_2400.pth",
+            weights_only=True,
+            map_location="cpu",
+        )
+        # dqn = DRQN(8, 256, 6, 4, True)
+        # state_dict = dqn.state_dict()
         returns, info = agent.evaluate(
             env,
             episodes=num_eval_eps,
-            policy_net_state_dict=dqn.state_dict(),
+            policy_net_state_dict=state_dict,
             seed=seed,
         )
     elif sim_type == "sl_data":
