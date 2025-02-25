@@ -235,6 +235,7 @@ class DQNAgent(Agent):
         seed: int = 0,
     ) -> None:
         # TODO docstring
+        og_seed = seed
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
 
         # self.reset()
@@ -256,7 +257,7 @@ class DQNAgent(Agent):
                         "targets_explicit": nn_targets_explicit[:episode],
                         "targets_shift": nn_targets_shift[:episode],
                     },
-                    f"{save_path}_nn_data_{episode}.pth",
+                    f"{save_path}_nn_data_{episode}_seed_{og_seed}.pth",
                 )
             print(f"Supervised data: Episode {episode}")
             state, _ = env.reset(seed=seed)
@@ -316,7 +317,7 @@ class DQNAgent(Agent):
                 "targets_explicit": nn_targets_explicit,
                 "targets_shift": nn_targets_shift,
             },
-            f"{save_path}_nn_data_{episode}.pth",
+            f"{save_path}_nn_data_{episode}_seed_{og_seed}.pth",
         )
         return
 
