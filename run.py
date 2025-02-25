@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c5 import Config  # type: ignore
+    from config_files.c1 import Config  # type: ignore
 
     config = Config(sim_type)
 
