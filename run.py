@@ -2,7 +2,7 @@ import importlib
 import os
 import sys
 from agent import Agent, MINLPAgent, HeuristicGearAgent
-from dqn_agent import DQNAgent
+from dqn_agent import DQNAgent, DRQN
 from env import VehicleTracking
 from vehicle import Vehicle
 from gymnasium.wrappers import TimeLimit
@@ -10,11 +10,7 @@ from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import numpy as np
 from visualisation.plot import plot_evaluation, plot_training
-from mpc import (
-    HybridTrackingMpc,
-    HybridTrackingFuelMpcFixedGear,
-    TrackingMpc,
-)
+from mpc import HybridTrackingMpc, HybridTrackingFuelMpcFixedGear, TrackingMpc
 import torch
 import pickle
 from typing import Literal
@@ -30,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "rl_mpc_train"
+] = "sl_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -44,7 +40,7 @@ else:
 
 vehicle = Vehicle()
 ep_length = config.ep_len
-num_eval_eps = 100
+num_eval_eps = 1
 N = config.N
 seed = 0
 env = MonitorEpisodes(
@@ -72,11 +68,11 @@ if (
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
         os.makedirs(f"results/{config.id}", exist_ok=True)
-        init_state_dict = torch.load(
-            f"results/sl_data/policy_net_ep_300_epoch_5000.pth",
-            weights_only=True,
-            map_location="cpu",
-        )
+        # init_state_dict = torch.load(
+        #     f"results/sl_data/policy_net_ep_300_epoch_5000.pth",
+        #     weights_only=True,
+        #     map_location="cpu",
+        # )
 
         num_eps = config.num_eps
         returns, info = agent.train(
@@ -87,32 +83,38 @@ if (
             save_freq=1000,
             save_path=f"results/{config.id}",
             seed=seed,
+            init_state_dict={},
         )
     elif sim_type == "rl_mpc_eval":
-        state_dict = torch.load(
-            f"results/{config.id}/policy_net_ep_27000.pth",
-            weights_only=True,
-            map_location="cpu",
-        )
+        # state_dict = torch.load(
+        #     f"results/sl_data/policy_net_ep_1_epoch_5000.pth",
+        #     weights_only=True,
+        #     map_location="cpu",
+        # )
+        dqn = DRQN(8, 256, 6, 4, True)
         returns, info = agent.evaluate(
-            env, episodes=num_eval_eps, policy_net_state_dict=state_dict, seed=seed
+            env,
+            episodes=num_eval_eps,
+            policy_net_state_dict=dqn.state_dict(),
+            seed=seed,
         )
     elif sim_type == "sl_data":
-        num_data_gather_eps = 10000
-        nn_inputs, nn_targets = agent.generate_supervised_data(
+        num_data_gather_eps = 1
+        agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
             ep_len=ep_length,
             mpc=config.expert_mpc,
             seed=seed,
-            save_path=f"results/{config.id}",
+            save_path=f"results/",
             save_freq=100,
         )
     else:
-        with open(f"results/sl_data/2_nn_inputs_augmented_300.pkl", "rb") as f:
-            nn_inputs = pickle.load(f)
-        with open(f"results/sl_data/2_nn_targets_explicit_300.pkl", "rb") as f:
-            nn_targets = pickle.load(f)
+        data = torch.load(
+            f"results/sl_data/2_nn_data_300_seed_0.pth", map_location="cpu"
+        )
+        nn_inputs = data["inputs"]
+        nn_targets = data["targets_shift"]
         running_loss, loss_history = agent.train_supervised(
             nn_inputs, nn_targets, train_epochs=5000
         )
@@ -151,8 +153,6 @@ engine_speed = info["w_e"]
 x_ref = info["x_ref"]
 if "cost" in info:
     cost = info["cost"]
-if "infeasible" in info:
-    infeasible = info["infeasible"]
 
 
 X = list(env.observations)
@@ -193,11 +193,6 @@ if PLOT:
         fuel[ep],
         engine_torque[ep],
         engine_speed[ep],
-        (
-            infeasible[ep]
-            if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval"
-            else None
-        ),
     )
     # plot_training(
     #     [sum(cost[i]) for i in range(len(cost))],
