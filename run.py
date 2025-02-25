@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "rl_mpc_train"
+] = "sl_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c3 import Config  # type: ignore
+    from config_files.c5 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -42,7 +42,7 @@ vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 100
 N = config.N
-seed = 0
+seed = 10
 env = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(
@@ -83,7 +83,7 @@ if (
         )
     elif sim_type == "rl_mpc_eval":
         state_dict = torch.load(
-            f"results/sl_data/shift/policy_net_ep_300_epoch_2400.pth",
+            f"results/sl_data/explicit/policy_net_ep_300_epoch_1200.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -111,7 +111,10 @@ if (
             f"results/sl_data/2_nn_data_300_seed_0.pth", map_location="cpu"
         )
         nn_inputs = data["inputs"]
-        nn_targets = data["targets_shift"]
+        if config.n_actions == 3:
+            nn_targets = data["targets_shift"]
+        else:
+            nn_targets = data["targets_explicit"]
         running_loss, loss_history = agent.train_supervised(
             nn_inputs, nn_targets, train_epochs=5000
         )
