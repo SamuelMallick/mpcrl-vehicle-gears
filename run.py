@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "minlp_mpc"
+] = "sl_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c9 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -84,10 +84,15 @@ if (
     elif sim_type == "rl_mpc_eval":
         seed = 10
         state_dict = torch.load(
-            f"results/sl_data/explicit/policy_net_ep_400_epoch_3600.pth",
+            f"results/sl_data/explicit/policy_net_nobi_ep_500_epoch_5000.pth",
             weights_only=True,
             map_location="cpu",
         )
+        # state_dict = torch.load(
+        #     f"results/2/policy_net_ep_15000.pth",
+        #     weights_only=True,
+        #     map_location="cpu",
+        # )
         # dqn = DRQN(8, 256, 6, 4, True)
         # state_dict = dqn.state_dict()
         returns, info = agent.evaluate(
