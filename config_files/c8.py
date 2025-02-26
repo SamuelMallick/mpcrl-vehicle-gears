@@ -11,7 +11,7 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "4"  # 1 but with init state dict from sl
+    id = "8"  # 4 but with nobidirec state dict and no exp
 
     # -----------general parameters----------------
     N = 15
@@ -23,7 +23,7 @@ class Config(ConfigDefault):
     # initial weights
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     init_state_dict = torch.load(
-        f"results/sl_data/explicit/policy_net_ep_300_epoch_1200.pth",
+        f"results/sl_data/explicit/policy_net_nobi_ep_300_epoch_2200.pth",
         weights_only=True,
         map_location=device,
     )
@@ -36,11 +36,11 @@ class Config(ConfigDefault):
     n_hidden = 256
     n_actions = 6
     n_layers = 4
-    bidirectional = True
+    bidirectional = False
     normalize = False
 
     # exploration
-    eps_start = 0.99
+    eps_start = 0
     esp_zero_steps = int(ep_len * num_eps / 2)
 
     # penalties

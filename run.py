@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_train"
+] = "rl_mpc_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -42,7 +42,7 @@ vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 100
 N = config.N
-seed = 10
+seed = 0
 env = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(
@@ -82,8 +82,9 @@ if (
             init_state_dict=init_state_dict,
         )
     elif sim_type == "rl_mpc_eval":
+        seed = 10
         state_dict = torch.load(
-            f"results/sl_data/explicit/policy_net_ep_300_epoch_1200.pth",
+            f"results/sl_data/explicit/policy_net_ep_400_epoch_3600.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -152,7 +153,7 @@ elif sim_type == "minlp_mpc":
     )
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
-    gear_priority = "low"
+    gear_priority = "high"
     sim_type = f"{sim_type}_{gear_priority}"
     agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)

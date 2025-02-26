@@ -1,7 +1,5 @@
 import os
 import sys
-
-import torch
 from mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import os, sys
@@ -11,7 +9,7 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "4"  # 1 but with init state dict from sl
+    id = "7"  # 2 but with no bidirec
 
     # -----------general parameters----------------
     N = 15
@@ -20,13 +18,6 @@ class Config(ConfigDefault):
     trajectory_type = "type_2"
 
     # -----------network parameters----------------
-    # initial weights
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    init_state_dict = torch.load(
-        f"results/sl_data/explicit/policy_net_ep_300_epoch_1200.pth",
-        weights_only=True,
-        map_location=device,
-    )
     # hyperparameters
     gamma = 0.9
     learning_rate = 0.0001
@@ -34,9 +25,9 @@ class Config(ConfigDefault):
 
     # archticeture
     n_hidden = 256
-    n_actions = 6
+    n_actions = 3
     n_layers = 4
-    bidirectional = True
+    bidirectional = False
     normalize = False
 
     # exploration
