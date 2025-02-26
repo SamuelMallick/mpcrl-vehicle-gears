@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "rl_mpc_train"
+] = "minlp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -42,7 +42,7 @@ vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 100
 N = config.N
-seed = 0
+seed = 10
 env = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(
