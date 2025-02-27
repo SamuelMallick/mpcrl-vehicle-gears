@@ -71,8 +71,9 @@ class VehicleTracking(gym.Env):
         self, action: tuple[float, float, int]
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         T_e, F_b, gear = action
+        prev_x = self.x
         x, fuel, T_e, w_e = self.vehicle.step(T_e, F_b, gear, self.ts, self.alpha)
-        r = self.reward(self.x, fuel)
+        r = self.reward(prev_x, fuel)
         self.x = x
         self.counter += 1
         return (
@@ -86,6 +87,7 @@ class VehicleTracking(gym.Env):
                 "w_e": w_e,
                 "x_ref": self.x_ref[self.counter - 1],
                 "gear": gear,
+                "x": prev_x,
             },
         )
 

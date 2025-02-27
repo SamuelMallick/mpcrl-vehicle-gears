@@ -1,5 +1,5 @@
 from collections import deque, namedtuple
-import time
+from utils.running_mean_std import RunningMeanStd
 
 from csnlp import Solution
 from agent import Agent
@@ -539,8 +539,7 @@ class DQNAgent(Agent):
             The initial state dictionary for the Q and target network, by default {}
             in which case a randomized start is used."""
         if self.normalize:
-            self.position_error = np.zeros((episodes, ep_len))
-            self.velocity_error = np.zeros((episodes, ep_len))
+            self.running_mean_std = RunningMeanStd(shape=(2,))
 
         if init_state_dict:
             self.policy_net.load_state_dict(init_state_dict)
@@ -618,10 +617,8 @@ class DQNAgent(Agent):
         }
         if self.normalize:
             info["normalization"] = (
-                np.mean(self.position_error),
-                np.std(self.position_error),
-                np.mean(self.velocity_error),
-                np.std(self.velocity_error),
+                self.running_mean_std.mean,
+                self.running_mean_std.var,
             )
         return returns, info
 
@@ -740,12 +737,10 @@ class DQNAgent(Agent):
     def on_env_step(self, env, episode, timestep, info):
         self.steps_done += 1
         if self.normalize:
-            self.position_error[episode, timestep] = (
-                self.x[0, 0].cpu() - self.x_ref_predicition[0, 0]
-            ).item()
-            self.velocity_error[episode, timestep] = (
-                self.x[0, 1].cpu() - self.x_ref_predicition[0, 1]
-            ).item()
+            diff = info["x"] - info["x_ref"]
+            self.running_mean_std.update(
+                diff.T
+            )  # transpose needed as the mean is taken over axis 0
         if "infeas" in info:
             self.infeasible[-1].append(info["infeas"])
         return super().on_env_step(env, episode, timestep, info)
@@ -765,12 +760,12 @@ class DQNAgent(Agent):
             self.device
         )
         if self.normalize and self.steps_done > 1:
-            d_rel = (
-                d_rel - np.mean(self.position_error.flatten()[: self.steps_done])
-            ) / (np.std(self.position_error.flatten()[: self.steps_done]) + 1e-6)
-            v_rel = (
-                v_rel - np.mean(self.velocity_error.flatten()[: self.steps_done])
-            ) / (np.std(self.velocity_error.flatten()[: self.steps_done]) + 1e-6)
+            d_rel = (d_rel - self.running_mean_std.mean[0]) / (
+                self.running_mean_std.var[0] + 1e-6
+            )
+            v_rel = (v_rel - self.running_mean_std.mean[1]) / (
+                self.running_mean_std.var[1] + 1e-6
+            )
             T_e = (T_e - Vehicle.T_e_idle) / (Vehicle.T_e_max - Vehicle.T_e_idle)
             F_b = F_b / Vehicle.F_b_max  # min is zero
             w_e = (w_e - Vehicle.w_e_idle) / (Vehicle.w_e_max - Vehicle.w_e_idle)
@@ -802,10 +797,8 @@ class DQNAgent(Agent):
         }
         if self.normalize:
             info["normalization"] = (
-                np.mean(self.position_error),
-                np.std(self.position_error),
-                np.mean(self.velocity_error),
-                np.std(self.velocity),
+                self.running_mean_std.mean,
+                self.running_mean_std.var,
             )
         with open(path + f"/data_ep_{ep}.pkl", "wb") as f:
             pickle.dump(
