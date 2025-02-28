@@ -6,6 +6,7 @@ from mpc import HybridTrackingMpc, TrackingMpc
 from vehicle import Vehicle
 from bisect import bisect_right
 import pickle
+from datetime import datetime
 
 # the max velocity allowed by each gear while respecting the engine speed limit
 max_v_per_gear = [
@@ -64,6 +65,7 @@ class Agent:
         seed: int = 0,
         allow_failure: bool = False,
         save_every_episode: bool = False,
+        log_progress: bool = False,
     ) -> tuple[np.ndarray, dict]:
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
 
@@ -82,6 +84,9 @@ class Agent:
         save_every_episode : bool, optional
             If True, the agent will save the state of the environment at the end
             of each episode, by default False.
+        log_progress : bool, optional
+            If True, log the episode number to keep track of the progress, by default 
+            False.
 
         Returns
         -------
@@ -95,6 +100,13 @@ class Agent:
         # self.reset()
         returns = np.zeros(episodes)
         self.on_validation_start()
+
+        # create log file
+        if log_progress:
+            log_file = "log.txt"
+            f = open(log_file, "w")
+            f.write(f"Eval begun at {str(datetime.now())}\n")
+            f.close()
 
         for episode, seed in zip(range(episodes), seeds):
             print(f"Evaluate: Episode {episode}")
@@ -115,6 +127,17 @@ class Agent:
                 self.on_env_step(env, episode, timestep, action_info | step_info)
 
                 returns[episode] += reward
+
+                # log episode progress
+                if log_progress:
+                    if action_info["solver"] == "primary":
+                        solve_time = self.mpc.solver_time[-1]
+                    elif action_info["solver"] == "backup":
+                        solve_time = self.backup_mpc.solver_time[-1]
+                    with open(log_file, 'a') as f:
+                        f.write(f"Episode {episode} \t | Timestep {timestep} \t | Solver: {action_info['solver']} \t | Solver time: {solve_time}\n")
+                        f.flush()
+
                 timestep += 1
                 # self.on_timestep_end()
 
@@ -236,6 +259,7 @@ class MINLPAgent(Agent):
         self.backup_mpc = backup_mpc
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        solver = "primary"
         sol = self.mpc.solve(
             {
                 "x_0": state,
@@ -245,7 +269,8 @@ class MINLPAgent(Agent):
             }
         )
         if not sol.success:
-            sol = self.mpc.solve(
+            solver = "backup"
+            sol = self.backup_mpc.solve(
                 {
                     "x_0": state,
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
@@ -258,7 +283,7 @@ class MINLPAgent(Agent):
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
-        return T_e, F_b, gear, {}
+        return T_e, F_b, gear, {"solver":solver}
 
 
 class HeuristicGearAgent(Agent):

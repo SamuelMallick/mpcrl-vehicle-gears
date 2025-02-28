@@ -177,6 +177,7 @@ elif sim_type == "minlp_mpc":
         seed=seed,
         allow_failure=True,
         save_every_episode=True,
+        log_progress=True,
     )
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
