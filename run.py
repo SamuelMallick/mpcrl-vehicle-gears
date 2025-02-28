@@ -141,11 +141,16 @@ if (
 elif sim_type == "miqp_mpc":
     mpc = SolverTimeRecorder(
         HybridTrackingMpc(
-            N, optimize_fuel=True, convexify_fuel=True, convexify_dynamics=True
+            N,
+            optimize_fuel=True,
+            convexify_fuel=True,
+            convexify_dynamics=True,
         )
     )
     agent = MINLPAgent(mpc)
-    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
+    returns, info = agent.evaluate(
+        env, episodes=num_eval_eps, seed=seed, save_every_episode=False
+    )
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(
         HybridTrackingMpc(
@@ -167,7 +172,11 @@ elif sim_type == "minlp_mpc":
     )
     agent = MINLPAgent(mpc, backup_mpc=backup_mpc)
     returns, info = agent.evaluate(
-        env, episodes=num_eval_eps, seed=seed, allow_failure=True
+        env,
+        episodes=num_eval_eps,
+        seed=seed,
+        allow_failure=True,
+        save_every_episode=True,
     )
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))

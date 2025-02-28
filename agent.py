@@ -5,6 +5,7 @@ from csnlp.wrappers.mpc.mpc import Mpc
 from mpc import HybridTrackingMpc, TrackingMpc
 from vehicle import Vehicle
 from bisect import bisect_right
+import pickle
 
 # the max velocity allowed by each gear while respecting the engine speed limit
 max_v_per_gear = [
@@ -62,6 +63,7 @@ class Agent:
         episodes: int,
         seed: int = 0,
         allow_failure: bool = False,
+        save_every_episode: bool = False,
     ) -> tuple[np.ndarray, dict]:
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
 
@@ -77,6 +79,9 @@ class Agent:
             If allowed, a failure will cause the episode to be skipped. A
             list of non-failed episodes will be returned in the
             info dict, by default False.
+        save_every_episode : bool, optional
+            If True, the agent will save the state of the environment at the end
+            of each episode, by default False.
 
         Returns
         -------
@@ -113,7 +118,7 @@ class Agent:
                 timestep += 1
                 # self.on_timestep_end()
 
-            # self.on_episode_end()
+            self.on_episode_end(episode, env, save=save_every_episode)
 
         # self.on_validation_end()
         info = {
@@ -125,6 +130,23 @@ class Agent:
         if allow_failure:
             info["valid_episodes"] = valid_episodes
         return returns, info
+
+    def on_episode_end(self, episode: int, env: VehicleTracking, save: bool = False):
+        if save:
+            with open(f"episode_{episode}.pkl", "wb") as f:
+                pickle.dump(
+                    {
+                        "fuel": self.fuel,
+                        "T_e": self.engine_torque,
+                        "w_e": self.engine_speed,
+                        "x_ref": self.x_ref,
+                        "X": env.observations,
+                        "U": env.actions,
+                        "R": env.rewards,
+                        "mpc_solve_time": self.mpc.solver_time,
+                    },
+                    f,
+                )
 
     def on_validation_start(self):
         self.fuel = []
