@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "minlp_mpc"
+] = "rl_mpc_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c12 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -42,7 +42,7 @@ vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 100
 N = config.N
-seed = 10
+seed = 0
 env = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(

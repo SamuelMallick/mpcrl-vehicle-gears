@@ -123,6 +123,7 @@ class DQNAgent(Agent):
         self.tau = config.tau
 
         # archticeture
+        self.clipping = config.clip
         self.n_states = config.n_states
         self.n_hidden = config.n_hidden
         self.n_actions = config.n_actions
@@ -834,6 +835,22 @@ class DQNAgent(Agent):
             self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
         elif self.n_actions == 6:
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
+            if self.clipping:
+                self.gear_choice_explicit = np.concatenate(
+                    ([self.gear], self.gear_choice_explicit)
+                )
+                clipped = [
+                    np.clip(self.gear_choice_explicit[0], self.gear - 1, self.gear + 1)
+                ]
+                for i in range(1, self.N):
+                    clipped.append(
+                        np.clip(
+                            self.gear_choice_explicit[i],
+                            clipped[i - 1] - 1,
+                            clipped[i - 1] + 1,
+                        )
+                    )
+                self.gear_choice_explicit = np.array(clipped)
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_shifted_values_from_sol(
