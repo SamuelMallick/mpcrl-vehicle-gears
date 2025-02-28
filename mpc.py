@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 import casadi as cs
 from csnlp.wrappers.mpc.mpc import Mpc
 from csnlp import Nlp, Solution
@@ -144,6 +144,7 @@ class HybridTrackingMpc(Mpc):
     def __init__(
         self,
         prediction_horizon: int,
+        solver: Literal["bonmin", "gurobi", "knitro"] = "bonmin",
         optimize_fuel: bool = False,
         convexify_fuel: bool = False,
         convexify_dynamics: bool = False,
@@ -333,10 +334,15 @@ class HybridTrackingMpc(Mpc):
             and optimize_fuel
             and convexify_fuel
         ):
+            if solver != "gurobi":
+                Warning("Using gurobi solver for convexified problem, solver changed.")
             self.init_solver(solver_options["gurobi"], solver="gurobi")
         else:
-            self.init_solver(solver_options["bonmin"], solver="bonmin")
-            # self.init_solver(solver_options["knitro"], solver="knitro")
+            if solver == "gurobi":
+                raise ValueError(
+                    "Gurobi solver can only be used for convexified problems."
+                )
+            self.init_solver(solver_options[solver], solver=solver)
 
     def solve(
         self,

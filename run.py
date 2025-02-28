@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_train"
+] = "minlp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c9 import Config  # type: ignore
+    from config_files.c1 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -84,7 +84,7 @@ if (
     elif sim_type == "rl_mpc_eval":
         seed = 10
         state_dict = torch.load(
-            f"results/sl_data/explicit/policy_net_nobi_ep_500_epoch_5000.pth",
+            f"results/sl_data/explicit/9_policy_net_ep_500_epoch_700.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -149,10 +149,23 @@ elif sim_type == "miqp_mpc":
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(
         HybridTrackingMpc(
-            N, optimize_fuel=True, convexify_fuel=False, convexify_dynamics=False
+            N,
+            optimize_fuel=True,
+            convexify_fuel=False,
+            convexify_dynamics=False,
+            solver="knitro",
         )
     )
-    agent = MINLPAgent(mpc)
+    backup_mpc = SolverTimeRecorder(
+        HybridTrackingMpc(
+            N,
+            optimize_fuel=True,
+            convexify_fuel=False,
+            convexify_dynamics=False,
+            solver="bonmin",
+        )
+    )
+    agent = MINLPAgent(mpc, backup_mpc=backup_mpc)
     returns, info = agent.evaluate(
         env, episodes=num_eval_eps, seed=seed, allow_failure=True
     )

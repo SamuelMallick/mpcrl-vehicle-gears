@@ -197,10 +197,21 @@ class Agent:
 class MINLPAgent(Agent):
     """An agent that uses a mixed-integer nonlinear programming solver to solve
     the optimization problem. The solver is used to find the optimal engine torque,
-    braking force, and gear for the vehicle."""
+    braking force, and gear for the vehicle.
 
-    def __init__(self, mpc: HybridTrackingMpc):
+    Parameters
+    ----------
+    mpc : HybridTrackingMpc
+        The model predictive controller used to solve the optimization problem.
+    backup_mpc : HybridTrackingMpc, optional
+        A backup model predictive controller used when the primary MPC fails to
+        solve the optimization problem, by default None."""
+
+    def __init__(
+        self, mpc: HybridTrackingMpc, backup_mpc: HybridTrackingMpc | None = None
+    ):
         super().__init__(mpc)
+        self.backup_mpc = backup_mpc
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         sol = self.mpc.solve(
@@ -212,7 +223,16 @@ class MINLPAgent(Agent):
             }
         )
         if not sol.success:
-            raise ValueError("MPC failed to solve")
+            sol = self.mpc.solve(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear_prev": self.gear_prev,
+                }
+            )
+            if not sol.success:
+                raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
