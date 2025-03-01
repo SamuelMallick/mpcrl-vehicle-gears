@@ -52,6 +52,7 @@ class Vehicle:
         dt: float,
         alpha: float = 0,
         substeps: int = 1,
+        wind_speed: float = 0,
     ) -> tuple[np.ndarray, float, float, float]:
         """Simulate the vehicle motion for a timestep of length dt.
 
@@ -69,6 +70,8 @@ class Vehicle:
             Road gradient (radians), by default 0.
         substeps : int, optional
             Number of substeps to simulate within one timestep, by default 1.
+        wind_speed : float, optional
+            Wind speed (m/s), by default 0. Changes the wind resistance force.
 
         Returns
         -------
@@ -92,7 +95,7 @@ class Vehicle:
         n = self.z_f * self.z_t[gear] / self.r_r
         a = (
             T_e * n / self.m
-            - self.C_wind * self.x[1, 0] ** 2 / self.m
+            - self.C_wind * (self.x[1, 0] + wind_speed) ** 2 / self.m
             - self.g * self.mu * np.cos(alpha)
             - self.g * np.sin(alpha)
             - F_b / self.m

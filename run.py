@@ -50,6 +50,7 @@ env = MonitorEpisodes(
             episode_len=ep_length,
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
+            windy=False,
         ),
         max_episode_steps=ep_length,
     )

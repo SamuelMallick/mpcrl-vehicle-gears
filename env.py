@@ -1,5 +1,6 @@
 from typing import Literal
 import gymnasium as gym
+from matplotlib import pyplot as plt
 import numpy as np
 from vehicle import Vehicle
 
@@ -33,6 +34,7 @@ class VehicleTracking(gym.Env):
         vehicle: Vehicle,
         episode_len: int,
         prediction_horizon: int,
+        windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
     ):
         super().__init__()
@@ -41,6 +43,7 @@ class VehicleTracking(gym.Env):
         self.episode_len = episode_len
         self.prediction_horizon = prediction_horizon
         self.trajectory_type = trajectory_type
+        self.windy = windy
 
     def reset(self, *, seed=None, options=None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed, options=options)
@@ -54,6 +57,9 @@ class VehicleTracking(gym.Env):
             self.x = self.vehicle.x
 
         self.x_ref = self.generate_x_ref(trajectory_type=self.trajectory_type)
+        if self.windy:
+            self.wind = self.generate_wind(self.episode_len, (8, 14))
+
         self.counter = 0
 
         return self.x, {}
@@ -72,7 +78,14 @@ class VehicleTracking(gym.Env):
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         T_e, F_b, gear = action
         prev_x = self.x
-        x, fuel, T_e, w_e = self.vehicle.step(T_e, F_b, gear, self.ts, self.alpha)
+        x, fuel, T_e, w_e = self.vehicle.step(
+            T_e,
+            F_b,
+            gear,
+            self.ts,
+            self.alpha,
+            wind_speed=self.wind[self.counter] if self.windy else 0,
+        )
         r = self.reward(prev_x, fuel)
         self.x = x
         self.counter += 1
@@ -154,3 +167,21 @@ class VehicleTracking(gym.Env):
                 plot_reference_traj(x_ref, change_points=change_points)
 
             return x_ref
+
+    def generate_wind(
+        self, length: int, speed_range: tuple[float, float]
+    ) -> np.ndarray:
+        wind_speed = self.np_random.uniform(speed_range[0], speed_range[1], size=length)
+        window_size = 5  # Adjust for smoothness (higher = smoother)
+        wind_speed_smoothed = np.convolve(
+            wind_speed, np.ones(window_size) / window_size, mode="same"
+        )
+        # plt.figure(figsize=(10, 4))
+        # plt.plot(wind_speed_smoothed, label="Wind Speed (m/s)", color='b')
+        # plt.xlabel("Time (s)")
+        # plt.ylabel("Wind Speed (m/s)")
+        # plt.title("Random Wind Speed Profile (Moderate Wind)")
+        # plt.legend()
+        # plt.grid()
+        # plt.show()
+        return wind_speed_smoothed
