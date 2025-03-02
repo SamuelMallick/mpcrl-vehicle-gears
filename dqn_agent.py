@@ -222,7 +222,7 @@ class DQNAgent(Agent):
             print(f"Epoch [{epoch+1}/{train_epochs}], Loss: {running_loss}")
         torch.save(
             self.policy_net.state_dict(),
-            f"policy_net_ep_{num_eps}_epoch_{train_epochs}.pth",
+            f"{save_path}policy_net_ep_{num_eps}_epoch_{train_epochs}.pth",
         )
         return running_loss, loss_history
 
