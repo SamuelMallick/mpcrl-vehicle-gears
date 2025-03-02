@@ -323,7 +323,14 @@ class DQNAgent(Agent):
         )
         return
 
-    def evaluate(self, env, episodes, seed=0, policy_net_state_dict: dict = {}):
+    def evaluate(
+        self,
+        env,
+        episodes,
+        seed=0,
+        policy_net_state_dict: dict = {},
+        normalization: tuple = (),
+    ):
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
         If a policy_net_state_dict is provided, the agent will use the weights from that
         for its policy network.
@@ -345,8 +352,20 @@ class DQNAgent(Agent):
             The returns for each episode, and a dictionary of additional information."""
         if policy_net_state_dict:
             self.policy_net.load_state_dict(policy_net_state_dict)
+        if self.normalize:
+            if not normalization:
+                raise ValueError(
+                    "Normalization tuple must be provided for this config."
+                )
+            self.running_mean_std = RunningMeanStd(shape=(2,))
+            self.running_mean_std.mean = normalization[0]
+            self.running_mean_std.var = normalization[1]
         self.policy_net.eval()
-        returns, info = super().evaluate(env, episodes, seed)
+        returns, info = super().evaluate(
+            env,
+            episodes,
+            seed,
+        )
         return returns, {**info, "infeasible": self.infeasible}
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
