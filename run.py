@@ -134,7 +134,7 @@ if (
                     else:
                         nn_targets = torch.cat((nn_targets, data["targets_explicit"]))
         running_loss, loss_history = agent.train_supervised(
-            nn_inputs, nn_targets, train_epochs=5000
+            nn_inputs, nn_targets, train_epochs=5000, save_path=f"{config.id}_"
         )
         with open(f"results/{config.id}_loss_history_5000.pkl", "wb") as f:
             pickle.dump(loss_history, f)

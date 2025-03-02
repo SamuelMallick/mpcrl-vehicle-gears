@@ -180,6 +180,7 @@ class DQNAgent(Agent):
         batch_size: int = 128,
         train_epochs: int = 100,
         save_freq: int = 100,
+        save_path: str = "",
     ):
         # TODO add docstring and outputs
         num_eps = nn_inputs.shape[0]
@@ -203,7 +204,7 @@ class DQNAgent(Agent):
             if epoch % save_freq == 0:
                 torch.save(
                     self.policy_net.state_dict(),
-                    f"policy_net_ep_{num_eps}_epoch_{epoch}.pth",
+                    f"{save_path}policy_net_ep_{num_eps}_epoch_{epoch}.pth",
                 )
             running_loss = 0.0
             for inputs, labels in dataloader:
