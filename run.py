@@ -26,7 +26,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "rl_mpc_train"
+] = "minlp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +34,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c12 import Config  # type: ignore
+    from config_files.c1 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -42,7 +42,7 @@ vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 100
 N = config.N
-seed = 0
+seed = 10
 env = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(
@@ -50,7 +50,7 @@ env = MonitorEpisodes(
             episode_len=ep_length,
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
-            windy=False,
+            windy=True,
         ),
         max_episode_steps=ep_length,
     )
@@ -85,15 +85,18 @@ if (
     elif sim_type == "rl_mpc_eval":
         seed = 10
         state_dict = torch.load(
-            f"results/sl_data/explicit/9_policy_net_ep_500_epoch_700.pth",
+            # f"results/sl_data/explicit/5_policy_net_ep_900_epoch_3300.pth",
+            f"results/sl_data/explicit/policy_net_nobi_ep_300_epoch_2200.pth",
             weights_only=True,
             map_location="cpu",
         )
         # state_dict = torch.load(
-        #     f"results/2/policy_net_ep_15000.pth",
+        #     f"results/11/policy_net_ep_18000.pth",
         #     weights_only=True,
         #     map_location="cpu",
         # )
+        # with open(f"results/11/data_ep_18000.pkl", "rb") as f:
+        #     data = pickle.load(f)
         # dqn = DRQN(8, 256, 6, 4, True)
         # state_dict = dqn.state_dict()
         returns, info = agent.evaluate(
@@ -101,6 +104,7 @@ if (
             episodes=num_eval_eps,
             policy_net_state_dict=state_dict,
             seed=seed,
+            # normalization=data["normalization"],
         )
     elif sim_type == "sl_data":
         num_data_gather_eps = 100
@@ -182,7 +186,7 @@ elif sim_type == "minlp_mpc":
     )
 elif sim_type == "heuristic_mpc":
     mpc = SolverTimeRecorder(TrackingMpc(N))
-    gear_priority = "high"
+    gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
     agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
