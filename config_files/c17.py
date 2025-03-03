@@ -9,10 +9,10 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "14"  # 5 but with longer horizon
+    id = "17"  # 11 but more exp
 
     # -----------general parameters----------------
-    N = 20
+    N = 15
     ep_len = 100
     num_eps = 50000
     trajectory_type = "type_2"
@@ -25,14 +25,14 @@ class Config(ConfigDefault):
 
     # archticeture
     n_hidden = 256
-    n_actions = 6
+    n_actions = 3
     n_layers = 4
-    bidirectional = False
-    normalize = False
+    bidirectional = True
+    normalize = True
 
     # exploration
     eps_start = 0.99
-    esp_zero_steps = int(ep_len * num_eps / 2)
+    esp_zero_steps = int(ep_len * num_eps)
 
     # penalties
     clip_pen = 0

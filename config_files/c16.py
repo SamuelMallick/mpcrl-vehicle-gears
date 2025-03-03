@@ -9,26 +9,26 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "14"  # 5 but with longer horizon
+    id = "16"  # 11 but higher discount factor
 
     # -----------general parameters----------------
-    N = 20
+    N = 15
     ep_len = 100
     num_eps = 50000
     trajectory_type = "type_2"
 
     # -----------network parameters----------------
     # hyperparameters
-    gamma = 0.9
+    gamma = 0.99
     learning_rate = 0.0001
     tau = 0.001
 
     # archticeture
     n_hidden = 256
-    n_actions = 6
+    n_actions = 3
     n_layers = 4
-    bidirectional = False
-    normalize = False
+    bidirectional = True
+    normalize = True
 
     # exploration
     eps_start = 0.99
