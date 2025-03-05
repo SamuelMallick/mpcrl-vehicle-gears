@@ -85,7 +85,7 @@ class Agent:
             If True, the agent will save the state of the environment at the end
             of each episode, by default False.
         log_progress : bool, optional
-            If True, log the episode number to keep track of the progress, by default 
+            If True, log the episode number to keep track of the progress, by default
             False.
 
         Returns
@@ -123,6 +123,12 @@ class Agent:
                         break
                 else:
                     *action, action_info = self.get_action(state)
+                if np.abs(np.argmax(self.gear_prev) - action[2]) > 1:
+                    action[2] = np.clip(
+                        action[2],
+                        np.argmax(self.gear_prev) - 1,
+                        np.argmax(self.gear_prev) + 1,
+                    )
                 state, reward, truncated, terminated, step_info = env.step(action)
                 self.on_env_step(env, episode, timestep, action_info | step_info)
 
@@ -134,8 +140,10 @@ class Agent:
                         solve_time = self.mpc.solver_time[-1]
                     elif action_info["solver"] == "backup":
                         solve_time = self.backup_mpc.solver_time[-1]
-                    with open(log_file, 'a') as f:
-                        f.write(f"Episode {episode} \t | Timestep {timestep} \t | Solver: {action_info['solver']} \t | Solver time: {solve_time}\n")
+                    with open(log_file, "a") as f:
+                        f.write(
+                            f"Episode {episode} \t | Timestep {timestep} \t | Solver: {action_info['solver']} \t | Solver time: {solve_time}\n"
+                        )
                         f.flush()
 
                 timestep += 1
@@ -283,7 +291,7 @@ class MINLPAgent(Agent):
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
-        return T_e, F_b, gear, {"solver":solver}
+        return T_e, F_b, gear, {"solver": solver}
 
 
 class HeuristicGearAgent(Agent):
