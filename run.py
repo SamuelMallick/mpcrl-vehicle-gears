@@ -1,8 +1,13 @@
 import importlib
 import os
 import sys
-from agent import Agent, MINLPAgent, HeuristicGearAgent
-from dqn_agent import DQNAgent, DRQN
+from agents import (
+    Agent,
+    MINLPAgent,
+    HeuristicGearAgent,
+    DQNAgent,
+    SupervisedLearningAgent,
+)
 from env import VehicleTracking
 from vehicle import Vehicle
 from gymnasium.wrappers import TimeLimit
@@ -15,7 +20,7 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = True
+SAVE = False
 PLOT = False
 
 sim_type: Literal[
@@ -26,7 +31,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "rl_mpc_train"
+] = "sl_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +39,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c5 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -42,8 +47,8 @@ vehicle = Vehicle()
 ep_length = config.ep_len
 num_eval_eps = 100
 N = config.N
-seed = 0
-env = MonitorEpisodes(
+eval_seed = 10
+env: VehicleTracking = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(
             vehicle,
@@ -55,17 +60,15 @@ env = MonitorEpisodes(
         max_episode_steps=ep_length,
     )
 )
-np_random = np.random.default_rng(seed)
+agent: Agent | None = None
 
-if (
-    sim_type == "rl_mpc_train"
-    or sim_type == "rl_mpc_eval"
-    or sim_type == "sl_data"
-    or sim_type == "sl_train"
-):
+
+if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
     mpc = SolverTimeRecorder(
         HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
     )
+    seed = 0  # seed 0 used for agents
+    np_random = np.random.default_rng(seed)
     agent = DQNAgent(mpc, np_random, config=config)
     if sim_type == "rl_mpc_train":
         os.makedirs(f"results/{config.id}", exist_ok=True)
@@ -79,14 +82,12 @@ if (
             exp_zero_steps=config.esp_zero_steps,
             save_freq=1000,
             save_path=f"results/{config.id}",
-            seed=seed,
+            seed=0,  # seed 0 used for training
             init_state_dict=init_state_dict,
         )
     elif sim_type == "rl_mpc_eval":
-        seed = 10
         state_dict = torch.load(
-            # f"results/sl_data/explicit/5_policy_net_ep_900_epoch_3300.pth",
-            f"results/sl_data/explicit/policy_net_nobi_ep_300_epoch_2200.pth",
+            f"results/sl_data/explicit/5_policy_net_ep_300_epoch_2200.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -103,11 +104,19 @@ if (
             env,
             episodes=num_eval_eps,
             policy_net_state_dict=state_dict,
-            seed=seed,
+            seed=eval_seed,  # seed 10 used for evaluation
             # normalization=data["normalization"],
         )
-    elif sim_type == "sl_data":
+if sim_type == "sl_train" or sim_type == "sl_data":
+    mpc = SolverTimeRecorder(
+        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+    )
+    seed = 0  # seed 0 used for agents
+    np_random = np.random.default_rng(seed)
+    agent = SupervisedLearningAgent(mpc, np_random, config=config)
+    if sim_type == "sl_data":
         num_data_gather_eps = 100
+        seed = 110  # different seed used for data generation
         agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
@@ -137,7 +146,7 @@ if (
                         nn_targets = torch.cat((nn_targets, data["targets_shift"]))
                     else:
                         nn_targets = torch.cat((nn_targets, data["targets_explicit"]))
-        running_loss, loss_history = agent.train_supervised(
+        running_loss, loss_history = agent.train(
             nn_inputs, nn_targets, train_epochs=5000, save_path=f"{config.id}_"
         )
         with open(f"results/{config.id}_loss_history_5000.pkl", "wb") as f:
@@ -154,7 +163,7 @@ elif sim_type == "miqp_mpc":
     )
     agent = MINLPAgent(mpc)
     returns, info = agent.evaluate(
-        env, episodes=num_eval_eps, seed=seed, save_every_episode=False
+        env, episodes=num_eval_eps, seed=eval_seed, save_every_episode=False
     )
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(
@@ -179,7 +188,7 @@ elif sim_type == "minlp_mpc":
     returns, info = agent.evaluate(
         env,
         episodes=num_eval_eps,
-        seed=seed,
+        seed=eval_seed,
         allow_failure=True,
         save_every_episode=True,
         log_progress=True,
@@ -189,7 +198,7 @@ elif sim_type == "heuristic_mpc":
     gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
     agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)
-    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=seed)
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=eval_seed)
 
 
 fuel = info["fuel"]
