@@ -146,10 +146,11 @@ if sim_type == "sl_train" or sim_type == "sl_data":
                         nn_targets = torch.cat((nn_targets, data["targets_shift"]))
                     else:
                         nn_targets = torch.cat((nn_targets, data["targets_explicit"]))
+        train_epochs = 5000
         running_loss, loss_history = agent.train(
-            nn_inputs, nn_targets, train_epochs=5000, save_path=f"{config.id}_"
+            nn_inputs, nn_targets, train_epochs=train_epochs, save_path=f"{config.id}_"
         )
-        with open(f"results/{config.id}_loss_history_5000.pkl", "wb") as f:
+        with open(f"results/{config.id}_loss_history_{train_epochs}.pkl", "wb") as f:
             pickle.dump(loss_history, f)
 
 elif sim_type == "miqp_mpc":
