@@ -49,8 +49,10 @@ F_r_min = (
 beta = (3 * C_wind * v_max**2) / (16)
 alpha = v_max / 2
 a1 = beta / alpha
-a2 = (C_wind * v_max**2 - beta) / (v_max - alpha)
-b = beta - alpha * ((C_wind * v_max**2 - beta) / (v_max - alpha))
+a2 = (13 * C_wind * v_max) / 8
+b = (-5 * C_wind * v_max**2) / 8
+# a2 = (C_wind * v_max**2 - beta) / (v_max - alpha)
+# b = beta - alpha * ((C_wind * v_max**2 - beta) / (v_max - alpha))
 
 # fuel cost parameters
 p_0 = 0.04918
@@ -209,8 +211,8 @@ class HybridTrackingMpc(Mpc):
             F_r = (
                 g * mu * m * np.cos(0)
                 + g * m * np.sin(0)
-                + C_wind * (a1 * z[0, :])
-                + C_wind * (a2 * z[1, :] + delta[1, :] * b)
+                + (a1 * z[0, :])
+                + (a2 * z[1, :] + delta[1, :] * b)
                 + m * a
             )
 

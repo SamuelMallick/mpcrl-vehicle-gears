@@ -20,7 +20,7 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = False
+SAVE = True
 PLOT = False
 
 sim_type: Literal[
@@ -31,7 +31,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "sl_train"
+] = "miqp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -39,7 +39,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c5 import Config  # type: ignore
+    from config_files.c1 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -55,7 +55,7 @@ env: VehicleTracking = MonitorEpisodes(
             episode_len=ep_length,
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
-            windy=True,
+            windy=config.windy,
         ),
         max_episode_steps=ep_length,
     )
@@ -86,18 +86,18 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             init_state_dict=init_state_dict,
         )
     elif sim_type == "rl_mpc_eval":
-        state_dict = torch.load(
-            f"results/sl_data/explicit/5_policy_net_ep_300_epoch_2200.pth",
-            weights_only=True,
-            map_location="cpu",
-        )
         # state_dict = torch.load(
-        #     f"results/11/policy_net_ep_18000.pth",
+        #     f"results/sl_data/explicit/accross_all_epochs/18_policy_net_ep_1000_epoch_20000.pth",
         #     weights_only=True,
         #     map_location="cpu",
         # )
-        # with open(f"results/11/data_ep_18000.pkl", "rb") as f:
-        #     data = pickle.load(f)
+        state_dict = torch.load(
+            f"results/11/policy_net_ep_37000.pth",
+            weights_only=True,
+            map_location="cpu",
+        )
+        with open(f"results/11/data_ep_37000.pkl", "rb") as f:
+            data = pickle.load(f)
         # dqn = DRQN(8, 256, 6, 4, True)
         # state_dict = dqn.state_dict()
         returns, info = agent.evaluate(
@@ -105,7 +105,7 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             episodes=num_eval_eps,
             policy_net_state_dict=state_dict,
             seed=eval_seed,  # seed 10 used for evaluation
-            # normalization=data["normalization"],
+            normalization=data["normalization"],
         )
 if sim_type == "sl_train" or sim_type == "sl_data":
     mpc = SolverTimeRecorder(
@@ -164,7 +164,7 @@ elif sim_type == "miqp_mpc":
     )
     agent = MINLPAgent(mpc)
     returns, info = agent.evaluate(
-        env, episodes=num_eval_eps, seed=eval_seed, save_every_episode=False
+        env, episodes=num_eval_eps, seed=eval_seed, save_every_episode=True
     )
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(

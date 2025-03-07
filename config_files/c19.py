@@ -2,33 +2,32 @@ import os
 import sys
 from mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+import os, sys
+
+sys.path.append(os.getcwd())
+from config_files.base import ConfigDefault
 
 
-class ConfigDefault:
-    id = "base"
+class Config(ConfigDefault):
+    id = "19"  # 1 but with wind
 
     # -----------general parameters----------------
-    N = 5
+    N = 15
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_3"
-    windy = False
+    trajectory_type = "type_2"
+    windy = True
 
     # -----------network parameters----------------
-    # initial weights
-    init_state_dict = {}
-
     # hyperparameters
     gamma = 0.9
-    learning_rate = 0.001
+    learning_rate = 0.0001
     tau = 0.001
 
     # archticeture
-    clip = False
-    n_states = 8
-    n_hidden = 64
-    n_actions = 3
-    n_layers = 2
+    n_hidden = 256
+    n_actions = 6
+    n_layers = 4
     bidirectional = True
     normalize = False
 
@@ -43,8 +42,6 @@ class ConfigDefault:
     # memory
     memory_size = 100000
     batch_size = 128
-
-    max_grad = 100
 
     def __init__(self, sim_type: str):
         # used for generating gears at first time step of episodes

@@ -530,6 +530,7 @@ class LearningAgent(Agent):
                 gear_choice_binary = self.binary_from_explicit(
                     self.gear_choice_explicit
                 )
+            self.last_gear_choice_explicit = self.gear_choice_explicit
             self.first_timestep = False
         # get gears from network for non-first time steps
         else:
@@ -568,14 +569,6 @@ class LearningAgent(Agent):
                         raise RuntimeError(
                             "Backup gear solutions were still infeasible."
                         )
-                    # expert_sol = self.expert_mpc.solve(
-                    #     {
-                    #         "x_0": state,
-                    #         "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                    #         "T_e_prev": self.T_e_prev,
-                    #         "gear_prev": self.gear_prev,
-                    #     }
-                    # )
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
@@ -772,21 +765,6 @@ class LearningAgent(Agent):
             self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
         elif self.n_actions == 6:
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
-            self.gear_choice_explicit = np.concatenate(
-                ([self.gear], self.gear_choice_explicit)
-            )
-            clipped = [
-                np.clip(self.gear_choice_explicit[0], self.gear - 1, self.gear + 1)
-            ]
-            for i in range(1, self.N):
-                clipped.append(
-                    np.clip(
-                        self.gear_choice_explicit[i],
-                        clipped[i - 1] - 1,
-                        clipped[i - 1] + 1,
-                    )
-                )
-            self.gear_choice_explicit = np.array(clipped)
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_shifted_values_from_sol(
