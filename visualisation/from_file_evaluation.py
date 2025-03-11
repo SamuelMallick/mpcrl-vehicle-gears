@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append(os.getcwd())
-from utils.tikz import save2tikz
+# from utils.tikz import save2tikz
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 20
@@ -124,7 +124,7 @@ for i in range(len(T)):
     )
 ax[1].set_yscale("log")
 ax[1].set_ylabel("Time (s)")
-save2tikz(plt.gcf())
+# save2tikz(plt.gcf())
 plt.show()
 
 for ep in range(3, len(R[0])):
