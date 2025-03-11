@@ -16,6 +16,7 @@ class Config(ConfigDefault):
     ep_len = 100
     num_eps = 50000
     trajectory_type = "type_2"
+    save_every_episode = True
 
     # -----------network parameters----------------
     # hyperparameters

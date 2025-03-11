@@ -27,7 +27,7 @@ sim_type: Literal[
     "sl_train",
     "sl_data",
     "rl_mpc_train",
-    "rl_mpc_eval",
+    "l_mpc_eval",
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
@@ -62,8 +62,7 @@ env: VehicleTracking = MonitorEpisodes(
 )
 agent: Agent | None = None
 
-
-if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
+if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
     mpc = SolverTimeRecorder(
         HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
     )
@@ -85,19 +84,19 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             seed=0,  # seed 0 used for training
             init_state_dict=init_state_dict,
         )
-    elif sim_type == "rl_mpc_eval":
-        # state_dict = torch.load(
-        #     f"results/sl_data/explicit/accross_all_epochs/18_policy_net_ep_1000_epoch_20000.pth",
-        #     weights_only=True,
-        #     map_location="cpu",
-        # )
+    elif sim_type == "l_mpc_eval":
         state_dict = torch.load(
-            f"results/11/policy_net_ep_37000.pth",
+            f"results/sl_data/5_policy_net_ep_300_epoch_2200.pth",
             weights_only=True,
             map_location="cpu",
         )
-        with open(f"results/11/data_ep_37000.pkl", "rb") as f:
-            data = pickle.load(f)
+        # state_dict = torch.load(
+        #     f"results/11/policy_net_ep_37000.pth",
+        #     weights_only=True,
+        #     map_location="cpu",
+        # )
+        # with open(f"results/11/data_ep_37000.pkl", "rb") as f:
+        #     data = pickle.load(f)
         # dqn = DRQN(8, 256, 6, 4, True)
         # state_dict = dqn.state_dict()
         returns, info = agent.evaluate(
@@ -105,7 +104,7 @@ if sim_type == "rl_mpc_train" or sim_type == "rl_mpc_eval":
             episodes=num_eval_eps,
             policy_net_state_dict=state_dict,
             seed=eval_seed,  # seed 10 used for evaluation
-            normalization=data["normalization"],
+            # normalization=data["normalization"],
         )
 if sim_type == "sl_train" or sim_type == "sl_data":
     mpc = SolverTimeRecorder(
@@ -164,7 +163,10 @@ elif sim_type == "miqp_mpc":
     )
     agent = MINLPAgent(mpc)
     returns, info = agent.evaluate(
-        env, episodes=num_eval_eps, seed=eval_seed, save_every_episode=True
+        env,
+        episodes=num_eval_eps,
+        seed=eval_seed,
+        save_every_episode=config.save_every_episode,
     )
 elif sim_type == "minlp_mpc":
     mpc = SolverTimeRecorder(
@@ -191,7 +193,7 @@ elif sim_type == "minlp_mpc":
         episodes=num_eval_eps,
         seed=eval_seed,
         allow_failure=True,
-        save_every_episode=True,
+        save_every_episode=config.save_every_episode,
         log_progress=True,
     )
 elif sim_type == "heuristic_mpc":
@@ -249,9 +251,3 @@ if PLOT:
         engine_torque[ep],
         engine_speed[ep],
     )
-    # plot_training(
-    #     [sum(cost[i]) for i in range(len(cost))],
-    #     [sum(fuel[i]) for i in range(len(fuel))],
-    #     [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
-    #     [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
-    # )

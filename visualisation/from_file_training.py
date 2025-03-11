@@ -4,7 +4,7 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/2/data_ep_49000.pkl"
+file_name = "results/17/data_ep_35000.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 

@@ -13,6 +13,7 @@ class ConfigDefault:
     num_eps = 50000
     trajectory_type = "type_3"
     windy = False
+    save_every_episode = False
 
     # -----------network parameters----------------
     # initial weights
