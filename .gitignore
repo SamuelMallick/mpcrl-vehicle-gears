@@ -7,9 +7,10 @@ __pycache__/
 *.so
 
 # large data
-*.pkl
-*.pth
-
+# *.pkl
+# *.pth
+results/no_track/
+_nn*
 dev/
 
 # Distribution / packaging
