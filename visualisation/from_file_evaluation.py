@@ -7,12 +7,10 @@ sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
-N = 20
+N = 15
 types = [
     f"miqp_mpc_N_{N}",
-    f"sl_mpc_eval_N_{N}_ep_300_c_14",
-    # f"rl_mpc_eval_N_{N}_c_11",
-    # f"sl_mpc_eval_N_{N}_ep_1000_c_18",
+    f"l_mpc_eval_N_{N}",
     f"heuristic_mpc_low_N_{N}",
 ]
 baseline_type = f"minlp_mpc_N_{N}"

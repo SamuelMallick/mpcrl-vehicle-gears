@@ -28,7 +28,7 @@ class Config(ConfigDefault):
     n_hidden = 256
     n_actions = 6
     n_layers = 4
-    bidirectional = True
+    bidirectional = False
     normalize = False
 
     # exploration
