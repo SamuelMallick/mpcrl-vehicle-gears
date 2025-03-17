@@ -5,14 +5,18 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
-This repository contains the source code used to produce the results obtained in [Learning-Based Model Predictive Control for Efficient Control of Autonomous Vehicles]() submitted to [IEEE Control Systems Letters (L-CSS)]().
+This repository contains the source code used to produce the results obtained in [Learning-Based Model Predictive Control for Efficient Control of Autonomous Vehicles](https://arxiv.org/abs/2503.11359) submitted to [IEEE Control Systems Letters (L-CSS)](https://ieee-cssletters.dei.unipd.it/index.php).
 
 In this work we propose a learning-based model predictive controller for co-optimization of vehicle speed and gear-shift schedule of an autonomous vehicle.
 
 If you find the paper or this repository helpful in your publications, please consider citing it.
 
 ```bibtex
-@article{
+@article{mallick2025learning,
+  title={Learning-Based MPC for Efficient Control of Autonomous Vehicles},
+  author={Mallick, Samuel and Battocletti, Gianpietro and Dong, Qizhang and Dabiri, Azita and De Schutter, Bart},
+  journal={arXiv preprint arXiv:2503:11359},
+  year={2025}
 }
 ```
 
