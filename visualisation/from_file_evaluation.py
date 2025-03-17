@@ -7,7 +7,7 @@ sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
-N = 15
+N = 20
 types = [
     f"miqp_mpc_N_{N}",
     f"l_mpc_eval_N_{N}",
@@ -37,14 +37,14 @@ for file_name in file_names:
         x_ref.append(data["x_ref"])
         engine_torque.append(data["T_e"])
         engine_speed.append(data["w_e"])
-        # if "infeasible" in data and data["infeasible"]:
-        #     print(
-        #         f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
-        #     )
-        #     infeas_ep = [
-        #         sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
-        #     ]
-        #     print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
+        if "infeasible" in data and data["infeasible"]:
+            print(
+                f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
+            )
+            infeas_ep = [
+                sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
+            ]
+            print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
 with open(baseline_file_name, "rb") as f:
     baseline_data = pickle.load(f)
     baseline_R = baseline_data["R"]
@@ -56,10 +56,7 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-baseline_t.remove(max(baseline_t))
-baseline_t.remove(max(baseline_t))
-T = T + [baseline_t]
-labels = ["MIQP-MPC", "L-MPC", "H-MPC", "MINLP-MPC"]
+labels = ["MIQP-MPC", "L-MPC", "H-MPC" , "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
@@ -70,6 +67,8 @@ R_rel = [
     for r in R
 ]
 o = [np.array_split(np.array(t), num_eps) for t in T]
+o.append(baseline_t)    # handled differently because baseline data is already split into eps
+T.append(np.concatenate(baseline_t))
 t_ep = [[sum(t) / len(t) for t in ep] for ep in o]
 
 fig, ax = plt.subplots(2, 1, sharex=False)
@@ -99,7 +98,7 @@ box = ax[1].boxplot(
     t_ep,
     labels=labels,
 )
-for i in range(len(T)):
+for i in range(len(t_ep)):
     ax[1].hlines(
         np.median(t_ep[i]),
         xmin=i + 0.7,
