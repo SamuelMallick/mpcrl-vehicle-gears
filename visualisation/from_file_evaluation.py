@@ -4,21 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append(os.getcwd())
-from utils.tikz import save2tikz
+# from utils.tikz import save2tikz
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
-N = 20
+N = 15
 types = [
     f"miqp_mpc_N_{N}",
-    f"sl_mpc_eval_N_{N}_ep_300_c_14",
-    # f"rl_mpc_eval_N_{N}_c_11",
-    # f"sl_mpc_eval_N_{N}_ep_1000_c_18",
+    f"l_mpc_eval_N_{N}",
+    f"l_mpc_eval_N_{N}_c_20",
     f"heuristic_mpc_low_N_{N}",
 ]
 baseline_type = f"minlp_mpc_N_{N}"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
-file_names = [f"results/evaluations/{type}.pkl" for type in types]
-baseline_file_name = f"results/evaluations/{baseline_type}.pkl"
+file_names = [f"results/no_track/evaluations/{type}.pkl" for type in types]
+baseline_file_name = f"results/no_track/evaluations/{baseline_type}.pkl"
 
 X = []
 U = []
@@ -39,14 +38,14 @@ for file_name in file_names:
         x_ref.append(data["x_ref"])
         engine_torque.append(data["T_e"])
         engine_speed.append(data["w_e"])
-        # if "infeasible" in data and data["infeasible"]:
-        #     print(
-        #         f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
-        #     )
-        #     infeas_ep = [
-        #         sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
-        #     ]
-        #     print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
+        if "infeasible" in data and data["infeasible"]:
+            print(
+                f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
+            )
+            infeas_ep = [
+                sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
+            ]
+            print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
 with open(baseline_file_name, "rb") as f:
     baseline_data = pickle.load(f)
     baseline_R = baseline_data["R"]
@@ -58,10 +57,7 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-baseline_t.remove(max(baseline_t))
-baseline_t.remove(max(baseline_t))
-T = T + [baseline_t]
-labels = ["MIQP-MPC", "L-MPC", "H-MPC", "MINLP-MPC"]
+labels = ["MIQP-MPC", "L-MPC", "new", "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
@@ -72,6 +68,10 @@ R_rel = [
     for r in R
 ]
 o = [np.array_split(np.array(t), num_eps) for t in T]
+o.append(
+    baseline_t
+)  # handled differently because baseline data is already split into eps
+T.append(np.concatenate(baseline_t))
 t_ep = [[sum(t) / len(t) for t in ep] for ep in o]
 
 fig, ax = plt.subplots(2, 1, sharex=False)
@@ -101,7 +101,7 @@ box = ax[1].boxplot(
     t_ep,
     labels=labels,
 )
-for i in range(len(T)):
+for i in range(len(t_ep)):
     ax[1].hlines(
         np.median(t_ep[i]),
         xmin=i + 0.7,
@@ -124,7 +124,7 @@ for i in range(len(T)):
     )
 ax[1].set_yscale("log")
 ax[1].set_ylabel("Time (s)")
-save2tikz(plt.gcf())
+# save2tikz(plt.gcf())
 plt.show()
 
 for ep in range(3, len(R[0])):
