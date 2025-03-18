@@ -4,7 +4,7 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/17/data_ep_35000.pkl"
+file_name = "results/no_track/20/data_ep_43000.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
@@ -38,7 +38,12 @@ plot_training(
     [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
     [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
     [sum(R[i]) for i in range(len(R))],
-    only_averages=True,
+    infeasible=(
+        [sum(infeasible[i]) for i in range(len(infeasible))]
+        if "infeasible" in data
+        else None
+    ),
+    only_averages=False,
     log_scales=False,
     average_interval=100,
 )

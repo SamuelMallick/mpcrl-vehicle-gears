@@ -12,17 +12,20 @@ def plot_training(
     tracking: list,
     penalty: list,
     reward: list,
+    infeasible: list | None = None,
     average_interval: int = 100,
     log_scales: bool = False,
     only_averages: bool = False,
 ):
-    fig, ax = plt.subplots(5, 1, sharex=True)
+    fig, ax = plt.subplots(5 if infeasible is None else 6, 1, sharex=True)
     if not only_averages:
         ax[0].plot(cost)
         ax[1].plot(fuel)
         ax[2].plot(tracking)
         ax[3].plot(penalty)
         ax[4].plot(reward)
+        if infeasible is not None:
+            ax[5].plot(infeasible)
     if log_scales:
         for i in range(5):
             ax[i].set_yscale("log")
@@ -48,6 +51,13 @@ def plot_training(
         np.convolve(reward, np.ones(average_interval) / average_interval, mode="valid")
     )
     ax[4].set_ylabel("L")
+    if infeasible is not None:
+        ax[5].plot(
+            np.convolve(
+                infeasible, np.ones(average_interval) / average_interval, mode="valid"
+            )
+        )
+        ax[5].set_ylabel("Infeasible")
     plt.show()
 
 
@@ -113,9 +123,9 @@ def plot_comparison(
     T_e: list[np.ndarray],
     w_e: list[np.ndarray],
 ):
-    linestyles = ["--", "-", "-.", ":"]
-    colors = ["red", "blue", "green", "orange"]
-    labels = ["MIQP-MPC", "L-MPC", "H-MPC", "MINLP-MPC"]
+    linestyles = ["--", "-", "-.", ":", "-"]
+    colors = ["red", "blue", "green", "orange", "black"]
+    labels = ["MIQP-MPC", "L-MPC", "new", "H-MPC", "MINLP-MPC"]
     fig, ax = plt.subplots(4, 1, sharex=True)
     ax[1].plot(x_ref[0][:, 1], color="black")
     ax[1].legend(["ref"])
