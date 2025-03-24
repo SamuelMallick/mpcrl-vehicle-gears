@@ -199,9 +199,7 @@ class Agent:
         self.engine_torque.append([])
         self.engine_speed.append([])
         self.x_ref.append(np.empty((0, 2, 1)))
-        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction(
-            self.mpc.prediction_horizon + 1
-        )
+        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction()
         self.T_e_prev = Vehicle.T_e_idle
         gear = self.gear_from_velocity(state[1].item())
         self.gear_prev = np.zeros((6, 1))
@@ -216,9 +214,7 @@ class Agent:
         self.x_ref[episode] = np.concatenate(
             (self.x_ref[episode], info["x_ref"].reshape(1, 2, 1))
         )
-        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction(
-            self.mpc.prediction_horizon + 1
-        )
+        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction()
         self.T_e_prev = info["T_e"]
         gear = info["gear"]
         self.gear_prev = np.zeros((6, 1))
@@ -329,8 +325,18 @@ class HeuristicGearAgent(Agent):
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
             <= Vehicle.w_e_max + 1e-3
+            and (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
+            >= Vehicle.w_e_idle - 1e-3
             and F_trac / (Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r)
             <= Vehicle.T_e_max + 1e-3
+            and (
+                (
+                    F_trac
+                    < Vehicle.T_e_idle * (Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r)
+                )
+                or F_trac / (Vehicle.z_f * Vehicle.z_t[i] / Vehicle.r_r)
+                >= Vehicle.T_e_idle - 1e-3
+            )
             for i in range(6)
         ]
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]

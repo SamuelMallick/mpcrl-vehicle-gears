@@ -32,7 +32,6 @@ class VehicleTracking(gym.Env):
     def __init__(
         self,
         vehicle: Vehicle,
-        episode_len: int,
         prediction_horizon: int,
         windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
@@ -40,7 +39,6 @@ class VehicleTracking(gym.Env):
         super().__init__()
         self.vehicle = vehicle
         self.x = self.vehicle.x
-        self.episode_len = episode_len
         self.prediction_horizon = prediction_horizon
         self.trajectory_type = trajectory_type
         self.windy = windy
@@ -56,21 +54,20 @@ class VehicleTracking(gym.Env):
             )
             self.x = self.vehicle.x
 
-        self.x_ref = self.generate_x_ref(trajectory_type=self.trajectory_type)
+        # generate reference trajectory
+        self.x_ref = self.init_x_ref()
+
         if self.windy:
+            raise NotImplementedError("Windy environment not implemented yet.")
             self.wind = self.generate_wind(self.episode_len, (8, 14))
 
         self.counter = 0
 
         return self.x, {}
 
-    def reward(self, x: np.ndarray, fuel: float) -> float:
-        return (
-            self.gamma
-            * (x - self.x_ref[self.counter]).T
-            @ self.Q
-            @ (x - self.x_ref[self.counter])
-            + fuel
+    def reward(self, x: np.ndarray, x_ref: np.ndarray, fuel: float) -> float:
+        return (  # first element in x_ref is the current desired state
+            self.gamma * (x - x_ref).T @ self.Q @ (x - x_ref) + fuel
         )
 
     def step(
@@ -78,6 +75,7 @@ class VehicleTracking(gym.Env):
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         T_e, F_b, gear = action
         prev_x = self.x
+        prev_x_ref = self.x_ref[0]
         x, fuel, T_e, w_e = self.vehicle.step(
             T_e,
             F_b,
@@ -86,9 +84,10 @@ class VehicleTracking(gym.Env):
             self.alpha,
             wind_speed=self.wind[self.counter] if self.windy else 0,
         )
-        r = self.reward(prev_x, fuel)
+        r = self.reward(prev_x, prev_x_ref, fuel)
         self.x = x
         self.counter += 1
+        self.next_x_ref(self.trajectory_type)
         return (
             self.x,
             r.item(),
@@ -98,75 +97,91 @@ class VehicleTracking(gym.Env):
                 "fuel": fuel,
                 "T_e": T_e,
                 "w_e": w_e,
-                "x_ref": self.x_ref[self.counter - 1],
+                "x_ref": prev_x_ref,
                 "gear": gear,
                 "x": prev_x,
             },
         )
 
-    def get_x_ref_prediction(self, horizon: int) -> np.ndarray:
-        return self.x_ref[self.counter : self.counter + horizon]
+    def get_x_ref_prediction(self) -> np.ndarray:
+        return self.x_ref
 
-    def generate_x_ref(
-        self, trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1"
-    ):
-        len = (
-            self.episode_len + self.prediction_horizon + 1
-        )  # +1 requiered to generate NN state (over horizon) for ep_len + 1'th timestep
-        x_ref = np.zeros((len, 2, 1))
+    def init_x_ref(self, v_clip_range: list[float] = [5, 28]) -> np.ndarray:
+        """Initializes the reference trajectory of length prediction_horizon + 1.
 
-        # constant velocity
+        Parameters
+        ----------
+        v_clip_range : list[float], optional
+            Range of velocity clipping, by default [5, 28].
+
+        Returns
+        -------
+        np.ndarray
+            The reference trajectory.
+        """
+        x_ref = np.empty((self.prediction_horizon + 1, 2, 1))
+        self.a = self.np_random.uniform(-0.6, 0.6)
+        x_ref[0] = self.x
+        for i in range(1, self.prediction_horizon + 1):
+            x_ref[i, 0] = x_ref[i - 1, 0] + self.ts * x_ref[i - 1, 1]
+            v = x_ref[i - 1, 1] + self.ts * self.a
+            v = np.clip(v, v_clip_range[0], v_clip_range[1])
+            x_ref[i, 1] = v
+        return x_ref
+
+    def next_x_ref(
+        self,
+        trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
+        accel_change_freq: float = 1.0 / 20,
+        v_clip_range: list[float] = [5, 28],
+    ) -> None:
+        """Updates the reference trajectory by removing the first element and
+        appending a new one based.
+
+        Parameters
+        ----------
+        trajectory_type : Literal["type_1", "type_2", "type_3"], optional"
+            "type_1" : constant velocity"
+            "type_2" : less aggressive velocity changes""
+            "type_3" : more aggressive velocity changes" "
+
+        accel_change_freq : float, optional
+            Frequency of changing acceleration, by default 1.0 / 20.
+
+        v_clip_range : list[float], optional
+            Range of velocity clipping, by default [5, 28].
+        """
         if trajectory_type == "type_1":
-            d_ref = (self.x[0] + 20 + 20 * self.ts * np.arange(0, len)).reshape(
-                len, 1, 1
+            d = self.x_ref[-1, 0, 0]
+            v = self.x_ref[-1, 1, 0]
+            self.x_ref = np.concatenate(
+                (
+                    self.x_ref[1:],
+                    np.array([d + self.ts * v, v]).reshape(1, 2, 1),
+                )
             )
-            v_ref = np.full((len, 1, 1), 20)
-            x_ref = np.concatenate((d_ref, v_ref), axis=1)
-            return x_ref
-
-        # variable velocity
-        else:
-            n_segments = 5
-            intermediate_change_points = np.sort(
-                self.np_random.integers(0, len - 1, size=n_segments - 1)
+        elif trajectory_type == "type_2":
+            if self.np_random.uniform() < accel_change_freq:
+                self.a = self.np_random.uniform(-0.6, 0.6)
+            d = self.x_ref[-1, 0, 0]
+            v = self.x_ref[-1, 1, 0]
+            d_ = d + self.ts * v
+            v_ = v + self.ts * self.a
+            v_ = np.clip(v_, v_clip_range[0], v_clip_range[1])
+            self.x_ref = np.concatenate(
+                (self.x_ref[1:], np.array([d_, v_]).reshape(1, 2, 1))
             )
-            change_points = np.concatenate(([0], intermediate_change_points, [len - 1]))
-            v_clip_range = [5, 28]  # 18 - 100 km/h
-
-            # generate initial conditions and acceleration profiles
-            if trajectory_type == "type_2":
-                v = self.np_random.uniform(15, 25)
-                d = 0.0
-                slopes = self.np_random.uniform(-0.6, 0.6, size=n_segments - 2)
-                slopes = np.concatenate(([0], slopes, [0]))
-            elif trajectory_type == "type_3":
-                v = self.np_random.uniform(v_clip_range[0], v_clip_range[1])
-                d = self.np_random.uniform(-50, 50)
-                slopes = self.np_random.uniform(-2, 2, size=n_segments)
-            else:
-                raise ValueError("Invalid trajectory type.")
-
-            x_ref[0] = np.array([[d], [v]])
-
-            # trajectory generation
-            change_point_prev = change_points[0]
-            for idx, change_point in enumerate(change_points[1:]):
-                for k in range(change_point_prev, change_point):
-                    if DEBUG:
-                        print(
-                            f"step: {k} \t| prev point: {change_point_prev} \t| ",
-                            f"next point: {change_point} \t| slope: {slopes[idx]}",
-                        )
-                    v = np.clip(v + slopes[idx], v_clip_range[0], v_clip_range[1])
-                    x_ref[k + 1] = np.array([[x_ref[k, 0, 0] + self.ts * v], [v]])
-                change_point_prev = change_point
-
-            if PLOT:
-                from visualisation.plot import plot_reference_traj
-
-                plot_reference_traj(x_ref, change_points=change_points)
-
-            return x_ref
+        elif trajectory_type == "type_3":
+            if self.np_random.uniform() < accel_change_freq:
+                self.a = self.np_random.uniform(-3, 3)
+            d = self.x_ref[-1, 0, 0]
+            v = self.x_ref[-1, 1, 0]
+            d_ = d + self.ts * v
+            v_ = v + self.ts * self.a
+            v_ = np.clip(v_, v_clip_range[0], v_clip_range[1])
+            self.x_ref = np.concatenate(
+                (self.x_ref[1:], np.array([d_, v_]).reshape(1, 2, 1))
+            )
 
     def generate_wind(
         self, length: int, speed_range: tuple[float, float]
