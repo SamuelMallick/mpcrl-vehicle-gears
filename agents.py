@@ -41,9 +41,9 @@ class Agent:
         gears as parameters. The specific MPC used depends on the subclass."""
 
     # data tracked over episodes of training or evaluation
-    fuel: list[list[float]] = []
-    engine_torque: list[list[float]] = []
-    engine_speed: list[list[float]] = []
+    fuel: list[list] = []
+    engine_torque: list[list] = []
+    engine_speed: list[list] = []
     x_ref: list[np.ndarray] = []
     x_ref_predicition: np.ndarray = np.empty((0, 2, 1))
     T_e_prev = Vehicle.T_e_idle
@@ -132,12 +132,7 @@ class Agent:
                         break
                 else:
                     *action, action_info = self.get_action(state)
-                if np.abs(np.argmax(self.gear_prev) - action[2]) > 1:
-                    action[2] = np.clip(
-                        action[2],
-                        np.argmax(self.gear_prev) - 1,
-                        np.argmax(self.gear_prev) + 1,
-                    )
+                action = self.clip_action(action)
                 state, reward, truncated, terminated, step_info = env.step(action)
                 self.on_env_step(env, episode, timestep, action_info | step_info)
 
@@ -170,6 +165,15 @@ class Agent:
         if allow_failure:
             info["valid_episodes"] = valid_episodes
         return returns, info
+
+    def clip_action(self, action):
+        if np.abs(np.argmax(self.gear_prev) - action[2]) > 1:
+            action[2] = np.clip(
+                action[2],
+                np.argmax(self.gear_prev) - 1,
+                np.argmax(self.gear_prev) + 1,
+            )
+        return action
 
     def on_episode_end(self, episode: int, env: VehicleTracking, save: bool = False):
         if save:
@@ -1208,3 +1212,56 @@ class DQNAgent(LearningAgent):
     def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
         self.cost.append([])
         return super().on_episode_start(state, env)
+
+
+class DistributedAgent(Agent):
+    num_vehicles: int = 3
+
+    def get_action(self, state):
+        return (
+            np.random.uniform(15, 300, self.num_vehicles),
+            np.random.uniform(0, 9000, self.num_vehicles),
+            [np.random.randint(0, 6) for _ in range(self.num_vehicles)],
+            {},
+        )
+
+    def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
+        self.fuel.append([])
+        self.engine_torque.append([])
+        self.engine_speed.append([])
+        self.x_ref.append(np.empty((0, 2, 1)))
+        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction()
+        self.T_e_prev = [Vehicle.T_e_idle for _ in range(self.num_vehicles)]
+        gear = [
+            self.gear_from_velocity(state[1, i].item())
+            for i in range(self.num_vehicles)
+        ]
+        self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
+        for i, g in enumerate(gear):
+            self.gear_prev[i][g] = 1
+
+    def on_env_step(
+        self, env: VehicleTracking, episode: int, timestep: int, info: dict
+    ):
+        self.fuel[episode].append(info["fuel"])
+        self.engine_torque[episode].append(info["T_e"])
+        self.engine_speed[episode].append(info["w_e"])
+        self.x_ref[episode] = np.concatenate(
+            (self.x_ref[episode], info["x_ref"].reshape(1, 2, 1))
+        )
+        self.x_ref_predicition = env.unwrapped.get_x_ref_prediction()
+        self.T_e_prev = info["T_e"]
+        gear = info["gear"]
+        self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
+        for i, g in enumerate(gear):
+            self.gear_prev[i][g] = 1
+
+    def clip_action(self, action):
+        for i in range(self.num_vehicles):
+            if np.abs(np.argmax(self.gear_prev[i]) - action[2][i]) > 1:
+                action[2][i] = np.clip(
+                    action[2][i],
+                    np.argmax(self.gear_prev[i]) - 1,
+                    np.argmax(self.gear_prev[i]) + 1,
+                )
+        return action

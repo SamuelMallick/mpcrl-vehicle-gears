@@ -31,7 +31,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "l_mpc_eval"
+] = "heuristic_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -39,7 +39,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c5 import Config  # type: ignore
+    from config_files.c1 import Config  # type: ignore
 
     config = Config(sim_type)
 
