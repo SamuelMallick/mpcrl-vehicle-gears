@@ -31,7 +31,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "rl_mpc_train"
+] = "l_mpc_eval"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -39,7 +39,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c5 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -88,7 +88,7 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         )
     elif sim_type == "l_mpc_eval":
         state_dict = torch.load(
-            f"results/sl_data/5_policy_net_ep_300_epoch_2200.pth",
+            f"results/no_track/sl_data/5_policy_net_ep_300_epoch_2200.pth",
             weights_only=True,
             map_location="cpu",
         )
