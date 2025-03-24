@@ -40,6 +40,7 @@ class VehicleTracking(gym.Env):
         prediction_horizon: int,
         windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
+        infinite_episodes: bool = False,
     ):
         super().__init__()
         self.vehicle = vehicle
@@ -47,6 +48,7 @@ class VehicleTracking(gym.Env):
         self.prediction_horizon = prediction_horizon
         self.trajectory_type = trajectory_type
         self.windy = windy
+        self.infinite_episodes = infinite_episodes
 
     def reset(self, *, seed=None, options=None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed, options=options)
@@ -79,6 +81,9 @@ class VehicleTracking(gym.Env):
     def step(
         self, action: tuple[float, float, int]
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
+        terminated = False
+        if self.infinite_episodes and np.abs(self.x[0] - self.x_ref[0, 0]) > 100:
+            terminated = True
         T_e, F_b, gear = action
         prev_x = self.x
         prev_x_ref = self.x_ref[0]
@@ -100,7 +105,7 @@ class VehicleTracking(gym.Env):
             self.x,
             r.item(),
             False,
-            False,
+            terminated,
             {
                 "fuel": fuel,
                 "T_e": T_e,

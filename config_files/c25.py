@@ -9,26 +9,27 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "21"  # 1 but with lower lr
+    id = "25"  # 11 but with inf episodes and aggressive traj
 
     # -----------general parameters----------------
     N = 15
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_2"
+    trajectory_type = "type_3"
+    infinite_episodes = True
 
     # -----------network parameters----------------
     # hyperparameters
     gamma = 0.9
-    learning_rate = 0.00001
+    learning_rate = 0.0001
     tau = 0.001
 
     # archticeture
     n_hidden = 256
-    n_actions = 6
+    n_actions = 3
     n_layers = 4
     bidirectional = True
-    normalize = False
+    normalize = True
 
     # exploration
     eps_start = 0.99

@@ -14,6 +14,7 @@ class ConfigDefault:
     trajectory_type = "type_3"
     windy = False
     save_every_episode = False
+    infinite_episodes = False
 
     # -----------network parameters----------------
     # initial weights

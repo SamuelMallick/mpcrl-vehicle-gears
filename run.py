@@ -31,7 +31,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "miqp_mpc"
+] = "rl_mpc_train"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -52,12 +52,14 @@ env: VehicleTracking = MonitorEpisodes(
     TimeLimit(
         VehicleTracking(
             vehicle,
-            episode_len=ep_length,
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
+            infinite_episodes=config.infinite_episodes,
         ),
-        max_episode_steps=ep_length,
+        max_episode_steps=(
+            ep_length if not config.infinite_episodes else ep_length * config.num_eps
+        ),
     )
 )
 agent: Agent | None = None
@@ -77,12 +79,12 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         returns, info = agent.train(
             env,
             episodes=num_eps,
-            ep_len=ep_length,
             exp_zero_steps=config.esp_zero_steps,
-            save_freq=1000,
+            save_freq=50000,
             save_path=f"results/{config.id}",
             seed=0,  # seed 0 used for training
             init_state_dict=init_state_dict,
+            max_learning_steps=ep_length * config.num_eps,
         )
     elif sim_type == "l_mpc_eval":
         state_dict = torch.load(

@@ -993,12 +993,12 @@ class DQNAgent(LearningAgent):
         self,
         env: VehicleTracking,
         episodes: int,
-        ep_len: int,
         seed: int = 0,
         save_freq: int = 0,
         save_path: str = "",
         exp_zero_steps: int = 0,
         init_state_dict: dict = {},
+        max_learning_steps: int = np.inf,
     ) -> tuple[np.ndarray, dict]:
         """Train the policy on the environment using deep Q-learning.
 
@@ -1008,12 +1008,10 @@ class DQNAgent(LearningAgent):
             The vehicle tracking environment on which the policy is trained.
         episodes : int
             The number of episodes to train the policy for.
-        ep_len : int
-            The number of time steps in each episode.
         seed : int, optional
             The seed for the random number generator, by default 0.
         save_freq : int, optional
-            The episode frequency at which to save the policy, by default 0.
+            The step frequency at which to save the policy, by default 0.
         save_path : str, optional
             The path to the folder where the data and models are saved.
         exp_zero_steps : int, optional
@@ -1021,7 +1019,10 @@ class DQNAgent(LearningAgent):
             approximately zero (1e-3), by default 0 (no exploration).
         init_state_dict : dict, optional
             The initial state dictionary for the Q and target network, by default {}
-            in which case a randomized start is used."""
+            in which case a randomized start is used.
+        max_learning_steps : int, optional
+            The maximum total number of learning steps across all episodes, after
+            which the training terminates."""
         if self.normalize:
             self.running_mean_std = RunningMeanStd(shape=(2,))
 
@@ -1032,6 +1033,7 @@ class DQNAgent(LearningAgent):
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
         returns = np.zeros(episodes)
         self.decay_rate = np.log(self.eps_start / 1e-3) / exp_zero_steps
+        total_steps = 0
 
         self.on_train_start()
         for episode, seed in zip(range(episodes), seeds):
@@ -1085,12 +1087,16 @@ class DQNAgent(LearningAgent):
 
                 self.on_timestep_end(reward + penalty)
                 timestep += 1
-
-            if save_freq and episode % save_freq == 0:
-                self.save(env=env, ep=episode, path=save_path)
+                if timestep % 100 == 0:
+                    print(f"Episode {episode}: Step {timestep}")
+                total_steps += 1
+                if total_steps >= max_learning_steps:
+                    break
+                if save_freq and total_steps % save_freq == 0:
+                    self.save(env=env, step=total_steps, path=save_path)
 
         print("Training complete")
-        self.save(env=env, ep=episode, path=save_path)
+        self.save(env=env, step=total_steps, path=save_path)
         info = {
             "fuel": self.fuel,
             "T_e": self.engine_torque,
@@ -1162,9 +1168,9 @@ class DQNAgent(LearningAgent):
         torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), self.max_grad)
         self.optimizer.step()
 
-    def save(self, env: VehicleTracking, ep: int, path: str = ""):
-        torch.save(self.policy_net.state_dict(), path + f"/policy_net_ep_{ep}.pth")
-        torch.save(self.target_net.state_dict(), path + f"/target_net_ep_{ep}.pth")
+    def save(self, env: VehicleTracking, step: int, path: str = ""):
+        torch.save(self.policy_net.state_dict(), path + f"/policy_net_step_{step}.pth")
+        torch.save(self.target_net.state_dict(), path + f"/target_net_step_{step}.pth")
         info = {
             "cost": self.cost,
             "fuel": self.fuel,
@@ -1172,16 +1178,16 @@ class DQNAgent(LearningAgent):
             "w_e": self.engine_speed,
             "x_ref": self.x_ref,
             "infeasible": self.infeasible,
-            "R": list(env.rewards),
-            "X": list(env.observations),
-            "U": list(env.actions),
+            "R": list(env.rewards) + [np.asarray(env.ep_rewards)],
+            "X": list(env.observations) + [np.asarray(env.ep_observations)],
+            "U": list(env.actions) + [np.asarray(env.ep_actions)],
         }
         if self.normalize:
             info["normalization"] = (
                 self.running_mean_std.mean,
                 self.running_mean_std.var,
             )
-        with open(path + f"/data_ep_{ep}.pkl", "wb") as f:
+        with open(path + f"/data_step_{step}.pkl", "wb") as f:
             pickle.dump(
                 info,
                 f,
