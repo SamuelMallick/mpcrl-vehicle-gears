@@ -29,6 +29,11 @@ class VehicleTracking(gym.Env):
     gamma = 0.01  # weight for tracking in cost
     Q = np.array([[1, 0], [0, 0.1]])  # tracking cost weight
 
+    wind_speed_range = (8, 14)  # wind speed range (m/s)
+    wind_delta = 0.1  # wind speed change rate (m/s)
+
+    wind_list = []
+
     def __init__(
         self,
         vehicle: Vehicle,
@@ -58,8 +63,9 @@ class VehicleTracking(gym.Env):
         self.x_ref = self.init_x_ref()
 
         if self.windy:
-            raise NotImplementedError("Windy environment not implemented yet.")
-            self.wind = self.generate_wind(self.episode_len, (8, 14))
+            self.wind = self.np_random.uniform(
+                self.wind_speed_range[0], self.wind_speed_range[1], size=1
+            )
 
         self.counter = 0
 
@@ -82,12 +88,14 @@ class VehicleTracking(gym.Env):
             gear,
             self.ts,
             self.alpha,
-            wind_speed=self.wind[self.counter] if self.windy else 0,
+            wind_speed=self.wind.item() if self.windy else 0,
         )
         r = self.reward(prev_x, prev_x_ref, fuel)
         self.x = x
         self.counter += 1
         self.next_x_ref(self.trajectory_type)
+        if self.windy:
+            self.next_wind()
         return (
             self.x,
             r.item(),
@@ -100,6 +108,7 @@ class VehicleTracking(gym.Env):
                 "x_ref": prev_x_ref,
                 "gear": gear,
                 "x": prev_x,
+                "wind": self.wind if self.windy else 0,
             },
         )
 
@@ -183,20 +192,9 @@ class VehicleTracking(gym.Env):
                 (self.x_ref[1:], np.array([d_, v_]).reshape(1, 2, 1))
             )
 
-    def generate_wind(
-        self, length: int, speed_range: tuple[float, float]
-    ) -> np.ndarray:
-        wind_speed = self.np_random.uniform(speed_range[0], speed_range[1], size=length)
-        window_size = 5  # Adjust for smoothness (higher = smoother)
-        wind_speed_smoothed = np.convolve(
-            wind_speed, np.ones(window_size) / window_size, mode="same"
+    def next_wind(self) -> None:
+        self.wind += self.ts * self.np_random.uniform(-self.wind_delta, self.wind_delta)
+        self.wind = np.clip(
+            self.wind, self.wind_speed_range[0], self.wind_speed_range[1]
         )
-        # plt.figure(figsize=(10, 4))
-        # plt.plot(wind_speed_smoothed, label="Wind Speed (m/s)", color='b')
-        # plt.xlabel("Time (s)")
-        # plt.ylabel("Wind Speed (m/s)")
-        # plt.title("Random Wind Speed Profile (Moderate Wind)")
-        # plt.legend()
-        # plt.grid()
-        # plt.show()
-        return wind_speed_smoothed
+        self.wind_list.append(self.wind.item())
