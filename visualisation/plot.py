@@ -30,7 +30,7 @@ def plot_training(
         for i in range(5):
             ax[i].set_yscale("log")
     ax[0].plot(
-        np.convolve(cost, np.ones(average_interval) / average_interval, mode="valid")
+        np.convolve(cost, np.ones(average_interval) / average_interval, mode="valid"),
     )
     ax[0].set_ylabel("RL cost")
     ax[1].plot(
@@ -51,6 +51,7 @@ def plot_training(
         np.convolve(reward, np.ones(average_interval) / average_interval, mode="valid")
     )
     ax[4].set_ylabel("L")
+    # ax[4].set_ylim([700, 1000])
     if infeasible is not None:
         ax[5].plot(
             np.convolve(

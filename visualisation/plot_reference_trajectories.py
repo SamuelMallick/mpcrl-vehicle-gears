@@ -13,7 +13,7 @@ env.reset(seed=10)
 num_trajectories = 25
 representative_trajectories = [8, 12, 13, 15, 17]
 trajectories = [
-    env.generate_x_ref(trajectory_type="type_2") for _ in range(num_trajectories)
+    env.next_x_ref(trajectory_type="type_2") for _ in range(num_trajectories)
 ]
 
 fig, ax = plt.subplots(2, 1, sharex=True)

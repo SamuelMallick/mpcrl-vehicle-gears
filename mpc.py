@@ -69,6 +69,8 @@ np.fill_diagonal(A[:, 1:], 1)
 Q = cs.diag([1, 0.1])
 gamma = 0.01  # weight for tracking in cost
 
+d_safe = 10
+
 
 def nonlinear_hybrid_model(x: cs.SX, u: cs.SX, dt: float, alpha: float) -> cs.SX:
     """Function for the nonlinear hybrid vehicle dynamics x^+ = f(x, u).
@@ -157,6 +159,18 @@ class HybridTrackingMpc(Mpc):
         x, _ = self.state("x", 2)
         self.constraint("a_ub", x[1, 1:] - x[1, :-1], "<=", a_max * dt)
         self.constraint("a_lb", x[1, 1:] - x[1, :-1], ">=", -a_max * dt)
+
+        # optional constraints for collision with vehicles ahead and behind
+        # p_a and p_b are set to arbitrary large and small values to disable
+        # the constraints if they are not passed as parameters
+        p_a = self.parameter("p_a", (1, prediction_horizon + 1))
+        p_b = self.parameter("p_b", (1, prediction_horizon + 1))
+        _, _, s_a = self.constraint(
+            "collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=True
+        )
+        _, _, s_b = self.constraint(
+            "collision_behind", x[0, :] - p_b, ">=", d_safe, soft=True
+        )
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
         T_e_prev = self.parameter("T_e_prev", (1, 1))
@@ -327,6 +341,7 @@ class HybridTrackingMpc(Mpc):
                 ]
             )
             + fuel_cost
+            + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
             # + sum(0.01 * F_b[i] for i in range(prediction_horizon))
         )
         if (
@@ -355,6 +370,10 @@ class HybridTrackingMpc(Mpc):
             "w_e": np.full((1, self.prediction_horizon), w_e_idle),
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
         }
+        if "p_a" not in pars:
+            pars["p_a"] = np.full((1, self.prediction_horizon + 1), 1e6)
+        if "p_b" not in pars:
+            pars["p_b"] = np.full((1, self.prediction_horizon + 1), -1e6)
         return self.nlp.solve(pars, vals0)
 
 
@@ -384,6 +403,18 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         x, _ = self.state("x", 2)
         self.constraint("a_ub", x[1, 1:] - x[1, :-1], "<=", a_max * dt)
         self.constraint("a_lb", x[1, 1:] - x[1, :-1], ">=", -a_max * dt)
+
+        # optional constraints for collision with vehicles ahead and behind
+        # p_a and p_b are set to arbitrary large and small values to disable
+        # the constraints if they are not passed as parameters
+        p_a = self.parameter("p_a", (1, prediction_horizon + 1))
+        p_b = self.parameter("p_b", (1, prediction_horizon + 1))
+        _, _, s_a = self.constraint(
+            "collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=True
+        )
+        _, _, s_b = self.constraint(
+            "collision_behind", x[0, :] - p_b, ">=", d_safe, soft=True
+        )
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
         T_e_prev = self.parameter("T_e_prev", (1, 1))
@@ -465,6 +496,7 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
                 ]
             )
             + fuel_cost
+            + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
 
@@ -483,6 +515,10 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
             "w_e_plus": np.full((1, self.prediction_horizon - 1), w_e_idle),
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
         }
+        if "p_a" not in pars:
+            pars["p_a"] = np.full((1, self.prediction_horizon + 1), 1e6)
+        if "p_b" not in pars:
+            pars["p_b"] = np.full((1, self.prediction_horizon + 1), -1e6)
         return self.nlp.solve(pars, vals0)
 
 
@@ -507,6 +543,18 @@ class TrackingMpc(Mpc):
         self.constraint("v_ub", x[1, :], "<=", v_max)
         self.constraint("v_lb", x[1, :], ">=", v_min)
 
+        # optional constraints for collision with vehicles ahead and behind
+        # p_a and p_b are set to arbitrary large and small values to disable
+        # the constraints if they are not passed as parameters
+        p_a = self.parameter("p_a", (1, prediction_horizon + 1))
+        p_b = self.parameter("p_b", (1, prediction_horizon + 1))
+        _, _, s_a = self.constraint(
+            "collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=True
+        )
+        _, _, s_b = self.constraint(
+            "collision_behind", x[0, :] - p_b, ">=", d_safe, soft=True
+        )
+
         F_trac_max = self.parameter("F_trac_max", (1, 1))
         F_trac, _ = self.action(
             "F_trac", 1, lb=T_e_idle * z_t[-1] * z_f / r_r - F_b_max
@@ -523,5 +571,17 @@ class TrackingMpc(Mpc):
                     for i in range(prediction_horizon + 1)
                 ]
             )
+            + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
+
+    def solve(
+        self,
+        pars: dict,
+        vals0: Optional[dict] = None,
+    ) -> Solution:
+        if "p_a" not in pars:
+            pars["p_a"] = np.full((1, self.prediction_horizon + 1), 1e6)
+        if "p_b" not in pars:
+            pars["p_b"] = np.full((1, self.prediction_horizon + 1), -1e6)
+        return self.nlp.solve(pars, vals0)

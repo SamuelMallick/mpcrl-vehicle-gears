@@ -8,6 +8,7 @@ from agents import (
     DQNAgent,
     SupervisedLearningAgent,
     DistributedAgent,
+    DistributedHeuristicGearAgent,
 )
 from env import VehicleTracking, PlatoonTracking
 from vehicle import Vehicle
@@ -21,8 +22,8 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = True
-PLOT = False
+SAVE = False
+PLOT = True
 
 sim_type: Literal[
     "sl_train",
@@ -32,7 +33,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "heuristic_mpc"
+] = "miqp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -47,7 +48,7 @@ else:
 num_vehicles = 3
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 ep_length = config.ep_len
-num_eval_eps = 100
+num_eval_eps = 1
 N = config.N
 eval_seed = 10
 env: PlatoonTracking = MonitorEpisodes(
@@ -65,8 +66,8 @@ env: PlatoonTracking = MonitorEpisodes(
     )
 )
 
-
-agent: Agent = DistributedAgent(None)
+mpc = SolverTimeRecorder(TrackingMpc(N))
+agent: Agent = DistributedHeuristicGearAgent(mpc, num_vehicles=num_vehicles)
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
@@ -87,8 +88,10 @@ U = list(env.actions)
 R = list(env.rewards)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
-print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
-print(f"total mpc solve times = {sum(mpc.solver_time)}")
+print(
+    f"average fuel = {sum([sum(fuel[i][j][k] for k in range(num_vehicles) for j in range(ep_length)) for i in range(len(fuel))]) / len(fuel)}"
+)
+# print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(f"results/{sim_type}_N_{N}_c_{config.id}.pkl", "wb") as f:
@@ -117,7 +120,7 @@ if PLOT:
         X[ep],
         U[ep],
         R[ep],
-        fuel[ep],
+        [sum(fuel[ep][j][k] for k in range(num_vehicles)) for j in range(ep_length)],
         engine_torque[ep],
         engine_speed[ep],
     )

@@ -15,7 +15,7 @@ class Config(ConfigDefault):
     N = 15
     ep_len = 100
     num_eps = 50000
-    trajectory_type = "type_2"
+    trajectory_type = "type_3"
 
     # -----------network parameters----------------
     # hyperparameters

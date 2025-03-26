@@ -26,7 +26,8 @@ min_v_per_gear = [
     (Vehicle.w_e_idle * Vehicle.r_r * 2 * np.pi) / (Vehicle.z_t[i] * Vehicle.z_f * 60)
     for i in range(6)
 ]
-
+d = 25  # inter-vehicle distance (m)    # TODO make consistent with env and part of config file
+d_arr = np.array([[d], [0]])
 
 class Agent:
     """A base class for agents that control the vehicle. interact with the
@@ -1215,13 +1216,18 @@ class DQNAgent(LearningAgent):
 
 
 class DistributedAgent(Agent):
-    num_vehicles: int = 3
+
+    def __init__(self, mpc, num_vehicles: int):
+        super().__init__(mpc)
+        self.num_vehicles = num_vehicles
 
     def get_action(self, state):
         return (
-            np.random.uniform(15, 300, self.num_vehicles),
-            np.random.uniform(0, 9000, self.num_vehicles),
-            [np.random.randint(0, 6) for _ in range(self.num_vehicles)],
+            # np.random.uniform(15, 300, self.num_vehicles),
+            15 * np.ones(self.num_vehicles),
+            0 * np.ones(self.num_vehicles),
+            # np.random.uniform(0, 9000, self.num_vehicles),
+            [5 for _ in range(self.num_vehicles)],
             {},
         )
 
@@ -1265,3 +1271,63 @@ class DistributedAgent(Agent):
                     np.argmax(self.gear_prev[i]) + 1,
                 )
         return action
+
+
+class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
+
+    def __init__(self, mpc, num_vehicles: int):
+        super().__init__(mpc, num_vehicles)
+        self.sols = [None for _ in range(num_vehicles)]
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        # get highest allowed gear for the given velocity, then use that to limit the traction force
+        xs = np.split(state, self.num_vehicles, axis=1)
+        T_e_list = []
+        F_b_list = []
+        gear_list = []
+        for i, x in enumerate(xs):
+            idx = bisect_right(max_v_per_gear, x[1].item())
+            n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
+            F_trac_max = Vehicle.T_e_max * n
+
+            
+            pars = {
+                "x_0": x,
+                "F_trac_max": F_trac_max
+            }
+            if i == 0:
+                pars["x_ref"] = self.x_ref_predicition.T.reshape(2, -1)
+                if self.sols[i+1] is not None:
+                    p_b = self.sols[i+1].vals["x"]
+                    pars["p_b"] = np.concatenate((p_b[1:], p_b[[-1]]))
+            else:
+                p_a = self.sols[i-1].vals["x"]
+            if i == self.num_vehicles - 1:
+                pars["x_ref"]
+            sol = self.mpc.solve(
+                pars
+            )
+
+            if not sol.success:
+                raise ValueError("MPC failed to solve")
+            F_trac = sol.vals["F_trac"].full()[0, 0]
+            gear = self.gear_from_velocity_and_traction(x[1], F_trac)
+            if F_trac < 0:
+                T_e = Vehicle.T_e_idle
+                F_b = (
+                    -F_trac
+                    + Vehicle.T_e_idle * Vehicle.z_t[gear] * Vehicle.z_f / Vehicle.r_r
+                )
+            else:
+                T_e = (F_trac * Vehicle.r_r) / (Vehicle.z_t[gear] * Vehicle.z_f)
+                F_b = 0
+
+            # apply clipping to engine torque
+            T_e = (
+                np.clip(T_e - self.T_e_prev[i], -Vehicle.dT_e_max, Vehicle.dT_e_max)
+                + self.T_e_prev[i]
+            )
+            T_e_list.append(T_e)
+            F_b_list.append(F_b)
+            gear_list.append(gear)
+        return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}

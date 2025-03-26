@@ -20,8 +20,8 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = True
-PLOT = False
+SAVE = False
+PLOT = True
 
 sim_type: Literal[
     "sl_train",
@@ -45,7 +45,7 @@ else:
 
 vehicle = Vehicle()
 ep_length = config.ep_len
-num_eval_eps = 100
+num_eval_eps = 1
 N = config.N
 eval_seed = 10
 env: VehicleTracking = MonitorEpisodes(

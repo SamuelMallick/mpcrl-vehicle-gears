@@ -1,10 +1,11 @@
 import pickle
 import sys, os
+from matplotlib import pyplot as plt
 
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/no_track/23/data_ep_44000.pkl"
+file_name = "results/no_track/25/data_step_1700000.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
@@ -19,8 +20,10 @@ engine_speed = data["w_e"]
 if "infeasible" in data:
     infeasible = data["infeasible"]
 
+plt.plot([len(X[i]) for i in range(len(X))])
+plt.show()
 
-# for ep in range(0, 68):
+# for ep in range(214, 215, 20):
 #     plot_evaluation(
 #         x_ref[ep],
 #         X[ep],
@@ -33,17 +36,17 @@ if "infeasible" in data:
 #     )
 
 plot_training(
-    [sum(cost[i]) for i in range(len(cost))],
-    [sum(fuel[i]) for i in range(len(fuel))],
-    [sum(R[i]) - sum(fuel[i]) for i in range(len(R))],
-    [sum(cost[i]) - sum(R[i]) for i in range(len(R))],
-    [sum(R[i]) for i in range(len(R))],
+    [item for sublist in cost for item in sublist],
+    [item for sublist in fuel for item in sublist],
+    [r - f for sub_r, sub_f in zip(R, fuel) for r, f in zip(sub_r, sub_f)],
+    [c - r for sub_c, sub_r in zip(cost, R) for c, r in zip(sub_c, sub_r)],
+    [r for sub_r in R for r in sub_r],
     infeasible=(
-        [sum(infeasible[i]) for i in range(len(infeasible))]
+        [item for sublist in infeasible for item in sublist]
         if "infeasible" in data
         else None
     ),
     only_averages=True,
     log_scales=False,
-    average_interval=100,
+    average_interval=50,
 )
