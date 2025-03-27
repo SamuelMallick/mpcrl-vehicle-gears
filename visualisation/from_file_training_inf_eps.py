@@ -5,11 +5,12 @@ from matplotlib import pyplot as plt
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "results/no_track/25/data_step_1700000.pkl"
+# file_name = "dev/results/25/data_step_4050000.pkl"
+file_name = "dev/results/evaluations/l_mpc_eval_N_15_c_25.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)
 
-cost = data["cost"]
+# cost = data["cost"]
 fuel = data["fuel"]
 R = data["R"]
 X = data["X"]
@@ -23,17 +24,17 @@ if "infeasible" in data:
 plt.plot([len(X[i]) for i in range(len(X))])
 plt.show()
 
-# for ep in range(214, 215, 20):
-#     plot_evaluation(
-#         x_ref[ep],
-#         X[ep],
-#         U[ep],
-#         R[ep],
-#         fuel[ep],
-#         engine_torque[ep],
-#         engine_speed[ep],
-#         infeasible[ep] if "infeasible" in data else None,
-#     )
+for ep in range(0, 100):
+    plot_evaluation(
+        x_ref[ep],
+        X[ep],
+        U[ep],
+        R[ep],
+        fuel[ep],
+        engine_torque[ep],
+        engine_speed[ep],
+        infeasible[ep] if "infeasible" in data else None,
+    )
 
 plot_training(
     [item for sublist in cost for item in sublist],
@@ -48,5 +49,5 @@ plot_training(
     ),
     only_averages=True,
     log_scales=False,
-    average_interval=50,
+    average_interval=100,
 )

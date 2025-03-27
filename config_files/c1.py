@@ -13,7 +13,7 @@ class Config(ConfigDefault):
 
     # -----------general parameters----------------
     N = 15
-    ep_len = 100
+    ep_len = 300
     num_eps = 50000
     trajectory_type = "type_3"
 

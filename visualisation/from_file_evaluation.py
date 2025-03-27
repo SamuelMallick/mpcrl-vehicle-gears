@@ -9,15 +9,13 @@ from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 types = [
-    # f"miqp_mpc_N_{N}",
-    # f"l_mpc_eval_N_{N}",
-    f"l_mpc_eval_N_{N}_c_5",
-    f"heuristic_mpc_low_N_{N}",
+    f"l_mpc_eval_N_{N}_c_25",
+    f"heuristic_mpc_low_N_{N}_c_1",
 ]
-baseline_type = f"l_mpc_eval_N_{N}_c_5"
+baseline_type = f"l_mpc_eval_N_{N}_c_25"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
-file_names = [f"results/no_track/traj_3/{type}.pkl" for type in types]
-baseline_file_name = f"results/no_track/traj_3/{baseline_type}.pkl"
+file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
+baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
 
 X = []
 U = []
@@ -57,7 +55,7 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-labels = ["MIQP-MPC", "L-MPC", "new"]  # , "H-MPC", "MINLP-MPC"]
+labels = ["L-MPC", "H-MPC", "base"]  # , "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
@@ -128,7 +126,7 @@ ax[1].set_ylabel("Time (s)")
 # save2tikz(plt.gcf())
 plt.show()
 
-for ep in range(68, len(R[0])):
+for ep in range(0, len(R[0])):
     print(f"Episode {ep}")
     plot_comparison(
         [x_ref[i][ep] for i in range(len(types))] + [baseline_x_ref[ep]],

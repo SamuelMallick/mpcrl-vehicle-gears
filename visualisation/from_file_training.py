@@ -20,17 +20,17 @@ if "infeasible" in data:
     infeasible = data["infeasible"]
 
 
-# for ep in range(0, 68):
-#     plot_evaluation(
-#         x_ref[ep],
-#         X[ep],
-#         U[ep],
-#         R[ep],
-#         fuel[ep],
-#         engine_torque[ep],
-#         engine_speed[ep],
-#         infeasible[ep] if "infeasible" in data else None,
-#     )
+for ep in range(0, 100):
+    plot_evaluation(
+        x_ref[ep],
+        X[ep],
+        U[ep],
+        R[ep],
+        fuel[ep],
+        engine_torque[ep],
+        engine_speed[ep],
+        infeasible[ep] if "infeasible" in data else None,
+    )
 
 plot_training(
     [sum(cost[i]) for i in range(len(cost))],

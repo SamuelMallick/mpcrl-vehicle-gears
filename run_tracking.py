@@ -20,8 +20,8 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = False
-PLOT = True
+SAVE = True
+PLOT = False
 
 sim_type: Literal[
     "sl_train",
@@ -31,7 +31,7 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "heuristic_mpc"
+] = "miqp_mpc"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -45,7 +45,7 @@ else:
 
 vehicle = Vehicle()
 ep_length = config.ep_len
-num_eval_eps = 1
+num_eval_eps = 20
 N = config.N
 eval_seed = 10
 env: VehicleTracking = MonitorEpisodes(
@@ -55,10 +55,14 @@ env: VehicleTracking = MonitorEpisodes(
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
-            infinite_episodes=config.infinite_episodes,
+            infinite_episodes=(
+                False if sim_type == "l_mpc_eval" else config.infinite_episodes
+            ),
         ),
         max_episode_steps=(
-            ep_length if not config.infinite_episodes else ep_length * config.num_eps
+            ep_length
+            if not config.infinite_episodes or sim_type == "l_mpc_eval"
+            else ep_length * config.num_eps
         ),
     )
 )
@@ -88,7 +92,7 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         )
     elif sim_type == "l_mpc_eval":
         state_dict = torch.load(
-            f"results/no_track/sl_data/5_policy_net_ep_300_epoch_2200.pth",
+            f"dev/results/25/policy_net_step_4050000.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -97,8 +101,8 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         #     weights_only=True,
         #     map_location="cpu",
         # )
-        # with open(f"results/11/data_ep_37000.pkl", "rb") as f:
-        #     data = pickle.load(f)
+        with open(f"dev/results/25/data_step_4050000.pkl", "rb") as f:
+            data = pickle.load(f)
         # dqn = DRQN(8, 256, 6, 4, True)
         # state_dict = dqn.state_dict()
         returns, info = agent.evaluate(
@@ -106,7 +110,7 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
             episodes=num_eval_eps,
             policy_net_state_dict=state_dict,
             seed=eval_seed,  # seed 10 used for evaluation
-            # normalization=data["normalization"],
+            normalization=data["normalization"],
         )
 if sim_type == "sl_train" or sim_type == "sl_data":
     mpc = SolverTimeRecorder(
@@ -223,7 +227,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"results/{sim_type}_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"{sim_type}_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
