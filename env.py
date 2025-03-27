@@ -62,7 +62,7 @@ class VehicleTracking(gym.Env):
             self.x = self.vehicle.x
 
         # generate reference trajectory
-        self.x_ref = self.init_x_ref(self.x + 10)
+        self.x_ref = self.init_x_ref(self.x)
 
         if self.windy:
             self.wind = self.np_random.uniform(

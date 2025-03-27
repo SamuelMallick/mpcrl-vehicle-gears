@@ -29,6 +29,7 @@ min_v_per_gear = [
 d = 25  # inter-vehicle distance (m)    # TODO make consistent with env and part of config file
 d_arr = np.array([[d], [0]])
 
+
 class Agent:
     """A base class for agents that control the vehicle. interact with the
     environment.
@@ -1290,23 +1291,23 @@ class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
             n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
             F_trac_max = Vehicle.T_e_max * n
 
-            
-            pars = {
-                "x_0": x,
-                "F_trac_max": F_trac_max
-            }
+            pars = {"x_0": x, "F_trac_max": F_trac_max}
             if i == 0:
                 pars["x_ref"] = self.x_ref_predicition.T.reshape(2, -1)
-                if self.sols[i+1] is not None:
-                    p_b = self.sols[i+1].vals["x"]
-                    pars["p_b"] = np.concatenate((p_b[1:], p_b[[-1]]))
             else:
-                p_a = self.sols[i-1].vals["x"]
-            if i == self.num_vehicles - 1:
-                pars["x_ref"]
-            sol = self.mpc.solve(
-                pars
-            )
+                pars["x_ref"] = self.sols[i - 1].vals["x"] - d_arr
+            if i < self.num_vehicles - 1:
+                if (
+                    self.sols[i + 1] is not None
+                ):  # for first solution behind constraint not considered
+                    p_b = self.sols[i + 1].vals["x"][0, :]
+                    pars["p_b"] = np.concatenate(
+                        (p_b[0, 1:], p_b[0, -1]), axis=1
+                    )  # prev sol requires shift
+            if i > 0:
+                pars["p_a"] = self.sols[i - 1].vals["x"][0, :]
+
+            sol = self.mpc.solve(pars)
 
             if not sol.success:
                 raise ValueError("MPC failed to solve")
@@ -1330,4 +1331,5 @@ class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
             T_e_list.append(T_e)
             F_b_list.append(F_b)
             gear_list.append(gear)
+            self.sols[i] = sol
         return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}
