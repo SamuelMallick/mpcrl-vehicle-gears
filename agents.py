@@ -6,7 +6,7 @@ from config_files.base import ConfigDefault
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
-from mpc import HybridTrackingMpc, TrackingMpc
+from mpc import HybridTrackingMpc, TrackingMpc, HybridTrackingFuelMpcFixedGear
 from network import DRQN, ReplayMemory, Transition
 from utils.running_mean_std import RunningMeanStd
 from vehicle import Vehicle
@@ -16,6 +16,7 @@ from datetime import datetime
 import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+import casadi as cs
 
 # the max velocity allowed by each gear while respecting the engine speed limit
 max_v_per_gear = [
@@ -53,6 +54,7 @@ class Agent:
 
     def __init__(self, mpc: Mpc):
         self.mpc = mpc
+        self.prev_sol = None
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the vehicle action, given its current state.
@@ -226,7 +228,9 @@ class Agent:
         self.gear_prev = np.zeros((6, 1))
         self.gear_prev[gear] = 1
 
-    def gear_from_velocity(self, v: float) -> int:
+    def gear_from_velocity(
+        self, v: float, gear_priority: Literal["low", "high", "mid"] = "mid"
+    ) -> int:
         """Get the gear that the vehicle should be in, given its velocity. The gear
         is chosen such that the engine speed limit is not exceeded. The gear is
         chosen as the middle gear that satisfies the engine speed limit.
@@ -235,6 +239,11 @@ class Agent:
         ----------
         v : float
             The velocity of the vehicle.
+        gear_priority : Literal["low", "high", "mid"], optional
+            The priority of the gear to use, by default "mid". If "low", the agent
+            will favour lower gears, if "high", the agent will favour higher gears,
+            and if "mid", the agent will favour the middle gear that satisfies the
+            engine speed limit.
 
         Returns
         -------
@@ -255,7 +264,16 @@ class Agent:
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
         if not valid_indices:
             raise ValueError("No gear found")
+        if gear_priority == "high":
+            return valid_indices[0]
+        if gear_priority == "low":
+            return valid_indices[-1]
         return valid_indices[len(valid_indices) // 2]
+
+    def shift_sol(self, sol) -> Solution:
+        for key in sol.vals.keys():
+            sol.vals[key] = cs.horzcat(sol.vals[key][:, 1:], sol.vals[key][:, -1:])
+        return sol
 
 
 class MINLPAgent(Agent):
@@ -285,7 +303,8 @@ class MINLPAgent(Agent):
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "T_e_prev": self.T_e_prev,
                 "gear_prev": self.gear_prev,
-            }
+            },
+            vals0=self.prev_sol.vals if self.prev_sol else None,
         )
         if not sol.success:
             solver = "backup"
@@ -295,13 +314,15 @@ class MINLPAgent(Agent):
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                     "T_e_prev": self.T_e_prev,
                     "gear_prev": self.gear_prev,
-                }
+                },
+                vals0=self.prev_sol.vals if self.prev_sol else None,
             )
             if not sol.success:
                 raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
+        self.prev_sol = self.shift_sol(sol)
         return T_e, F_b, gear, {"solver": solver}
 
 
@@ -365,7 +386,8 @@ class HeuristicGearAgent(Agent):
                 "x_0": state,
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "F_trac_max": F_trac_max,
-            }
+            },
+            vals0=self.prev_sol.vals if self.prev_sol else None,
         )
 
         if not sol.success:
@@ -387,6 +409,41 @@ class HeuristicGearAgent(Agent):
             np.clip(T_e - self.T_e_prev, -Vehicle.dT_e_max, Vehicle.dT_e_max)
             + self.T_e_prev
         )
+        self.prev_sol = self.shift_sol(sol)
+        return T_e, F_b, gear, {}
+
+
+class HeuristicGearAgent2(HeuristicGearAgent):
+    # TODO docstring
+
+    def __init__(
+        self,
+        mpc: HybridTrackingFuelMpcFixedGear,
+        gear_priority: Literal["low", "high", "mid"] = "mid",
+    ):
+        self.gear_priority = gear_priority
+        super().__init__(mpc)
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        gear = self.gear_from_velocity(state[1].item(), self.gear_priority)
+        gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+        gear_choice_binary[gear] = 1
+
+        sol = self.mpc.solve(
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "T_e_prev": self.T_e_prev,
+                "gear": gear_choice_binary,
+            },
+            vals0=self.prev_sol.vals if self.prev_sol else None,
+        )
+
+        if not sol.success:
+            raise ValueError("MPC failed to solve")
+        T_e = sol.vals["T_e"].full()[0, 0]
+        F_b = sol.vals["F_b"].full()[0, 0]
+        self.prev_sol = self.shift_sol(sol)
         return T_e, F_b, gear, {}
 
 
@@ -530,7 +587,8 @@ class LearningAgent(Agent):
                         "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                         "T_e_prev": self.T_e_prev,
                         "gear_prev": self.gear_prev,
-                    }
+                    },
+                    vals0=self.prev_sol.vals if self.prev_sol else None,
                 )
                 if not expert_sol.success:
                     raise RuntimeError(
@@ -564,7 +622,8 @@ class LearningAgent(Agent):
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "T_e_prev": self.T_e_prev,
                 "gear": gear_choice_binary,
-            }
+            },
+            vals0=self.prev_sol.vals if self.prev_sol else None,
         )
         if not self.sol.success:
             infeas_flag = True
@@ -584,6 +643,7 @@ class LearningAgent(Agent):
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
+        self.prev_sol = self.shift_sol(self.sol)
         return (
             self.sol.vals["T_e"].full()[0, 0],
             self.sol.vals["F_b"].full()[0, 0],
@@ -619,7 +679,8 @@ class LearningAgent(Agent):
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                     "T_e_prev": self.T_e_prev,
                     "gear": gear_choice_binary,
-                }
+                },
+                vals0=self.prev_sol.vals if self.prev_sol else None,
             ),
             gear_choice_explicit,
         )
@@ -648,7 +709,8 @@ class LearningAgent(Agent):
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                     "T_e_prev": self.T_e_prev,
                     "gear": gear_choice_binary,
-                }
+                },
+                vals0=self.prev_sol.vals if self.prev_sol else None,
             ),
             gear_choice_explicit,
         )
@@ -916,7 +978,8 @@ class SupervisedLearningAgent(LearningAgent):
                         "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                         "T_e_prev": self.T_e_prev,
                         "gear_prev": self.gear_prev,
-                    }
+                    },
+                    vals0=self.prev_sol.vals if self.prev_sol else None,
                 )
                 if not sol.success:
                     raise ValueError("MPC failed to solve")
@@ -952,6 +1015,7 @@ class SupervisedLearningAgent(LearningAgent):
                 nn_state = self.relative_state(x, T_e, F_b, w_e, shifted_gear)
 
                 timestep += 1
+                self.prev_sol = self.shift_sol(sol)
                 # self.on_timestep_end()
             # self.on_episode_end()
 
@@ -1333,3 +1397,18 @@ class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
             gear_list.append(gear)
             self.sols[i] = sol
         return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}
+
+
+class DUMB(DistributedAgent, LearningAgent):
+    # TODO doc strings
+
+    def __init__(
+        self,
+        mpc: HybridTrackingMpc,
+        num_vehicles: int,
+        np_random: np.random.Generator,
+        config: ConfigDefault,
+    ):
+        self.num_vehicles = num_vehicles
+        self.sols = [None for _ in range(num_vehicles)]
+        LearningAgent.__init__(self, mpc, np_random, config)

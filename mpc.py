@@ -341,7 +341,7 @@ class HybridTrackingMpc(Mpc):
                 ]
             )
             + fuel_cost
-            + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
+            + 1e6 * (cs.sum2(s_a) + cs.sum2(s_b))
             # + sum(0.01 * F_b[i] for i in range(prediction_horizon))
         )
         if (
@@ -371,9 +371,9 @@ class HybridTrackingMpc(Mpc):
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
         }
         if "p_a" not in pars:
-            pars["p_a"] = np.full((1, self.prediction_horizon + 1), 1e6)
+            pars["p_a"] = pars["x_0"][0] + 1e6
         if "p_b" not in pars:
-            pars["p_b"] = np.full((1, self.prediction_horizon + 1), -1e6)
+            pars["p_b"] = pars["x_0"][0] - 1e6
         return self.nlp.solve(pars, vals0)
 
 
@@ -496,7 +496,7 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
                 ]
             )
             + fuel_cost
-            + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
+            + 1e6 * (cs.sum2(s_a) + cs.sum2(s_b))
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
 
@@ -516,9 +516,9 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
             "T_e": np.full((1, self.prediction_horizon), T_e_idle),
         }
         if "p_a" not in pars:
-            pars["p_a"] = np.full((1, self.prediction_horizon + 1), 1e6)
+            pars["p_a"] = pars["x_0"][0] + 1e6
         if "p_b" not in pars:
-            pars["p_b"] = np.full((1, self.prediction_horizon + 1), -1e6)
+            pars["p_b"] = pars["x_0"][0] - 1e6
         return self.nlp.solve(pars, vals0)
 
 
@@ -571,7 +571,7 @@ class TrackingMpc(Mpc):
                     for i in range(prediction_horizon + 1)
                 ]
             )
-            + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
+            + 1e6 * (cs.sum2(s_a) + cs.sum2(s_b))
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
 
@@ -581,7 +581,7 @@ class TrackingMpc(Mpc):
         vals0: Optional[dict] = None,
     ) -> Solution:
         if "p_a" not in pars:
-            pars["p_a"] = np.full((1, self.prediction_horizon + 1), 1e6)
+            pars["p_a"] = pars["x_0"][0] + 1e6
         if "p_b" not in pars:
-            pars["p_b"] = np.full((1, self.prediction_horizon + 1), -1e6)
+            pars["p_b"] = pars["x_0"][0] - 1e6
         return self.nlp.solve(pars, vals0)
