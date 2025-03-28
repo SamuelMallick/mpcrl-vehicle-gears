@@ -5,6 +5,7 @@ from agents import (
     Agent,
     MINLPAgent,
     HeuristicGearAgent,
+    HeuristicGearAgent2,
     DQNAgent,
     SupervisedLearningAgent,
 )
@@ -31,7 +32,10 @@ sim_type: Literal[
     "miqp_mpc",
     "minlp_mpc",
     "heuristic_mpc",
-] = "miqp_mpc"
+    "heuristic_mpc_2",
+] = "rl_mpc_train"
+
+EVAL = False
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -39,13 +43,13 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c25 import Config  # type: ignore
 
     config = Config(sim_type)
 
 vehicle = Vehicle()
 ep_length = config.ep_len
-num_eval_eps = 20
+num_eval_eps = 1 if config.infinite_episodes else 100
 N = config.N
 eval_seed = 10
 env: VehicleTracking = MonitorEpisodes(
@@ -60,9 +64,7 @@ env: VehicleTracking = MonitorEpisodes(
             ),
         ),
         max_episode_steps=(
-            ep_length
-            if not config.infinite_episodes or sim_type == "l_mpc_eval"
-            else ep_length * config.num_eps
+            ep_length if not config.infinite_episodes or EVAL else config.max_steps
         ),
     )
 )
@@ -88,7 +90,7 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
             save_path=f"results/{config.id}",
             seed=0,  # seed 0 used for training
             init_state_dict=init_state_dict,
-            max_learning_steps=ep_length * config.num_eps,
+            max_learning_steps=config.max_steps,
         )
     elif sim_type == "l_mpc_eval":
         state_dict = torch.load(
@@ -207,6 +209,15 @@ elif sim_type == "heuristic_mpc":
     gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
     agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=eval_seed)
+
+elif sim_type == "heuristic_mpc_2":
+    mpc = SolverTimeRecorder(
+        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+    )
+    gear_priority = "low"
+    sim_type = f"{sim_type}_{gear_priority}"
+    agent = HeuristicGearAgent2(mpc, gear_priority=gear_priority)
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=eval_seed)
 
 
