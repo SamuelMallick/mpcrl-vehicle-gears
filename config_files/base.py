@@ -15,6 +15,7 @@ class ConfigDefault:
     windy = False
     save_every_episode = False
     infinite_episodes = False
+    max_steps = ep_len * num_eps
 
     # -----------network parameters----------------
     # initial weights

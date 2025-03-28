@@ -9,7 +9,7 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "25"  # 11 but with inf episodes and aggressive traj
+    id = "26"  # 25 but no pen
 
     # -----------general parameters----------------
     N = 15
@@ -37,7 +37,7 @@ class Config(ConfigDefault):
 
     # penalties
     clip_pen = 0
-    infeas_pen = 1e4
+    infeas_pen = 0
 
     # memory
     memory_size = 100000
