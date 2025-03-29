@@ -33,7 +33,7 @@ sim_type: Literal[
     "minlp_mpc",
     "heuristic_mpc",
     "heuristic_mpc_2",
-] = "rl_mpc_train"
+] = "sl_data"
 
 EVAL = False
 
@@ -120,18 +120,21 @@ if sim_type == "sl_train" or sim_type == "sl_data":
     )
     seed = 0  # seed 0 used for agents
     np_random = np.random.default_rng(seed)
+    config.normalize = False  # normalization not used for supervised learning
     agent = SupervisedLearningAgent(mpc, np_random, config=config)
     if sim_type == "sl_data":
-        num_data_gather_eps = 100
+        num_data_gather_eps = 1
         seed = 110  # different seed used for data generation
         agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
-            ep_len=ep_length,
+            ep_len=(
+                ep_length if not config.infinite_episodes or EVAL else config.max_steps
+            ),
             mpc=config.expert_mpc,
             seed=seed,
-            save_path=f"results/",
-            save_freq=100,
+            save_path=f"dev/",
+            save_freq=10000,
         )
     else:
         nn_inputs = None
