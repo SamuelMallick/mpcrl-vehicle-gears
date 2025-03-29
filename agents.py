@@ -128,6 +128,7 @@ class Agent:
             self.on_episode_start(state, env)
 
             while not (truncated or terminated):
+                print(f"Evaluate: Episode {episode} | Timestep {timestep}")
                 if allow_failure:
                     try:
                         *action, action_info = self.get_action(state)
@@ -963,6 +964,7 @@ class SupervisedLearningAgent(LearningAgent):
             self.on_episode_start(state, env)
 
             while not (truncated or terminated):
+                print(f"Episode {episode}: Step {timestep}")
                 sol = mpc.solve(
                     {
                         "x_0": state,
@@ -1009,7 +1011,6 @@ class SupervisedLearningAgent(LearningAgent):
                 self.prev_sol = self.shift_sol(sol)
 
                 if timestep % save_freq == 0:
-                    print(f"Episode {episode}: Step {timestep}")
                     torch.save(
                         {
                             "inputs": nn_inputs,
