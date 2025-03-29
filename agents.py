@@ -937,7 +937,7 @@ class SupervisedLearningAgent(LearningAgent):
         ep_len: int,
         mpc: HybridTrackingMpc,
         save_path: str,
-        save_freq: int = 1000,
+        save_freq: int = 10000,
         seed: int = 0,
     ) -> None:
         # TODO docstring
@@ -957,15 +957,6 @@ class SupervisedLearningAgent(LearningAgent):
         )  # indicate data type
         self.on_validation_start()
         for episode, seed in zip(range(episodes), seeds):
-            if episode % save_freq == 0 and episode != 0:
-                torch.save(
-                    {
-                        "inputs": nn_inputs[:episode],
-                        "targets_explicit": nn_targets_explicit[:episode],
-                        "targets_shift": nn_targets_shift[:episode],
-                    },
-                    f"{save_path}_nn_data_{episode}_seed_{og_seed}.pth",
-                )
             print(f"Supervised data: Episode {episode}")
             state, _ = env.reset(seed=seed)
             truncated, terminated, timestep = False, False, 0
@@ -1016,6 +1007,17 @@ class SupervisedLearningAgent(LearningAgent):
 
                 timestep += 1
                 self.prev_sol = self.shift_sol(sol)
+
+                if timestep % save_freq == 0:
+                    print(f"Episode {episode}: Step {timestep}")
+                    torch.save(
+                        {
+                            "inputs": nn_inputs,
+                            "targets_explicit": nn_targets_explicit,
+                            "targets_shift": nn_targets_shift,
+                        },
+                        f"{save_path}_nn_data_{timestep}_seed_{og_seed}.pth",
+                    )
                 # self.on_timestep_end()
             # self.on_episode_end()
 
