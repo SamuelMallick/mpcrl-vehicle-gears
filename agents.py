@@ -947,15 +947,18 @@ class SupervisedLearningAgent(LearningAgent):
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
 
         # self.reset()
-        nn_inputs = torch.empty(
-            (episodes, ep_len - 1, self.N, self.n_states), dtype=torch.float32
-        )  # -1 because the first state is not used
-        nn_targets_shift = torch.empty(
-            (episodes, ep_len - 1, self.N, 3), dtype=torch.float32
-        )  # indicate data type
-        nn_targets_explicit = torch.empty(
-            (episodes, ep_len - 1, self.N, 6), dtype=torch.float32
-        )  # indicate data type
+        # nn_inputs = torch.empty(
+        #     (episodes, ep_len - 1, self.N, self.n_states), dtype=torch.float32
+        # )  # -1 because the first state is not used
+        # nn_targets_shift = torch.empty(
+        #     (episodes, ep_len - 1, self.N, 3), dtype=torch.float32
+        # )  # indicate data type
+        # nn_targets_explicit = torch.empty(
+        #     (episodes, ep_len - 1, self.N, 6), dtype=torch.float32
+        # )  # indicate data type
+        nn_inputs = []
+        nn_targets_shift = []
+        nn_targets_explicit = []
         self.on_validation_start()
         for episode, seed in zip(range(episodes), seeds):
             print(f"Supervised data: Episode {episode}")
@@ -984,14 +987,17 @@ class SupervisedLearningAgent(LearningAgent):
                     gear_shift = optimal_gears[1:] - optimal_gears[:-1]
                     action = torch.zeros((self.N, 3), dtype=torch.float32)
                     action[range(self.N), gear_shift + 1] = 1
-                    nn_targets_shift[episode, timestep - 1] = action
+                    # nn_targets_shift[episode, timestep - 1] = action
+                    nn_targets_shift.append(action)
                     # absolute gear command
                     optimal_gears = np.argmax(sol.vals["gear"].full(), 0)
                     action = torch.zeros((self.N, 6), dtype=torch.float32)
                     action[range(self.N), optimal_gears] = 1
-                    nn_targets_explicit[episode, timestep - 1] = action
+                    nn_targets_explicit.append(action)
+                    # nn_targets_explicit[episode, timestep - 1] = action
 
-                    nn_inputs[episode, timestep - 1] = nn_state
+                    nn_inputs.append(nn_state)
+                    # nn_inputs[episode, timestep - 1] = nn_state
 
                 self.gear = int(np.argmax(sol.vals["gear"].full(), 0)[0])
                 action = (

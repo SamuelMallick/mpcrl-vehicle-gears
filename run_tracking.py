@@ -128,12 +128,10 @@ if sim_type == "sl_train" or sim_type == "sl_data":
         agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
-            ep_len=(
-                ep_length if not config.infinite_episodes or EVAL else config.max_steps
-            ),
+            ep_len=300*100,
             mpc=config.expert_mpc,
             seed=seed,
-            save_path=f"dev/",
+            save_path=f"results/",
             save_freq=10000,
         )
     else:
