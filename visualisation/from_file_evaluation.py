@@ -10,12 +10,23 @@ from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 N = 15
 types = [
     f"l_mpc_eval_N_{N}_c_25",
-    f"heuristic_mpc_low_N_{N}_c_1",
+    # f"heuristic_mpc_low_N_{N}_c_25",
+    # f"heuristic_mpc_2_low_N_{N}_c_25",
+    # f"miqp_mpc_N_{N}_c_25_new_4",
 ]
-baseline_type = f"l_mpc_eval_N_{N}_c_25"
+baseline_type = f"l_mpc_eval_N_{N}_c_25_no_cnstr"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
-file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
-baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
+file_names = [f"{type}.pkl" for type in types]
+baseline_file_name = f"{baseline_type}.pkl"
+# types = [
+#     f"l_mpc_eval_N_{N}_c_25",
+#     f"heuristic_mpc_low_N_{N}_c_1",
+#     f"miqp_mpc_N_{N}_c_1"
+# ]
+# baseline_type = f"miqp_mpc_N_{N}_c_1"
+# # baseline_type = f"heuristic_mpc_low_N_{N}"
+# file_names = [f"dev/results/evaluations/short_eps/{type}.pkl" for type in types]
+# baseline_file_name = f"dev/results/evaluations/short_eps/{baseline_type}.pkl"
 
 X = []
 U = []
@@ -55,7 +66,10 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-labels = ["L-MPC", "H-MPC", "base"]  # , "H-MPC", "MINLP-MPC"]
+labels = [
+    "L-MPC",
+    "H-MPC-1",
+]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [

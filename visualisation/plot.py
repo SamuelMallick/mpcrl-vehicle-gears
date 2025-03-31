@@ -126,7 +126,7 @@ def plot_comparison(
 ):
     linestyles = ["--", "-", "-.", ":", "-"]
     colors = ["red", "blue", "green", "orange", "black"]
-    labels = ["MIQP-MPC", "L-MPC", "new", "H-MPC", "MINLP-MPC"]
+    labels = ["L-MPC", "H-MPC", "H-MPC-2", "MIQP-MPC", "MINLP-MPC"]
     fig, ax = plt.subplots(4, 1, sharex=True)
     ax[1].plot(x_ref[0][:, 1], color="black")
     ax[1].legend(["ref"])
