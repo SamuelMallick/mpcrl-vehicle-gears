@@ -2,7 +2,7 @@ solver_options = {
     "ipopt": {
         "expand": True,
         "show_eval_warnings": True,
-        "warn_initial_bounds": True,
+        "warn_initial_bounds": False,
         "print_time": False,
         "record_time": True,
         "bound_consistency": True,

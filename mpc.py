@@ -2,6 +2,7 @@ from typing import Literal, Optional
 import casadi as cs
 from csnlp.wrappers.mpc.mpc import Mpc
 from csnlp import Nlp, Solution
+from csnlp.multistart.multistart_nlp import ParallelMultistartNlp
 import numpy as np
 from utils.solver_options import solver_options
 
@@ -152,8 +153,9 @@ class HybridTrackingMpc(Mpc):
         optimize_fuel: bool = False,
         convexify_fuel: bool = False,
         convexify_dynamics: bool = False,
+        multi_starts: int = 1,
     ):
-        nlp = Nlp[cs.SX](sym_type="SX")
+        nlp = ParallelMultistartNlp[cs.SX](sym_type="SX", starts=multi_starts)
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
@@ -163,14 +165,10 @@ class HybridTrackingMpc(Mpc):
         # optional constraints for collision with vehicles ahead and behind
         # p_a and p_b are set to arbitrary large and small values to disable
         # the constraints if they are not passed as parameters
-        # p_a = self.parameter("p_a", (1, prediction_horizon + 1))
-        # p_b = self.parameter("p_b", (1, prediction_horizon + 1))
-        # _, _, s_a = self.constraint(
-        #     "collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=True
-        # )
-        # _, _, s_b = self.constraint(
-        #     "collision_behind", x[0, :] - p_b, ">=", d_safe, soft=True
-        # )
+        p_a = self.parameter("p_a", (1, prediction_horizon + 1))
+        p_b = self.parameter("p_b", (1, prediction_horizon + 1))
+        self.constraint("collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=False)
+        self.constraint("collision_behind", x[0, :] - p_b, ">=", d_safe, soft=False)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
         T_e_prev = self.parameter("T_e_prev", (1, 1))
@@ -341,8 +339,6 @@ class HybridTrackingMpc(Mpc):
                 ]
             )
             + fuel_cost
-            # + 1e6 * (cs.sum2(s_a) + cs.sum2(s_b))
-            # + sum(0.01 * F_b[i] for i in range(prediction_horizon))
         )
         if (
             convexify_dynamics
@@ -366,11 +362,15 @@ class HybridTrackingMpc(Mpc):
         pars: dict,
         vals0: Optional[dict] = None,
     ) -> Solution:
-        # if "p_a" not in pars:
-        #     pars["p_a"] = pars["x_0"][0] + 1e6
-        # if "p_b" not in pars:
-        #     pars["p_b"] = pars["x_0"][0] - 1e6
-        return self.nlp.solve(pars, vals0)
+        if "p_a" not in pars:
+            pars["p_a"] = np.full(
+                (1, self.prediction_horizon + 1), pars["x_0"][0] + 1e6
+            )
+        if "p_b" not in pars:
+            pars["p_b"] = np.full(
+                (1, self.prediction_horizon + 1), pars["x_0"][0] - 1e6
+            )
+        return self.nlp.solve_multi(pars, vals0)
 
 
 class HybridTrackingFuelMpcFixedGear(Mpc):
@@ -391,9 +391,13 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
     """
 
     def __init__(
-        self, prediction_horizon: int, optimize_fuel: bool, convexify_fuel: bool = False
+        self,
+        prediction_horizon: int,
+        optimize_fuel: bool,
+        convexify_fuel: bool = False,
+        multi_starts: int = 1,
     ):
-        nlp = Nlp[cs.SX](sym_type="SX")
+        nlp = ParallelMultistartNlp[cs.SX](sym_type="SX", starts=multi_starts)
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
@@ -403,14 +407,10 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         # optional constraints for collision with vehicles ahead and behind
         # p_a and p_b are set to arbitrary large and small values to disable
         # the constraints if they are not passed as parameters
-        # p_a = self.parameter("p_a", (1, prediction_horizon + 1))
-        # p_b = self.parameter("p_b", (1, prediction_horizon + 1))
-        # _, _, s_a = self.constraint(
-        #     "collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=True
-        # )
-        # _, _, s_b = self.constraint(
-        #     "collision_behind", x[0, :] - p_b, ">=", d_safe, soft=True
-        # )
+        p_a = self.parameter("p_a", (1, prediction_horizon + 1))
+        p_b = self.parameter("p_b", (1, prediction_horizon + 1))
+        self.constraint("collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=False)
+        self.constraint("collision_behind", x[0, :] - p_b, ">=", d_safe, soft=False)
 
         T_e, _ = self.action("T_e", 1, lb=T_e_idle, ub=T_e_max)
         T_e_prev = self.parameter("T_e_prev", (1, 1))
@@ -492,7 +492,6 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
                 ]
             )
             + fuel_cost
-            # + 1e6 * (cs.sum2(s_a) + cs.sum2(s_b))
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
 
@@ -506,11 +505,15 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
             np.isclose(np.sum(gear[:, i], axis=0), 1) for i in range(gear.shape[1])
         ):
             raise ValueError("More than one gear selected for a time step.")
-        # if "p_a" not in pars:
-        #     pars["p_a"] = pars["x_0"][0] + 1e6
-        # if "p_b" not in pars:
-        #     pars["p_b"] = pars["x_0"][0] - 1e6
-        return self.nlp.solve(pars, vals0)
+        if "p_a" not in pars:
+            pars["p_a"] = np.full(
+                (1, self.prediction_horizon + 1), pars["x_0"][0] + 1e6
+            )
+        if "p_b" not in pars:
+            pars["p_b"] = np.full(
+                (1, self.prediction_horizon + 1), pars["x_0"][0] - 1e6
+            )
+        return self.nlp.solve_multi(pars, vals0)
 
 
 class TrackingMpc(Mpc):
@@ -524,8 +527,10 @@ class TrackingMpc(Mpc):
         The length of the prediction horizon.
     """
 
-    def __init__(self, prediction_horizon: int):
-        nlp = Nlp[cs.SX](sym_type="SX")
+    F_trac_min = T_e_idle * z_t[-1] * z_f / r_r - F_b_max
+
+    def __init__(self, prediction_horizon: int, multi_starts: int = 1):
+        nlp = ParallelMultistartNlp[cs.SX](sym_type="SX", starts=multi_starts)
         super().__init__(nlp, prediction_horizon)
 
         x, _ = self.state("x", 2)
@@ -537,19 +542,13 @@ class TrackingMpc(Mpc):
         # optional constraints for collision with vehicles ahead and behind
         # p_a and p_b are set to arbitrary large and small values to disable
         # the constraints if they are not passed as parameters
-        # p_a = self.parameter("p_a", (1, prediction_horizon + 1))
-        # p_b = self.parameter("p_b", (1, prediction_horizon + 1))
-        # _, _, s_a = self.constraint(
-        #     "collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=True
-        # )
-        # _, _, s_b = self.constraint(
-        #     "collision_behind", x[0, :] - p_b, ">=", d_safe, soft=True
-        # )
+        p_a = self.parameter("p_a", (1, prediction_horizon + 1))
+        p_b = self.parameter("p_b", (1, prediction_horizon + 1))
+        self.constraint("collision_ahead", x[0, :] - p_a, "<=", -d_safe, soft=False)
+        self.constraint("collision_behind", x[0, :] - p_b, ">=", d_safe, soft=False)
 
         F_trac_max = self.parameter("F_trac_max", (1, 1))
-        F_trac, _ = self.action(
-            "F_trac", 1, lb=T_e_idle * z_t[-1] * z_f / r_r - F_b_max
-        )
+        F_trac, _ = self.action("F_trac", 1, lb=self.F_trac_min)
         self.constraint("traction_force", F_trac, "<=", F_trac_max)
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
@@ -562,7 +561,6 @@ class TrackingMpc(Mpc):
                     for i in range(prediction_horizon + 1)
                 ]
             )
-            # + 1e6 * (cs.sum2(s_a) + cs.sum2(s_b))
         )
         self.init_solver(solver_options["ipopt"], solver="ipopt")
 
@@ -571,8 +569,12 @@ class TrackingMpc(Mpc):
         pars: dict,
         vals0: Optional[dict] = None,
     ) -> Solution:
-        # if "p_a" not in pars:
-        #     pars["p_a"] = pars["x_0"][0] + 1e6
-        # if "p_b" not in pars:
-        #     pars["p_b"] = pars["x_0"][0] - 1e6
-        return self.nlp.solve(pars, vals0)
+        if "p_a" not in pars:
+            pars["p_a"] = np.full(
+                (1, self.prediction_horizon + 1), pars["x_0"][0] + 1e6
+            )
+        if "p_b" not in pars:
+            pars["p_b"] = np.full(
+                (1, self.prediction_horizon + 1), pars["x_0"][0] - 1e6
+            )
+        return self.nlp.solve_multi(pars, vals0)

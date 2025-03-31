@@ -16,6 +16,7 @@ class ConfigDefault:
     save_every_episode = False
     infinite_episodes = False
     max_steps = ep_len * num_eps
+    multi_starts = 1
 
     # -----------network parameters----------------
     # initial weights

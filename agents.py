@@ -52,8 +52,10 @@ class Agent:
     T_e_prev = Vehicle.T_e_idle
     gear_prev: np.ndarray = np.empty((6, 1))
 
-    def __init__(self, mpc: Mpc):
+    def __init__(self, mpc: Mpc, np_random: np.random.Generator, multi_starts: int = 1):
         self.mpc = mpc
+        self.np_random = np_random
+        self.multi_starts = multi_starts
         self.prev_sol = None
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
@@ -180,6 +182,49 @@ class Agent:
             )
         return action
 
+    def initial_guesses_vals(
+        self, state: np.ndarray, num_guesses: int = 5
+    ) -> list[dict]:
+        # TODO docstring
+        starts = []
+        for _ in range(num_guesses):
+            d = {}
+            d["x"] = np.concatenate(
+                (
+                    state,
+                    np.vstack(
+                        (
+                            self.np_random.uniform(
+                                state[0] - Vehicle.v_min * self.mpc.prediction_horizon,
+                                state[0] + Vehicle.v_max * self.mpc.prediction_horizon,
+                                (1, self.mpc.prediction_horizon),
+                            ),  # bring in ts
+                            self.np_random.uniform(
+                                min_v_per_gear[0],
+                                max_v_per_gear[-1],
+                                (1, self.mpc.prediction_horizon),
+                            ),
+                        )
+                    ),
+                ),
+                axis=1,
+            )
+            d["T_e"] = self.np_random.uniform(
+                Vehicle.T_e_idle, Vehicle.T_e_idle, (1, self.mpc.prediction_horizon)
+            )
+            d["F_b"] = self.np_random.uniform(
+                0, Vehicle.F_b_max, (1, self.mpc.prediction_horizon)
+            )
+            d["w_e"] = self.np_random.uniform(
+                Vehicle.w_e_idle, Vehicle.w_e_max, (1, self.mpc.prediction_horizon)
+            )
+            gears = self.np_random.integers(0, 6, (1, self.mpc.prediction_horizon))
+            d["gear"] = np.zeros((6, self.mpc.prediction_horizon))
+            for j in range(self.mpc.prediction_horizon):
+                d["gear"][gears[0, j], j] = 1
+            starts.append(d)
+        return starts
+
     def on_episode_end(self, episode: int, env: VehicleTracking, save: bool = False):
         if save:
             with open(f"episode_{episode}.pkl", "wb") as f:
@@ -291,9 +336,13 @@ class MINLPAgent(Agent):
         solve the optimization problem, by default None."""
 
     def __init__(
-        self, mpc: HybridTrackingMpc, backup_mpc: HybridTrackingMpc | None = None
+        self,
+        mpc: HybridTrackingMpc,
+        np_random: np.random.Generator,
+        backup_mpc: HybridTrackingMpc | None = None,
+        multi_starts: int = 1,
     ):
-        super().__init__(mpc)
+        super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
         self.backup_mpc = backup_mpc
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
@@ -305,7 +354,12 @@ class MINLPAgent(Agent):
                 "T_e_prev": self.T_e_prev,
                 "gear_prev": self.gear_prev,
             },
-            vals0=self.prev_sol.vals if self.prev_sol else None,
+            vals0=(
+                [self.prev_sol.vals]
+                + self.initial_guesses_vals(state, self.multi_starts - 1)
+                if self.prev_sol
+                else self.initial_guesses_vals(state, self.multi_starts)
+            ),
         )
         if not sol.success:
             solver = "backup"
@@ -316,7 +370,12 @@ class MINLPAgent(Agent):
                     "T_e_prev": self.T_e_prev,
                     "gear_prev": self.gear_prev,
                 },
-                vals0=self.prev_sol.vals if self.prev_sol else None,
+                vals0=(
+                    [self.prev_sol.vals]
+                    + self.initial_guesses_vals(state, self.multi_starts - 1)
+                    if self.prev_sol
+                    else self.initial_guesses_vals(state, self.multi_starts)
+                ),
             )
             if not sol.success:
                 raise ValueError("MPC failed to solve")
@@ -343,13 +402,24 @@ class HeuristicGearAgent(Agent):
         engine speed limit."""
 
     def __init__(
-        self, mpc: TrackingMpc, gear_priority: Literal["low", "high", "mid"] = "mid"
+        self,
+        mpc: TrackingMpc,
+        np_random: np.random.Generator,
+        gear_priority: Literal["low", "high", "mid"] = "mid",
+        multi_starts: int = 1,
     ):
         self.gear_priority = gear_priority
-        super().__init__(mpc)
+        super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
+
+    def initial_guesses_vals(self, state, F_trac_max: float, num_guesses=5):
+        starts = super().initial_guesses_vals(state, num_guesses)
+        for i in range(num_guesses):
+            starts[i]["F_trac"] = self.np_random.uniform(
+                TrackingMpc.F_trac_min, F_trac_max, (1, self.mpc.prediction_horizon)
+            )
+        return starts
 
     def gear_from_velocity_and_traction(self, v: float, F_trac: float) -> int:
-        # TODO enforce gear switch of only 1
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
             <= Vehicle.w_e_max + 1e-3
@@ -388,7 +458,12 @@ class HeuristicGearAgent(Agent):
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "F_trac_max": F_trac_max,
             },
-            vals0=self.prev_sol.vals if self.prev_sol else None,
+            vals0=(
+                [self.prev_sol.vals]
+                + self.initial_guesses_vals(state, F_trac_max, self.multi_starts - 1)
+                if self.prev_sol
+                else self.initial_guesses_vals(state, F_trac_max, self.multi_starts)
+            ),
         )
 
         if not sol.success:
@@ -420,10 +495,17 @@ class HeuristicGearAgent2(HeuristicGearAgent):
     def __init__(
         self,
         mpc: HybridTrackingFuelMpcFixedGear,
+        np_random: np.random.Generator,
         gear_priority: Literal["low", "high", "mid"] = "mid",
+        multi_starts: int = 1,
     ):
         self.gear_priority = gear_priority
-        super().__init__(mpc)
+        super().__init__(
+            mpc,
+            np_random=np_random,
+            gear_priority=gear_priority,
+            multi_starts=multi_starts,
+        )
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         gear = self.gear_from_velocity(state[1].item(), self.gear_priority)
@@ -437,7 +519,12 @@ class HeuristicGearAgent2(HeuristicGearAgent):
                 "T_e_prev": self.T_e_prev,
                 "gear": gear_choice_binary,
             },
-            vals0=self.prev_sol.vals if self.prev_sol else None,
+            vals0=(
+                [self.prev_sol.vals]
+                + self.initial_guesses_vals(state, self.multi_starts - 1)
+                if self.prev_sol
+                else self.initial_guesses_vals(state, self.multi_starts)
+            ),
         )
 
         if not sol.success:
@@ -462,12 +549,12 @@ class LearningAgent(Agent):
         mpc: HybridTrackingMpc,
         np_random: np.random.Generator,
         config: ConfigDefault,
+        multi_starts: int = 1,
     ):
-        super().__init__(mpc)
+        super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
         self.first_timestep: bool = (
             True  # gets reset gets set to True in on_episode_start
         )
-        self.np_random = np_random
         self.n_gears = 6
         self.steps_done = 0
 
@@ -589,7 +676,12 @@ class LearningAgent(Agent):
                         "T_e_prev": self.T_e_prev,
                         "gear_prev": self.gear_prev,
                     },
-                    vals0=self.prev_sol.vals if self.prev_sol else None,
+                    vals0=(
+                        [self.prev_sol.vals]
+                        + self.initial_guesses_vals(state, self.multi_starts - 1)
+                        if self.prev_sol
+                        else self.initial_guesses_vals(state, self.multi_starts)
+                    ),
                 )
                 if not expert_sol.success:
                     raise RuntimeError(
@@ -624,7 +716,12 @@ class LearningAgent(Agent):
                 "T_e_prev": self.T_e_prev,
                 "gear": gear_choice_binary,
             },
-            vals0=self.prev_sol.vals if self.prev_sol else None,
+            vals0=(
+                [self.prev_sol.vals]
+                + self.initial_guesses_vals(state, self.multi_starts - 1)
+                if self.prev_sol
+                else self.initial_guesses_vals(state, self.multi_starts)
+            ),
         )
         if not self.sol.success:
             infeas_flag = True
@@ -681,7 +778,12 @@ class LearningAgent(Agent):
                     "T_e_prev": self.T_e_prev,
                     "gear": gear_choice_binary,
                 },
-                vals0=self.prev_sol.vals if self.prev_sol else None,
+                vals0=(
+                    [self.prev_sol.vals]
+                    + self.initial_guesses_vals(state, self.multi_starts - 1)
+                    if self.prev_sol
+                    else self.initial_guesses_vals(state, self.multi_starts)
+                ),
             ),
             gear_choice_explicit,
         )
@@ -711,7 +813,12 @@ class LearningAgent(Agent):
                     "T_e_prev": self.T_e_prev,
                     "gear": gear_choice_binary,
                 },
-                vals0=self.prev_sol.vals if self.prev_sol else None,
+                vals0=(
+                    [self.prev_sol.vals]
+                    + self.initial_guesses_vals(state, self.multi_starts - 1)
+                    if self.prev_sol
+                    else self.initial_guesses_vals(state, self.multi_starts)
+                ),
             ),
             gear_choice_explicit,
         )
@@ -1045,7 +1152,7 @@ class DQNAgent(LearningAgent):
 
     cost: list[list[float]] = []  # store the incurred cost: env.reward + penalties
 
-    def __init__(self, mpc, np_random, config):
+    def __init__(self, mpc, np_random, config, multi_starts=1):
         self.train_flag = False
 
         # RL hyperparameters
@@ -1066,7 +1173,7 @@ class DQNAgent(LearningAgent):
 
         # max gradient value to avoid exploding gradients
         self.max_grad = config.max_grad
-        super().__init__(mpc, np_random, config)
+        super().__init__(mpc, np_random, config, multi_starts=multi_starts)
 
     def train(
         self,
@@ -1290,7 +1397,7 @@ class DQNAgent(LearningAgent):
 
 
 class DistributedAgent(Agent):
-
+    # TODO add multi-starts
     def __init__(self, mpc, num_vehicles: int):
         super().__init__(mpc)
         self.num_vehicles = num_vehicles
