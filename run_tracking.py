@@ -33,9 +33,9 @@ sim_type: Literal[
     "minlp_mpc",
     "heuristic_mpc",
     "heuristic_mpc_2",
-] = "sl_data"
+] = "miqp_mpc"
 
-EVAL = False
+EVAL = True
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -69,14 +69,19 @@ env: VehicleTracking = MonitorEpisodes(
     )
 )
 agent: Agent | None = None
+seed = 0  # seed 0 used for generator
+np_random = np.random.default_rng(seed)
 
 if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
     mpc = SolverTimeRecorder(
-        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+        HybridTrackingFuelMpcFixedGear(
+            N,
+            optimize_fuel=True,
+            convexify_fuel=False,
+            multi_starts=config.multi_starts,
+        ),
     )
-    seed = 0  # seed 0 used for agents
-    np_random = np.random.default_rng(seed)
-    agent = DQNAgent(mpc, np_random, config=config)
+    agent = DQNAgent(mpc, np_random, config=config, multi_starts=config.multi_starts)
     if sim_type == "rl_mpc_train":
         os.makedirs(f"results/{config.id}", exist_ok=True)
         init_state_dict = config.init_state_dict
@@ -128,7 +133,7 @@ if sim_type == "sl_train" or sim_type == "sl_data":
         agent.generate_supervised_data(
             env,
             episodes=num_data_gather_eps,
-            ep_len=300*100,
+            ep_len=300 * 100,
             mpc=config.expert_mpc,
             seed=seed,
             save_path=f"results/",
@@ -168,9 +173,10 @@ elif sim_type == "miqp_mpc":
             optimize_fuel=True,
             convexify_fuel=True,
             convexify_dynamics=True,
+            multi_starts=config.multi_starts,
         )
     )
-    agent = MINLPAgent(mpc)
+    agent = MINLPAgent(mpc, multi_starts=config.multi_starts, np_random=np_random)
     returns, info = agent.evaluate(
         env,
         episodes=num_eval_eps,
@@ -206,19 +212,34 @@ elif sim_type == "minlp_mpc":
         log_progress=True,
     )
 elif sim_type == "heuristic_mpc":
-    mpc = SolverTimeRecorder(TrackingMpc(N))
+    mpc = SolverTimeRecorder(TrackingMpc(N, multi_starts=config.multi_starts))
     gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
-    agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)
+    agent = HeuristicGearAgent(
+        mpc,
+        multi_starts=config.multi_starts,
+        gear_priority=gear_priority,
+        np_random=np_random,
+    )
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=eval_seed)
 
 elif sim_type == "heuristic_mpc_2":
     mpc = SolverTimeRecorder(
-        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+        HybridTrackingFuelMpcFixedGear(
+            N,
+            optimize_fuel=True,
+            convexify_fuel=False,
+            multi_starts=config.multi_starts,
+        )
     )
     gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
-    agent = HeuristicGearAgent2(mpc, gear_priority=gear_priority)
+    agent = HeuristicGearAgent2(
+        mpc,
+        gear_priority=gear_priority,
+        np_random=np_random,
+        multi_starts=config.multi_starts,
+    )
     returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=eval_seed)
 
 
@@ -239,7 +260,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"{sim_type}_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"{sim_type}_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
