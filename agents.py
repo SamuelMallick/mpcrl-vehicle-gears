@@ -498,8 +498,10 @@ class HeuristicGearAgent2(HeuristicGearAgent):
         np_random: np.random.Generator,
         gear_priority: Literal["low", "high", "mid"] = "mid",
         multi_starts: int = 1,
+        expert_mpc: HybridTrackingMpc | None = None,
     ):
         self.gear_priority = gear_priority
+        self.expert_mpc = expert_mpc
         super().__init__(
             mpc,
             np_random=np_random,
@@ -508,7 +510,26 @@ class HeuristicGearAgent2(HeuristicGearAgent):
         )
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
-        gear = self.gear_from_velocity(state[1].item(), self.gear_priority)
+        if self.expert_mpc:
+            sol = self.expert_mpc.solve(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear_prev": self.gear_prev,
+                },
+                vals0=(
+                    [self.prev_sol.vals]
+                    + self.initial_guesses_vals(state, self.multi_starts - 1)
+                    if self.prev_sol
+                    else self.initial_guesses_vals(state, self.multi_starts)
+                ),
+            )
+            if not sol.success:
+                raise ValueError("MPC failed to solve")
+            gear = np.argmax(sol.vals["gear"].full(), 0)[0]
+        else:
+            gear = self.gear_from_velocity(state[1].item(), self.gear_priority)
         gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
         gear_choice_binary[gear] = 1
 
