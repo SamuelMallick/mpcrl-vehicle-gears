@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation, plot_training
 
-file_name = "dev/results/26/data_step_550000.pkl"
+file_name = "dev/results/26/data_step_1900000.pkl"
 # file_name = "dev/results/evaluations/l_mpc_eval_N_15_c_25.pkl"
 with open(file_name, "rb") as f:
     data = pickle.load(f)

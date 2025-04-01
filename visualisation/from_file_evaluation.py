@@ -9,12 +9,22 @@ from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 types = [
-    f"l_mpc_eval_N_{N}_c_25",
-    # f"heuristic_mpc_low_N_{N}_c_25",
-    # f"heuristic_mpc_2_low_N_{N}_c_25",
-    # f"miqp_mpc_N_{N}_c_25_new_4",
+    f"heuristic_mpc_low_N_{N}_c_25_s_1",
+    f"heuristic_mpc_low_N_{N}_c_25_s_2",
+    f"heuristic_mpc_low_N_{N}_c_25_s_5",
+    f"heuristic_mpc_low_N_{N}_c_25_s_10",
+    f"l_mpc_eval_N_{N}_c_25_s_1",
+    f"l_mpc_eval_N_{N}_c_25_s_2",
+    f"l_mpc_eval_N_{N}_c_25_s_5",
+    f"l_mpc_eval_N_{N}_c_25_s_10",
+    f"l_mpc_eval_N_{N}_c_25_s_20",
+    f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
+    f"heuristic_mpc_2_low_N_{N}_c_25_s_1_ex",
+    f"heuristic_mpc_2_low_N_{N}_c_25_s_2",
+    f"heuristic_mpc_2_low_N_{N}_c_25_s_5",
+    f"heuristic_mpc_2_low_N_{N}_c_25_s_10",
 ]
-baseline_type = f"l_mpc_eval_N_{N}_c_25_no_cnstr"
+baseline_type = f"miqp_mpc_N_{N}_c_25_s_1"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
 file_names = [f"{type}.pkl" for type in types]
 baseline_file_name = f"{baseline_type}.pkl"
@@ -66,10 +76,10 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-labels = [
-    "L-MPC",
-    "H-MPC-1",
-]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]
+# labels = [
+#     "L-MPC",
+#     "H-MPC-1",
+# ]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
@@ -88,7 +98,7 @@ o = [np.array_split(np.array(t), num_eps) for t in T]
 t_ep = [[sum(t) / len(t) for t in ep] for ep in o]
 
 fig, ax = plt.subplots(2, 1, sharex=False)
-ax[0].boxplot(R_rel, labels=labels[:-1])
+ax[0].boxplot(R_rel)  # , labels=labels[:-1])
 for i in range(len(types)):
     ax[0].hlines(
         np.median(R_rel[i]),
@@ -112,7 +122,7 @@ ax[0].xaxis.set_label_position("top")  # Move labels to the top
 # ax[0].set_yscale("log")
 box = ax[1].boxplot(
     t_ep,
-    labels=labels,
+    # labels=[],
 )
 for i in range(len(t_ep)):
     ax[1].hlines(
