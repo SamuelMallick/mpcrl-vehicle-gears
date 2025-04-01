@@ -9,7 +9,7 @@ from config_files.base import ConfigDefault
 
 
 class Config(ConfigDefault):
-    id = "25"  # 11 but with inf episodes and aggressive traj
+    id = "28"  # 27 without bi-direc
 
     # -----------general parameters----------------
     N = 15
@@ -27,9 +27,9 @@ class Config(ConfigDefault):
 
     # archticeture
     n_hidden = 256
-    n_actions = 3
+    n_actions = 6
     n_layers = 4
-    bidirectional = True
+    bidirectional = False
     normalize = True
 
     # exploration
