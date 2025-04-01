@@ -144,7 +144,7 @@ if sim_type == "sl_train" or sim_type == "sl_data":
     else:
         nn_inputs = None
         nn_targets = None
-        directory = "dev/results/sl_data"
+        directory = "results/sl_data"
         for filename in os.listdir(directory):
             filepath = os.path.join(directory, filename)
             if os.path.isfile(filepath):
@@ -165,7 +165,7 @@ if sim_type == "sl_train" or sim_type == "sl_data":
         nn_targets = torch.stack(nn_targets)
         # get eval data
         eval_data = torch.load(
-            f"dev/results/sl_data/eval_data/_nn_data_10000_seed_1000.pth",
+            f"results/sl_data/eval_data/_nn_data_10000_seed_1000.pth",
             map_location="cpu",
         )
         nn_inputs_eval = torch.stack(eval_data["inputs"]).squeeze()

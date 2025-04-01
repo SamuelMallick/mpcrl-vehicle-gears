@@ -1076,8 +1076,8 @@ class SupervisedLearningAgent(LearningAgent):
 
         self.policy_net.to(self.device)
         nn_targets = torch.argmax(nn_targets, 2)
-        s_train_tensor = nn_inputs.to(self.device)
-        a_train_tensor = nn_targets.to(self.device)
+        s_train_tensor = nn_inputs.to(self.device, dtype=torch.float32)
+        a_train_tensor = nn_targets.to(self.device, dtype=torch.long)
         dataset = TensorDataset(s_train_tensor, a_train_tensor)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         loss_history_train = np.empty(train_epochs, dtype=float)
@@ -1086,8 +1086,8 @@ class SupervisedLearningAgent(LearningAgent):
 
         if nn_inputs_eval is not None and nn_targets_eval is not None:
             nn_inputs_eval = torch.argmax(nn_inputs_eval, 2)
-            s_eval_tensor = nn_inputs_eval.to(self.device)
-            a_eval_tensor = nn_targets_eval.to(self.device)
+            s_eval_tensor = nn_inputs_eval.to(self.device, dtype=torch.float32)
+            a_eval_tensor = nn_targets_eval.to(self.device, dtype=torch.long)   
 
         for epoch in range(train_epochs):
             if epoch % save_freq == 0:
