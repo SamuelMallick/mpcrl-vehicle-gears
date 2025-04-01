@@ -1085,9 +1085,9 @@ class SupervisedLearningAgent(LearningAgent):
         criterion = nn.CrossEntropyLoss()
 
         if nn_inputs_eval is not None and nn_targets_eval is not None:
-            nn_inputs_eval = torch.argmax(nn_inputs_eval, 2)
+            nn_targets_eval = torch.argmax(nn_targets_eval, 2)
             s_eval_tensor = nn_inputs_eval.to(self.device, dtype=torch.float32)
-            a_eval_tensor = nn_targets_eval.to(self.device, dtype=torch.long)   
+            a_eval_tensor = nn_targets_eval.to(self.device, dtype=torch.long)
 
         for epoch in range(train_epochs):
             if epoch % save_freq == 0:
