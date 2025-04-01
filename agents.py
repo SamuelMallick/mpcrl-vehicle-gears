@@ -302,9 +302,9 @@ class Agent:
                 raise ValueError("Velocity out of bounds")
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            <= Vehicle.w_e_max
+            <= Vehicle.w_e_max + 1e3
             and (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            >= Vehicle.w_e_idle
+            >= Vehicle.w_e_idle - 1e3
             for i in range(6)
         ]
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
@@ -554,6 +554,60 @@ class HeuristicGearAgent2(HeuristicGearAgent):
         F_b = sol.vals["F_b"].full()[0, 0]
         self.prev_sol = self.shift_sol(sol)
         return T_e, F_b, gear, {}
+
+
+class HeuristicGearAgent3(HeuristicGearAgent):
+    # TODO docstring
+
+    def __init__(
+        self,
+        mpc: HybridTrackingFuelMpcFixedGear,
+        np_random: np.random.Generator,
+        gear_priority: Literal["low", "high", "mid"] = "mid",
+        multi_starts: int = 1,
+    ):
+        self.gear_priority = gear_priority
+        super().__init__(
+            mpc,
+            np_random=np_random,
+            gear_priority=gear_priority,
+            multi_starts=multi_starts,
+        )
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        if not self.prev_sol:
+            first_gear = self.gear_from_velocity(state[1].item(), self.gear_priority)
+            gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+            gear_choice_binary[first_gear] = 1
+        else:
+            gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+            for i in range(self.mpc.prediction_horizon):
+                gear = self.gear_from_velocity(self.prev_sol.vals["x"][1, i])
+                if i == 0:
+                    first_gear = gear
+                gear_choice_binary[gear, i] = 1
+
+        sol = self.mpc.solve(
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "T_e_prev": self.T_e_prev,
+                "gear": gear_choice_binary,
+            },
+            vals0=(
+                [self.prev_sol.vals]
+                + self.initial_guesses_vals(state, self.multi_starts - 1)
+                if self.prev_sol
+                else self.initial_guesses_vals(state, self.multi_starts)
+            ),
+        )
+
+        if not sol.success:
+            raise ValueError("MPC failed to solve")
+        T_e = sol.vals["T_e"].full()[0, 0]
+        F_b = sol.vals["F_b"].full()[0, 0]
+        self.prev_sol = self.shift_sol(sol)
+        return T_e, F_b, first_gear, {}
 
 
 class LearningAgent(Agent):

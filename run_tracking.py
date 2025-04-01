@@ -6,6 +6,7 @@ from agents import (
     MINLPAgent,
     HeuristicGearAgent,
     HeuristicGearAgent2,
+    HeuristicGearAgent3,
     DQNAgent,
     SupervisedLearningAgent,
 )
@@ -22,7 +23,7 @@ import pickle
 from typing import Literal
 
 SAVE = True
-PLOT = False
+PLOT = True
 
 sim_type: Literal[
     "sl_train",
@@ -33,7 +34,8 @@ sim_type: Literal[
     "minlp_mpc",
     "heuristic_mpc",
     "heuristic_mpc_2",
-] = "miqp_mpc"
+    "heuristic_mpc_3",
+] = "heuristic_mpc_3"
 
 EVAL = True
 
@@ -235,6 +237,24 @@ elif sim_type == "heuristic_mpc_2":
     gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
     agent = HeuristicGearAgent2(
+        mpc,
+        gear_priority=gear_priority,
+        np_random=np_random,
+        multi_starts=config.multi_starts,
+    )
+    returns, info = agent.evaluate(env, episodes=num_eval_eps, seed=eval_seed)
+elif sim_type == "heuristic_mpc_3":
+    mpc = SolverTimeRecorder(
+        HybridTrackingFuelMpcFixedGear(
+            N,
+            optimize_fuel=True,
+            convexify_fuel=False,
+            multi_starts=config.multi_starts,
+        )
+    )
+    gear_priority = "low"
+    sim_type = f"{sim_type}_{gear_priority}"
+    agent = HeuristicGearAgent3(
         mpc,
         gear_priority=gear_priority,
         np_random=np_random,
