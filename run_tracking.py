@@ -144,7 +144,7 @@ if sim_type == "sl_train" or sim_type == "sl_data":
     else:
         nn_inputs = None
         nn_targets = None
-        directory = "results/sl_data"
+        directory = "dev/results/sl_data"
         for filename in os.listdir(directory):
             filepath = os.path.join(directory, filename)
             if os.path.isfile(filepath):
@@ -156,17 +156,41 @@ if sim_type == "sl_train" or sim_type == "sl_data":
                     else:
                         nn_targets = data["targets_explicit"]
                 else:
-                    nn_inputs = torch.cat((nn_inputs, data["inputs"]))
+                    nn_inputs += data["inputs"]
                     if config.n_actions == 3:
-                        nn_targets = torch.cat((nn_targets, data["targets_shift"]))
+                        nn_targets += data["targets_shift"]
                     else:
-                        nn_targets = torch.cat((nn_targets, data["targets_explicit"]))
-        train_epochs = 5000
-        running_loss, loss_history = agent.train(
-            nn_inputs, nn_targets, train_epochs=train_epochs, save_path=f"{config.id}_"
+                        nn_targets += data["targets_explicit"]
+        nn_inputs = torch.stack(nn_inputs).squeeze()
+        nn_targets = torch.stack(nn_targets)
+        # get eval data
+        eval_data = torch.load(
+            f"dev/results/sl_data/eval_data/_nn_data_10000_seed_1000.pth",
+            map_location="cpu",
         )
-        with open(f"results/{config.id}_loss_history_{train_epochs}.pkl", "wb") as f:
-            pickle.dump(loss_history, f)
+        nn_inputs_eval = torch.stack(eval_data["inputs"]).squeeze()
+        if config.n_actions == 3:
+            nn_targets_eval = torch.stack(eval_data["targets_shift"])
+        else:
+            nn_targets_eval = torch.stack(eval_data["targets_explicit"])
+        train_epochs = 5000
+        running_loss, loss_history_train, loss_history_eval = agent.train(
+            nn_inputs,
+            nn_targets,
+            train_epochs=train_epochs,
+            save_path=f"{config.id}_",
+            nn_inputs_eval=nn_inputs_eval,
+            nn_targets_eval=nn_targets_eval,
+        )
+        with open(
+            f"results/{config.id}_loss_history_train_{train_epochs}.pkl", "wb"
+        ) as f:
+            pickle.dump(loss_history_train, f)
+        with open(
+            f"results/{config.id}_loss_history_eval_{train_epochs}.pkl", "wb"
+        ) as f:
+            pickle.dump(loss_history_eval, f)
+        exit()
 
 elif sim_type == "miqp_mpc":
     mpc = SolverTimeRecorder(

@@ -1068,32 +1068,35 @@ class SupervisedLearningAgent(LearningAgent):
         train_epochs: int = 100,
         save_freq: int = 100,
         save_path: str = "",
+        nn_inputs_eval: torch.Tensor = None,
+        nn_targets_eval: torch.Tensor = None,
     ):
         # TODO add docstring and outputs
-        num_eps = nn_inputs.shape[0]
+        num_steps = nn_inputs.shape[0]
 
         self.policy_net.to(self.device)
-        self.policy_net.train()  # set model to training mode
-        nn_targets = torch.argmax(nn_targets, 3)
-        s_train_tensor = torch.tensor(
-            nn_inputs.reshape(-1, nn_inputs.shape[2], nn_inputs.shape[3]),
-            dtype=torch.float32,
-        ).to(self.device)
-        a_train_tensor = torch.tensor(
-            nn_targets.reshape(-1, nn_targets.shape[2]), dtype=torch.long
-        ).to(self.device)
+        nn_targets = torch.argmax(nn_targets, 2)
+        s_train_tensor = nn_inputs.to(self.device)
+        a_train_tensor = nn_targets.to(self.device)
         dataset = TensorDataset(s_train_tensor, a_train_tensor)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-        loss_history = np.empty(train_epochs, dtype=float)
+        loss_history_train = np.empty(train_epochs, dtype=float)
+        loss_history_eval = np.empty(train_epochs, dtype=float)
         criterion = nn.CrossEntropyLoss()
+
+        if nn_inputs_eval is not None and nn_targets_eval is not None:
+            nn_inputs_eval = torch.argmax(nn_inputs_eval, 2)
+            s_eval_tensor = nn_inputs_eval.to(self.device)
+            a_eval_tensor = nn_targets_eval.to(self.device)
 
         for epoch in range(train_epochs):
             if epoch % save_freq == 0:
                 torch.save(
                     self.policy_net.state_dict(),
-                    f"{save_path}policy_net_ep_{num_eps}_epoch_{epoch}.pth",
+                    f"{save_path}policy_net_{num_steps}_epoch_{epoch}.pth",
                 )
             running_loss = 0.0
+            self.policy_net.train()
             for inputs, labels in dataloader:
                 self.optimizer.zero_grad()
                 # Forward pass
@@ -1105,13 +1108,21 @@ class SupervisedLearningAgent(LearningAgent):
                 # Update weights
                 self.optimizer.step()
                 running_loss += loss.item()
-            loss_history[epoch] = running_loss
+            loss_history_train[epoch] = running_loss
+
+            self.policy_net.eval()
+            with torch.no_grad():
+                if nn_inputs_eval is not None and nn_targets_eval is not None:
+                    outputs = self.policy_net(s_eval_tensor)
+                    loss = criterion(outputs.transpose(1, 2), a_eval_tensor)
+                    loss_history_eval[epoch] = loss.item()
             print(f"Epoch [{epoch+1}/{train_epochs}], Loss: {running_loss}")
+            print(f"Eval loss: {loss_history_eval[epoch]}")
         torch.save(  # TODO redo saving nicely
             self.policy_net.state_dict(),
-            f"{save_path}policy_net_ep_{num_eps}_epoch_{train_epochs}.pth",
+            f"{save_path}policy_net_{num_steps}_epoch_{train_epochs}.pth",
         )
-        return running_loss, loss_history
+        return running_loss, loss_history_train, loss_history_eval
 
     def generate_supervised_data(
         self,
