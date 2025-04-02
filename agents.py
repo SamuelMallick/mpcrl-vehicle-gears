@@ -17,6 +17,7 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 import casadi as cs
+from copy import deepcopy
 
 # the max velocity allowed by each gear while respecting the engine speed limit
 max_v_per_gear = [
@@ -816,7 +817,7 @@ class LearningAgent(Agent):
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
-        self.prev_sol = self.shift_sol(self.sol)
+        self.prev_sol = self.shift_sol(deepcopy(self.sol))
         return (
             self.sol.vals["T_e"].full()[0, 0],
             self.sol.vals["F_b"].full()[0, 0],
