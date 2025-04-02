@@ -9,6 +9,7 @@ from agents import (
     SupervisedLearningAgent,
     DistributedAgent,
     DistributedHeuristicGearAgent,
+    DistributedLearningAgent,
 )
 from env import VehicleTracking, PlatoonTracking
 from vehicle import Vehicle
@@ -24,6 +25,7 @@ from typing import Literal
 
 SAVE = False
 PLOT = True
+EVAL = True
 
 sim_type: Literal[
     "sl_train",
@@ -41,7 +43,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c31 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -61,18 +63,38 @@ env: PlatoonTracking = MonitorEpisodes(
             infinite_episodes=config.infinite_episodes,
         ),
         max_episode_steps=(
-            ep_length if not config.infinite_episodes else ep_length * config.num_eps
+            ep_length if not config.infinite_episodes or EVAL else config.max_steps
         ),
     )
 )
 
-mpc = SolverTimeRecorder(TrackingMpc(N))
-agent: Agent = DistributedHeuristicGearAgent(mpc, num_vehicles=num_vehicles)
+seed = 0  # seed 0 used for generator
+np_random = np.random.default_rng(seed)
+
+# mpc = SolverTimeRecorder(TrackingMpc(N))
+mpc = SolverTimeRecorder(
+    HybridTrackingFuelMpcFixedGear(
+        N,
+        optimize_fuel=True,
+        convexify_fuel=False,
+    )
+)
+agent: Agent = DistributedLearningAgent(
+    mpc, num_vehicles=num_vehicles, np_random=np_random, config=config
+)
+state_dict = torch.load(
+    f"dev/results/31/policy_net_step_25000.pth",
+    weights_only=True,
+    map_location="cpu",
+)
+with open(f"dev/results/31/data_step_25000.pkl", "rb") as f:
+    data = pickle.load(f)
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
     seed=eval_seed,
-    save_every_episode=config.save_every_episode,
+    policy_net_state_dict=state_dict,
+    normalization=data["normalization"],
 )
 
 fuel = info["fuel"]

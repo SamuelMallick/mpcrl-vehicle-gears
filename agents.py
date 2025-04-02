@@ -1474,9 +1474,31 @@ class DQNAgent(LearningAgent):
 
 class DistributedAgent(Agent):
     # TODO add multi-starts
-    def __init__(self, mpc, num_vehicles: int):
-        super().__init__(mpc)
+    def __init__(
+        self,
+        mpc,
+        num_vehicles: int,
+        np_random: np.random.Generator,
+        multi_starts: int = 1,
+    ):
+        super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
         self.num_vehicles = num_vehicles
+        self.sols = [None for _ in range(num_vehicles)]
+
+    def get_pars(self, x: np.ndarray, i: int) -> dict:
+        pars = {"x_0": x}
+        if i == 0:
+            pars["x_ref"] = self.x_ref_predicition.T.reshape(2, -1)
+        else:
+            pars["x_ref"] = self.sols[i - 1].vals["x"] - d_arr
+        if i < self.num_vehicles - 1:
+            if (
+                self.sols[i + 1] is not None
+            ):  # for first solution behind constraint not considered
+                pars["p_b"] = self.sols[i + 1].vals["x"][0, :]
+        if i > 0:
+            pars["p_a"] = self.sols[i - 1].vals["x"][0, :]
+        return pars
 
     def get_action(self, state):
         return (
@@ -1495,12 +1517,12 @@ class DistributedAgent(Agent):
         self.x_ref.append(np.empty((0, 2, 1)))
         self.x_ref_predicition = env.unwrapped.get_x_ref_prediction()
         self.T_e_prev = [Vehicle.T_e_idle for _ in range(self.num_vehicles)]
-        gear = [
+        self.gears = [
             self.gear_from_velocity(state[1, i].item())
             for i in range(self.num_vehicles)
         ]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
-        for i, g in enumerate(gear):
+        for i, g in enumerate(self.gears):
             self.gear_prev[i][g] = 1
 
     def on_env_step(
@@ -1514,9 +1536,9 @@ class DistributedAgent(Agent):
         )
         self.x_ref_predicition = env.unwrapped.get_x_ref_prediction()
         self.T_e_prev = info["T_e"]
-        gear = info["gear"]
+        self.gears = info["gear"]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
-        for i, g in enumerate(gear):
+        for i, g in enumerate(self.gears):
             self.gear_prev[i][g] = 1
 
     def clip_action(self, action):
@@ -1532,9 +1554,14 @@ class DistributedAgent(Agent):
 
 class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
 
-    def __init__(self, mpc, num_vehicles: int):
-        super().__init__(mpc, num_vehicles)
-        self.sols = [None for _ in range(num_vehicles)]
+    def __init__(
+        self,
+        mpc,
+        num_vehicles: int,
+        np_random: np.random.Generator,
+        multi_starts: int = 1,
+    ):
+        super().__init__(mpc, num_vehicles, np_random, multi_starts=multi_starts)
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         # get highest allowed gear for the given velocity, then use that to limit the traction force
@@ -1547,23 +1574,18 @@ class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
             n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
             F_trac_max = Vehicle.T_e_max * n
 
-            pars = {"x_0": x, "F_trac_max": F_trac_max}
-            if i == 0:
-                pars["x_ref"] = self.x_ref_predicition.T.reshape(2, -1)
-            else:
-                pars["x_ref"] = self.sols[i - 1].vals["x"] - d_arr
-            if i < self.num_vehicles - 1:
-                if (
-                    self.sols[i + 1] is not None
-                ):  # for first solution behind constraint not considered
-                    p_b = self.sols[i + 1].vals["x"][0, :]
-                    pars["p_b"] = np.concatenate(
-                        (p_b[0, 1:], p_b[0, -1]), axis=1
-                    )  # prev sol requires shift
-            if i > 0:
-                pars["p_a"] = self.sols[i - 1].vals["x"][0, :]
+            pars = self.get_pars(x, i)
+            pars["F_trac_max"] = F_trac_max
 
-            sol = self.mpc.solve(pars)
+            sol = self.mpc.solve(
+                pars,
+                vals0=(
+                    [self.sols[i].vals]
+                    + self.initial_guesses_vals(x, self.multi_starts - 1)
+                    if self.prev_sol
+                    else self.initial_guesses_vals(x, self.multi_starts)
+                ),
+            )
 
             if not sol.success:
                 raise ValueError("MPC failed to solve")
@@ -1588,10 +1610,12 @@ class DistributedHeuristicGearAgent(DistributedAgent, HeuristicGearAgent):
             F_b_list.append(F_b)
             gear_list.append(gear)
             self.sols[i] = sol
+        for i in range(self.num_vehicles):
+            self.sols[i] = self.shift_sol(self.sols[i])
         return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}
 
 
-class DUMB(DistributedAgent, LearningAgent):
+class DistributedLearningAgent(DistributedAgent, LearningAgent):
     # TODO doc strings
 
     def __init__(
@@ -1600,7 +1624,93 @@ class DUMB(DistributedAgent, LearningAgent):
         num_vehicles: int,
         np_random: np.random.Generator,
         config: ConfigDefault,
+        multi_starts: int = 1,
     ):
+        self.eps_start = 0
+        self.decay_rate = 0
         self.num_vehicles = num_vehicles
         self.sols = [None for _ in range(num_vehicles)]
-        LearningAgent.__init__(self, mpc, np_random, config)
+        self.unshifted_sols = [None for _ in range(num_vehicles)]
+        self.gear_choice_explicit = [None] * num_vehicles
+        self.last_gear_choice_explicit = [None] * num_vehicles
+        LearningAgent.__init__(self, mpc, np_random, config, multi_starts=multi_starts)
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        # get highest allowed gear for the given velocity, then use that to limit the traction force
+        xs = np.split(state, self.num_vehicles, axis=1)
+        T_e_list = []
+        F_b_list = []
+        gear_list = []
+        for i, x in enumerate(xs):
+            pars = self.get_pars(x, i)
+            pars["T_e_prev"] = self.T_e_prev[i]
+            pars["gear_prev"] = self.gear_prev[i]
+
+            nn_state = None
+            network_action = None
+            heuristic = False
+            heuristic_gear = self.gear_from_velocity(x[1].item(), "low")
+            heurisitic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+            heurisitic_gear_choice_binary[heuristic_gear] = 1
+            pars["gear"] = heurisitic_gear_choice_binary
+            heuristic_sol = self.mpc.solve(
+                pars,
+                vals0=(
+                    [self.sols[i].vals]
+                    + self.initial_guesses_vals(x, self.multi_starts - 1)
+                    if self.sols[i]
+                    else self.initial_guesses_vals(x, self.multi_starts)
+                ),
+            )
+            # get gears from network for non-first time steps
+            if not self.first_timestep:
+                T_e, F_b, w_e, x_, shifted_gear = self.get_shifted_values_from_sol(
+                    self.unshifted_sols[i], x, self.last_gear_choice_explicit[i]
+                )
+                nn_state = self.relative_state(
+                    x_,
+                    T_e,
+                    F_b,
+                    w_e,
+                    shifted_gear,
+                )
+                self.gear = self.gears[i]
+                gear_choice_binary, network_action = self.get_binary_gear_choice(
+                    nn_state
+                )
+                pars["gear"] = gear_choice_binary
+                self.gear_choice_explicit[i] = np.argmax(gear_choice_binary, axis=0)
+
+                self.sols[i] = self.mpc.solve(
+                    pars,
+                    vals0=(
+                        [self.sols[i].vals]
+                        + self.initial_guesses_vals(x, self.multi_starts - 1)
+                        if self.sols[i]
+                        else self.initial_guesses_vals(x, self.multi_starts)
+                    ),
+                )
+            else:
+                heuristic = True
+                self.sols[i] = heuristic_sol
+                self.gear_choice_explicit[i] = np.argmax(
+                    heurisitic_gear_choice_binary, axis=0
+                )
+                if i == self.num_vehicles - 1:
+                    self.first_timestep = False
+
+            if not self.sols[i].success or heuristic_sol.f < self.sols[i].f:
+                self.sols[i] = heuristic_sol
+                self.gear_choice_explicit[i] = np.argmax(
+                    heurisitic_gear_choice_binary, axis=0
+                )
+                heuristic = True
+
+            T_e_list.append(self.sols[i].vals["T_e"].full()[0, 0])
+            F_b_list.append(self.sols[i].vals["F_b"].full()[0, 0])
+            gear_list.append(int(self.gear_choice_explicit[i][0]))
+            self.last_gear_choice_explicit[i] = self.gear_choice_explicit[i]
+        for i in range(self.num_vehicles):
+            self.unshifted_sols[i] = deepcopy(self.sols[i])
+            self.sols[i] = self.shift_sol(deepcopy(self.sols[i]))
+        return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}
