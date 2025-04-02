@@ -769,6 +769,7 @@ class LearningAgent(Agent):
                 shifted_gear,
             )
             gear_choice_binary, network_action = self.get_binary_gear_choice(nn_state)
+            self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
 
             self.sol = self.mpc.solve(
                 {
@@ -787,6 +788,7 @@ class LearningAgent(Agent):
         else:
             heuristic = True
             self.sol = heuristic_sol
+            self.gear_choice_explicit = np.argmax(heurisitic_gear_choice_binary, axis=0)
             self.first_timestep = False
 
         if heuristic_sol.f < self.sol.f:
