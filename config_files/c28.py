@@ -30,7 +30,7 @@ class Config(ConfigDefault):
     n_actions = 6
     n_layers = 4
     bidirectional = False
-    normalize = True
+    normalize = False
 
     # exploration
     eps_start = 0.99

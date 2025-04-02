@@ -13,11 +13,12 @@ class Config(ConfigDefault):
 
     # -----------general parameters----------------
     N = 15
-    ep_len = 200
+    ep_len = 1000
     num_eps = 50000
     trajectory_type = "type_3"
     infinite_episodes = True
     max_steps = 100 * 50000
+    multi_starts = 1
 
     # -----------network parameters----------------
     # hyperparameters

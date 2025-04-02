@@ -18,6 +18,7 @@ class Config(ConfigDefault):
     trajectory_type = "type_3"
     infinite_episodes = True
     max_steps = 100 * 50000
+    multi_starts = 5
 
     # -----------network parameters----------------
     # hyperparameters
@@ -30,7 +31,7 @@ class Config(ConfigDefault):
     n_actions = 6
     n_layers = 4
     bidirectional = True
-    normalize = True
+    normalize = False
 
     # exploration
     eps_start = 0.99

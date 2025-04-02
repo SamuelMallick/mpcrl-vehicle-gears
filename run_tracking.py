@@ -35,7 +35,7 @@ sim_type: Literal[
     "heuristic_mpc",
     "heuristic_mpc_2",
     "heuristic_mpc_3",
-] = "heuristic_mpc_3"
+] = "miqp_mpc"
 
 EVAL = True
 
@@ -102,6 +102,7 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
     elif sim_type == "l_mpc_eval":
         state_dict = torch.load(
             f"dev/results/25/policy_net_step_4050000.pth",
+            # f"dev/results/sl_data/27_policy_net_129999_epoch_400.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -144,7 +145,7 @@ if sim_type == "sl_train" or sim_type == "sl_data":
     else:
         nn_inputs = None
         nn_targets = None
-        directory = "results/sl_data"
+        directory = "dev/results/sl_data"
         for filename in os.listdir(directory):
             filepath = os.path.join(directory, filename)
             if os.path.isfile(filepath):
@@ -165,7 +166,7 @@ if sim_type == "sl_train" or sim_type == "sl_data":
         nn_targets = torch.stack(nn_targets)
         # get eval data
         eval_data = torch.load(
-            f"results/sl_data/eval_data/_nn_data_10000_seed_1000.pth",
+            f"dev/results/sl_data/eval_data/_nn_data_10000_seed_1000.pth",
             map_location="cpu",
         )
         nn_inputs_eval = torch.stack(eval_data["inputs"]).squeeze()
@@ -228,7 +229,12 @@ elif sim_type == "minlp_mpc":
             solver="bonmin",
         )
     )
-    agent = MINLPAgent(mpc, backup_mpc=backup_mpc)
+    agent = MINLPAgent(
+        mpc,
+        backup_mpc=backup_mpc,
+        np_random=np_random,
+        multi_starts=config.multi_starts,
+    )
     returns, info = agent.evaluate(
         env,
         episodes=num_eval_eps,
@@ -319,6 +325,7 @@ if SAVE:
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
                 "infeasible": info["infeasible"] if "infeasible" in info else None,
+                "dummy": info["dummy"] if "dummy" in info else None,
             },
             f,
         )

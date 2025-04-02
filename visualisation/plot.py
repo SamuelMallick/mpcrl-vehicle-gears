@@ -124,9 +124,9 @@ def plot_comparison(
     T_e: list[np.ndarray],
     w_e: list[np.ndarray],
 ):
-    linestyles = ["--", "-", "-.", ":", "-"]
-    colors = ["red", "blue", "green", "orange", "black"]
-    labels = ["L-MPC", "H-MPC", "H-MPC-2", "MIQP-MPC", "MINLP-MPC"]
+    linestyles = ["--", "-", "-.", ":", "-"] * 3
+    colors = ["red", "blue", "green", "orange", "black"] * 3
+    labels = ["H-MPC", "L2-MPC", "L-MPC", "MIQP-MPC", "MINLP-MPC"]
     fig, ax = plt.subplots(4, 1, sharex=True)
     ax[1].plot(x_ref[0][:, 1], color="black")
     ax[1].legend(["ref"])
