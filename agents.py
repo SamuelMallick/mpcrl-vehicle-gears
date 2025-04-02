@@ -791,7 +791,7 @@ class LearningAgent(Agent):
             self.gear_choice_explicit = np.argmax(heurisitic_gear_choice_binary, axis=0)
             self.first_timestep = False
 
-        if self.sol.success and heuristic_sol.f < self.sol.f:
+        if not self.sol.success or heuristic_sol.f < self.sol.f:
             self.sol = heuristic_sol
             self.gear_choice_explicit = np.argmax(heurisitic_gear_choice_binary, axis=0)
             heuristic = True
