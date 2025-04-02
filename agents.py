@@ -303,9 +303,9 @@ class Agent:
                 raise ValueError("Velocity out of bounds")
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            <= Vehicle.w_e_max + 1e3
+            <= Vehicle.w_e_max + 1e-6
             and (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            >= Vehicle.w_e_idle - 1e3
+            >= Vehicle.w_e_idle - 1e-6
             for i in range(6)
         ]
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
