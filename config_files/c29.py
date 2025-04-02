@@ -2,40 +2,36 @@ import os
 import sys
 from mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+import os, sys
+
+sys.path.append(os.getcwd())
+from config_files.base import ConfigDefault
 
 
-class ConfigDefault:
-    id = "base"
+class Config(ConfigDefault):
+    id = "29"  # 26 but training with new controller setup
 
     # -----------general parameters----------------
-    N = 5
-    ep_len = 100
+    N = 15
+    ep_len = 1000
     num_eps = 50000
     trajectory_type = "type_3"
-    windy = False
-    save_every_episode = False
-    infinite_episodes = False
-    max_steps = ep_len * num_eps
+    infinite_episodes = True
+    max_steps = 100 * 50000
     multi_starts = 1
 
     # -----------network parameters----------------
-    # initial weights
-    init_state_dict = {}
-    init_normalization = ()
-
     # hyperparameters
     gamma = 0.9
-    learning_rate = 0.001
+    learning_rate = 0.0001
     tau = 0.001
 
     # archticeture
-    clip = False
-    n_states = 8
-    n_hidden = 64
+    n_hidden = 256
     n_actions = 3
-    n_layers = 2
+    n_layers = 4
     bidirectional = True
-    normalize = False
+    normalize = True
 
     # exploration
     eps_start = 0.99
@@ -44,13 +40,10 @@ class ConfigDefault:
     # penalties
     clip_pen = 0
     infeas_pen = 1e4
-    rl_reward = -1e2
 
     # memory
     memory_size = 100000
     batch_size = 128
-
-    max_grad = 100
 
     def __init__(self, sim_type: str):
         # used for generating gears at first time step of episodes

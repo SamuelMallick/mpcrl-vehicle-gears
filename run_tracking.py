@@ -22,7 +22,7 @@ import torch
 import pickle
 from typing import Literal
 
-SAVE = True
+SAVE = False
 PLOT = True
 
 sim_type: Literal[
@@ -35,9 +35,9 @@ sim_type: Literal[
     "heuristic_mpc",
     "heuristic_mpc_2",
     "heuristic_mpc_3",
-] = "miqp_mpc"
+] = "rl_mpc_train"
 
-EVAL = True
+EVAL = False
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -45,7 +45,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c25 import Config  # type: ignore
+    from config_files.c30 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -87,16 +87,18 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
     if sim_type == "rl_mpc_train":
         os.makedirs(f"results/{config.id}", exist_ok=True)
         init_state_dict = config.init_state_dict
+        init_normalization = config.init_normalization
 
         num_eps = config.num_eps
         returns, info = agent.train(
             env,
             episodes=num_eps,
             exp_zero_steps=config.esp_zero_steps,
-            save_freq=50000,
+            save_freq=25000,
             save_path=f"results/{config.id}",
             seed=0,  # seed 0 used for training
             init_state_dict=init_state_dict,
+            init_normalization=init_normalization,
             max_learning_steps=config.max_steps,
         )
     elif sim_type == "l_mpc_eval":
@@ -324,8 +326,7 @@ if SAVE:
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
-                "infeasible": info["infeasible"] if "infeasible" in info else None,
-                "dummy": info["dummy"] if "dummy" in info else None,
+                "heuristic": info["heuristic"] if "heuristic" in info else None,
             },
             f,
         )

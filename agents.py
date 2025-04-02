@@ -616,9 +616,9 @@ class LearningAgent(Agent):
     schedule. An NLP-based MPC controller then solves for the continuous
     variables, given the gear-shift schedule."""
 
-    infeasible: list[list[float]] = (
+    heuristic: list[list[float]] = (
         []
-    )  # flag to store if the gear choice was infeasible
+    )  # flag to store if the heuristic gear choice was used
 
     def __init__(
         self,
@@ -633,8 +633,6 @@ class LearningAgent(Agent):
         )
         self.n_gears = 6
         self.steps_done = 0
-
-        self.expert_mpc = config.expert_mpc
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.device.type == "cuda":
@@ -721,13 +719,12 @@ class LearningAgent(Agent):
             episodes,
             seed,
         )
-        return returns, {**info, "infeasible": self.infeasible}
+        return returns, {**info, "heuristic": self.heuristic}
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the MPC action for the given state. Gears are chosen by
         the neural network, while the engine torque and brake force are
-        then chosen by the MPC controller. If the gear choice is infeasible,
-        the agent will attempt two backup solutions (See backup_1 and backup_2).
+        then chosen by the MPC controller.
 
         Parameters
         ----------
@@ -739,40 +736,28 @@ class LearningAgent(Agent):
         tuple[float, float, int, dict]
             The engine torque, brake force, and gear chosen by the agent, and an
             info dict containing network state and action."""
-        # get gears either from heuristic or from expert mpc for first time step
-        infeas_flag = False
-        if self.first_timestep:
-            nn_state = None
-            network_action = None
-            if self.expert_mpc:
-                expert_sol = self.expert_mpc.solve(
-                    {
-                        "x_0": state,
-                        "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                        "T_e_prev": self.T_e_prev,
-                        "gear_prev": self.gear_prev,
-                    },
-                    vals0=(
-                        [self.prev_sol.vals]
-                        + self.initial_guesses_vals(state, self.multi_starts - 1)
-                        if self.prev_sol
-                        else self.initial_guesses_vals(state, self.multi_starts)
-                    ),
-                )
-                if not expert_sol.success:
-                    raise RuntimeError(
-                        "Initial gear choice from expert mpc was infeasible"
-                    )
-                gear_choice_binary = expert_sol.vals["gear"].full()
-                self.gear_choice_explicit = np.argmax(gear_choice_binary, axis=0)
-            else:
-                gear_choice_binary = self.binary_from_explicit(
-                    self.gear_choice_explicit
-                )
-            self.last_gear_choice_explicit = self.gear_choice_explicit
-            self.first_timestep = False
+        nn_state = None
+        network_action = None
+        heuristic = False
+        heuristic_gear = self.gear_from_velocity(state[1].item(), "low")
+        heurisitic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+        heurisitic_gear_choice_binary[heuristic_gear] = 1
+        heuristic_sol = self.mpc.solve(
+            {
+                "x_0": state,
+                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                "T_e_prev": self.T_e_prev,
+                "gear": heurisitic_gear_choice_binary,
+            },
+            vals0=(
+                [self.prev_sol.vals]
+                + self.initial_guesses_vals(state, self.multi_starts - 1)
+                if self.prev_sol
+                else self.initial_guesses_vals(state, self.multi_starts)
+            ),
+        )
         # get gears from network for non-first time steps
-        else:
+        if not self.first_timestep:
             T_e, F_b, w_e, x, shifted_gear = self.get_shifted_values_from_sol(
                 self.sol, state, self.last_gear_choice_explicit
             )
@@ -785,35 +770,29 @@ class LearningAgent(Agent):
             )
             gear_choice_binary, network_action = self.get_binary_gear_choice(nn_state)
 
-        self.sol = self.mpc.solve(
-            {
-                "x_0": state,
-                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                "T_e_prev": self.T_e_prev,
-                "gear": gear_choice_binary,
-            },
-            vals0=(
-                [self.prev_sol.vals]
-                + self.initial_guesses_vals(state, self.multi_starts - 1)
-                if self.prev_sol
-                else self.initial_guesses_vals(state, self.multi_starts)
-            ),
-        )
-        if not self.sol.success:
-            infeas_flag = True
-            self.sol, self.gear_choice_explicit = self.backup_1(state)
-            if not self.sol.success:
-                self.sol, self.gear_choice_explicit = self.backup_2(state)
-                if not self.sol.success:
-                    if not self.train_flag:
-                        raise RuntimeError(
-                            "Backup gear solutions were still infeasible."
-                        )
-                    else:  # TODO  should we put heuristic mpc here?
-                        # pass
-                        raise RuntimeError(
-                            "Backup gear solutions were still infeasible."
-                        )
+            self.sol = self.mpc.solve(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear": gear_choice_binary,
+                },
+                vals0=(
+                    [self.prev_sol.vals]
+                    + self.initial_guesses_vals(state, self.multi_starts - 1)
+                    if self.prev_sol
+                    else self.initial_guesses_vals(state, self.multi_starts)
+                ),
+            )
+        else:
+            heuristic = True
+            self.sol = heuristic_sol
+            self.first_timestep = False
+
+        if heuristic_sol.f < self.sol.f:
+            self.sol = heuristic_sol
+            self.gear_choice_explicit = np.argmax(heurisitic_gear_choice_binary, axis=0)
+            heuristic = True
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
@@ -825,7 +804,7 @@ class LearningAgent(Agent):
             {
                 "nn_state": nn_state,
                 "network_action": network_action,
-                "infeas": infeas_flag,
+                "heuristic": heuristic,
             },
         )
 
@@ -931,7 +910,7 @@ class LearningAgent(Agent):
 
     def on_train_start(self):
         self.steps_done = 0
-        self.infeasible = []
+        self.heuristic = []
 
     def on_validation_start(self):
         self.T_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
@@ -942,7 +921,7 @@ class LearningAgent(Agent):
 
     def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
         self.first_timestep = True
-        self.infeasible.append([])
+        self.heuristic.append([])
         # store a default gear based on velocity when episode starts
         self.gear = self.gear_from_velocity(state[1])
         self.gear_choice_explicit: np.ndarray = np.ones((self.N,)) * self.gear
@@ -955,8 +934,8 @@ class LearningAgent(Agent):
             self.running_mean_std.update(
                 diff.T
             )  # transpose needed as the mean is taken over axis 0
-        if "infeas" in info:
-            self.infeasible[-1].append(info["infeas"])
+        if "heuristic" in info:
+            self.heuristic[-1].append(info["heuristic"])
         return super().on_env_step(env, episode, timestep, info)
 
     def relative_state(
@@ -1253,6 +1232,7 @@ class DQNAgent(LearningAgent):
         # penalties
         self.clip_pen = config.clip_pen
         self.infeas_pen = config.infeas_pen
+        self.rl_reward = config.rl_reward
 
         # memory
         self.memory_size = config.memory_size
@@ -1271,6 +1251,7 @@ class DQNAgent(LearningAgent):
         save_path: str = "",
         exp_zero_steps: int = 0,
         init_state_dict: dict = {},
+        init_normalization: tuple = (),
         max_learning_steps: int = np.inf,
     ) -> tuple[np.ndarray, dict]:
         """Train the policy on the environment using deep Q-learning.
@@ -1298,6 +1279,9 @@ class DQNAgent(LearningAgent):
             which the training terminates."""
         if self.normalize:
             self.running_mean_std = RunningMeanStd(shape=(2,))
+            if init_normalization:
+                self.running_mean_std.mean = init_normalization[0]
+                self.running_mean_std.var = init_normalization[1]
 
         if init_state_dict:
             self.policy_net.load_state_dict(init_state_dict)
@@ -1318,7 +1302,8 @@ class DQNAgent(LearningAgent):
 
             while not (terminated or truncated):
                 T_e, F_b, gear, action_info = self.get_action(state)
-                penalty = self.infeas_pen if action_info["infeas"] else 0
+                # penalty = self.infeas_pen if action_info["infeas"] else 0
+                penalty = self.rl_reward if not action_info["heuristic"] else 0
 
                 state, reward, truncated, terminated, step_info = env.step(
                     (T_e, F_b, gear)
@@ -1376,7 +1361,7 @@ class DQNAgent(LearningAgent):
             "w_e": self.engine_speed,
             "x_ref": self.x_ref,
             "cost": self.cost,
-            "infeasible": self.infeasible,
+            "heuristic": self.heuristic,
         }
         if self.normalize:
             info["normalization"] = (
@@ -1450,7 +1435,7 @@ class DQNAgent(LearningAgent):
             "T_e": self.engine_torque,
             "w_e": self.engine_speed,
             "x_ref": self.x_ref,
-            "infeasible": self.infeasible,
+            "heuristic": self.heuristic,
             "R": list(env.rewards) + [np.asarray(env.ep_rewards)],
             "X": list(env.observations) + [np.asarray(env.ep_observations)],
             "U": list(env.actions) + [np.asarray(env.ep_actions)],
