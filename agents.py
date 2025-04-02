@@ -1291,7 +1291,9 @@ class DQNAgent(LearningAgent):
 
         seeds = map(int, np.random.SeedSequence(seed).generate_state(episodes))
         returns = np.zeros(episodes)
-        self.decay_rate = np.log(self.eps_start / 1e-3) / exp_zero_steps
+        self.decay_rate = (
+            np.log(self.eps_start / 1e-3) / exp_zero_steps if self.eps_start > 0 else 0
+        )
         total_steps = 0
 
         self.on_train_start()
