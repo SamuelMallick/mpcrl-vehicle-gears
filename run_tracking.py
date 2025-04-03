@@ -35,9 +35,9 @@ sim_type: Literal[
     "heuristic_mpc",
     "heuristic_mpc_2",
     "heuristic_mpc_3",
-] = "rl_mpc_train"
+] = "minlp_mpc"
 
-EVAL = False
+EVAL = True
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -45,7 +45,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c30 import Config  # type: ignore
+    from config_files.c25 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -103,8 +103,9 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         )
     elif sim_type == "l_mpc_eval":
         state_dict = torch.load(
-            f"dev/results/25/policy_net_step_4050000.pth",
+            # f"dev/results/25/policy_net_step_4050000.pth",
             # f"dev/results/sl_data/27_policy_net_129999_epoch_400.pth",
+            f"dev/results/31/policy_net_step_25000.pth",
             weights_only=True,
             map_location="cpu",
         )
@@ -113,7 +114,7 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         #     weights_only=True,
         #     map_location="cpu",
         # )
-        with open(f"dev/results/25/data_step_4050000.pkl", "rb") as f:
+        with open(f"dev/results/31/data_step_25000.pkl", "rb") as f:
             data = pickle.load(f)
         # dqn = DRQN(8, 256, 6, 4, True)
         # state_dict = dqn.state_dict()
@@ -220,6 +221,7 @@ elif sim_type == "minlp_mpc":
             convexify_fuel=False,
             convexify_dynamics=False,
             solver="knitro",
+            multi_starts=config.multi_starts,
         )
     )
     backup_mpc = SolverTimeRecorder(
@@ -229,6 +231,7 @@ elif sim_type == "minlp_mpc":
             convexify_fuel=False,
             convexify_dynamics=False,
             solver="bonmin",
+            multi_starts=config.multi_starts,
         )
     )
     agent = MINLPAgent(
@@ -241,7 +244,7 @@ elif sim_type == "minlp_mpc":
         env,
         episodes=num_eval_eps,
         seed=eval_seed,
-        allow_failure=True,
+        allow_failure=False,
         save_every_episode=config.save_every_episode,
         log_progress=True,
     )

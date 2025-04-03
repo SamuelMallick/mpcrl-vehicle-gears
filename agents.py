@@ -154,7 +154,7 @@ class Agent:
                         solve_time = self.backup_mpc.solver_time[-1]
                     with open(log_file, "a") as f:
                         f.write(
-                            f"Episode {episode} \t | Timestep {timestep} \t | Solver: {action_info['solver']} \t | Solver time: {solve_time}\n"
+                            f"Episode {episode} \t | Timestep {timestep} \t | Solver: {action_info['solver']} \t | Solver time: {solve_time} \t | Cost: {action_info["cost"]}\n"
                         )
                         f.flush()
 
@@ -362,7 +362,7 @@ class MINLPAgent(Agent):
                 else self.initial_guesses_vals(state, self.multi_starts)
             ),
         )
-        if not sol.success:
+        if not sol.success and sol.status != 'KN_RC_TIME_LIMIT_FEAS':
             solver = "backup"
             sol = self.backup_mpc.solve(
                 {
@@ -384,7 +384,7 @@ class MINLPAgent(Agent):
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
         self.prev_sol = self.shift_sol(sol)
-        return T_e, F_b, gear, {"solver": solver}
+        return T_e, F_b, gear, {"solver": solver, "cost": sol.f}
 
 
 class HeuristicGearAgent(Agent):
