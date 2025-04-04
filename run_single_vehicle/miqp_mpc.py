@@ -53,9 +53,9 @@ mpc = SolverTimeRecorder(
     MIPMPC(
         N,
         optimize_fuel=True,
-        convexify_fuel=False,
-        convexify_dynamics=False,
-        solver="knitro",
+        convexify_fuel=True,
+        convexify_dynamics=True,
+        solver="gurobi",
         multi_starts=config.multi_starts,
     )
 )

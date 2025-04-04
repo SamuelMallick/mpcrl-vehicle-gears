@@ -59,6 +59,20 @@ class MIPMPC(HybridMPC):
         a2 = (13 * self.C_wind * self.v_max) / 8
         b = (-5 * self.C_wind * self.v_max**2) / 8
 
+        # maximum values of F_r in T_e *n = F_r + F_b
+        F_r_max = (
+            self.g * self.mu * self.m * np.cos(0)
+            + self.g * self.m * np.sin(0)
+            + self.C_wind * self.v_max**2
+            + self.m * (self.v_max - self.v_min) / self.dt
+        )
+        F_r_min = (
+            self.g * self.mu * self.m * np.cos(0)
+            + self.g * self.m * np.sin(0)
+            + self.C_wind * self.v_min**2
+            + self.m * (self.v_min - self.v_max) / self.dt
+        )
+
         # gear as discrete binary action
         gear, _ = self.action("gear", 6, discrete=True, lb=0, ub=1)
         gear_prev = self.parameter("gear_prev", (6, 1))
@@ -151,14 +165,13 @@ class MIPMPC(HybridMPC):
                 # the following two constraints enforce the relation T_e * n[i] = F_r + F_b
                 self.constraint(
                     f"dynam_gear_{i}_1",
-                    self.T_e * n_i + (1 - gear[i, :]) * (self.F_r_max + self.F_b_max),
+                    self.T_e * n_i + (1 - gear[i, :]) * (F_r_max + self.F_b_max),
                     ">=",
                     F_r + self.F_b,
                 )
                 self.constraint(
                     f"dynam_gear_{i}_2",
-                    self.T_e * n_i
-                    + (1 - gear[i, :]) * (self.F_r_min - self.T_e_max * n_i),
+                    self.T_e * n_i + (1 - gear[i, :]) * (F_r_min - self.T_e_max * n_i),
                     "<=",
                     F_r + self.F_b,
                 )

@@ -59,20 +59,6 @@ class NonlinearMPC(VehicleMPC):
 
         F_trac_min = self.T_e_idle * self.z_t[-1] * self.z_f / self.r_r - self.F_b_max
 
-        # maximum values of F_r in T_e *n = F_r + F_b
-        F_r_max = (
-            self.g * self.mu * self.m * np.cos(0)
-            + self.g * self.m * np.sin(0)
-            + self.C_wind * self.v_max**2
-            + self.m * (self.v_max - self.v_min) / self.dt
-        )
-        F_r_min = (
-            self.g * self.mu * self.m * np.cos(0)
-            + self.g * self.m * np.sin(0)
-            + self.C_wind * self.v_min**2
-            + self.m * (self.v_min - self.v_max) / self.dt
-        )
-
         # explicit velocity constraints in place of engine speed constraints
         self.constraint("v_ub", self.x[1, :], "<=", self.v_max)
         self.constraint("v_lb", self.x[1, :], ">=", self.v_min)
