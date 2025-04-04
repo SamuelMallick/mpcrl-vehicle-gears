@@ -46,12 +46,24 @@ class MonitorEpisodes(
             maxlen=deque_size
         )
         self.rewards: Deque[npt.NDArray[np.floating]] = deque(maxlen=deque_size)
+
+        self.fuel_consumption: Deque[npt.NDArray[np.floating]] = deque(
+            maxlen=deque_size
+        )
+        self.engine_torque: Deque[npt.NDArray[np.floating]] = deque(maxlen=deque_size)
+        self.engine_speed: Deque[npt.NDArray[np.floating]] = deque(maxlen=deque_size)
+
         self.episode_lengths: Deque[int] = deque(maxlen=deque_size)
         self.exec_times: Deque[float] = deque(maxlen=deque_size)
         # current-episode-storages
         self.ep_observations: list[ObsType] = []
         self.ep_actions: list[ActType] = []
         self.ep_rewards: list[SupportsFloat] = []
+
+        self.ep_fuel_consumption: list[SupportsFloat] = []
+        self.ep_engine_torque: list[SupportsFloat] = []
+        self.ep_engine_speed: list[SupportsFloat] = []
+
         self.t0: float = perf_counter()
         self.ep_length: int = 0
 
@@ -76,6 +88,11 @@ class MonitorEpisodes(
         self.ep_observations.append(obs)
         self.ep_actions.append(action)
         self.ep_rewards.append(reward)
+
+        self.ep_fuel_consumption.append(info["fuel"])
+        self.ep_engine_torque.append(info["T_e"])
+        self.ep_engine_speed.append(info["w_e"])
+
         self.ep_length += 1
 
         # if episode is done, save the current data to history
@@ -84,6 +101,7 @@ class MonitorEpisodes(
             self.observations.append(np.asarray(self.ep_observations))
             self.actions.append(np.asarray(self.ep_actions))
             self.rewards.append(np.asarray(self.ep_rewards))
+            self.fuel_consumption.append(np.asarray(self.ep_fuel_consumption))
             self.episode_lengths.append(self.ep_length)
             self.exec_times.append(perf_counter() - self.t0)
 
@@ -97,5 +115,10 @@ class MonitorEpisodes(
         self.ep_observations.clear()
         self.ep_actions.clear()
         self.ep_rewards.clear()
+
+        self.ep_fuel_consumption.clear()
+        self.ep_engine_torque.clear()
+        self.ep_engine_speed.clear()
+
         self.t0 = perf_counter()
         self.ep_length = 0
