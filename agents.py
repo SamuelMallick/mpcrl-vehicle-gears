@@ -598,12 +598,13 @@ class HeuristicGearAgent3(HeuristicGearAgent):
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "T_e_prev": self.T_e_prev,
                 "gear": gear_choice_binary,
+                "gear_prev": self.gear_prev,
             },
             vals0=(
                 [self.prev_sol.vals]
-                + self.initial_guesses_vals(state, self.multi_starts - 1)
+                + Agent.initial_guesses_vals(self, state, self.multi_starts - 1)
                 if self.prev_sol
-                else self.initial_guesses_vals(state, self.multi_starts)
+                else Agent.initial_guesses_vals(self, state, self.multi_starts)
             ),
         )
 
