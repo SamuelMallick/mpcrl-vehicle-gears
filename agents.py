@@ -362,7 +362,7 @@ class MINLPAgent(Agent):
                 else self.initial_guesses_vals(state, self.multi_starts)
             ),
         )
-        if not sol.success and sol.status != 'KN_RC_TIME_LIMIT_FEAS':
+        if not sol.success and sol.status != "KN_RC_TIME_LIMIT_FEAS":
             solver = "backup"
             sol = self.backup_mpc.solve(
                 {

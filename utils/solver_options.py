@@ -53,12 +53,12 @@ solver_options = {
         "knitro": {
             "outlev": 2,
             "maxit": 1000,
-            "ms_enable": 1,       # 1
-            "ms_numthreads": 12,    # 12
-            "ms_maxsolves": 2,   # 10
-            "mip_numthreads": 12,   # 12
-            "mip_multistart": 1,        # 1
-            "maxtime": 10
+            "ms_enable": 1,  # 1
+            "ms_numthreads": 12,  # 12
+            "ms_maxsolves": 2,  # 10
+            "mip_numthreads": 12,  # 12
+            "mip_multistart": 1,  # 1
+            "maxtime": 10,
         },
     },
     "clp": {
