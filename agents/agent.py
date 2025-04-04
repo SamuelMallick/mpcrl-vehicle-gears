@@ -321,17 +321,18 @@ class PlatoonAgent(Agent):
         Agent.on_episode_start(self, state, env)
         self.T_e_prev = [Vehicle.T_e_idle for _ in range(self.num_vehicles)]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
+        self.gears = [0 for _ in range(self.num_vehicles)]
         xs = np.split(state, self.num_vehicles, axis=1)
         for i, x in enumerate(xs):
-            gear = self.gear_from_velocity(x[1].item())
-            self.gear_prev[i][gear] = 1
+            self.gears[i] = self.gear_from_velocity(x[1].item())
+            self.gear_prev[i][self.gears[i]] = 1
 
     def on_env_step(self, env, episode, timestep, info):
         Agent.on_env_step(self, env, episode, timestep, info)
         self.T_e_prev = info["T_e"]
-        gears = info["gear"]
+        self.gears = info["gear"]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
-        for i, gear in enumerate(gears):
+        for i, gear in enumerate(self.gears):
             self.gear_prev[i][gear] = 1
 
     def get_pars(self, x: np.ndarray, i: int) -> dict:
@@ -339,7 +340,7 @@ class PlatoonAgent(Agent):
         if i == 0:
             pars["x_ref"] = self.x_ref_predicition.T.reshape(2, -1)
         else:
-            pars["x_ref"] = self.prev_sols[i - 1].vals["x"] - self.d_arr
+            pars["x_ref"] = self.prev_sols[i - 1].vals["x"].full() - self.d_arr
         if i < self.num_vehicles - 1:
             if (
                 self.prev_sols[i + 1] is not None

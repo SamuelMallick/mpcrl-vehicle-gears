@@ -9,16 +9,16 @@ from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 types = [
-    f"heuristic_mpc_low_N_{N}_c_25_s_1",
+    # f"heuristic_mpc_low_N_{N}_c_25_s_1",
     # f"l_mpc_eval_N_{N}_c_25_s_1",
-    f"l_mpc_eval_N_{N}_c_31_s_1",
-    f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
-    f"miqp_mpc_N_{N}_c_25_s_1",
+    f"l_mpc_N_{N}_c_1_s_1",
+    # f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
+    # f"miqp_mpc_N_{N}_c_25_s_1",
 ]
-baseline_type = f"minlp_mpc_N_{N}_c_25_s_1"
+baseline_type = f"platoon_l_mpc_N_{N}_c_1_s_1"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
-file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
-baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
+file_names = [f"dev/{type}.pkl" for type in types]
+baseline_file_name = f"dev/{baseline_type}.pkl"
 # types = [
 #     f"l_mpc_eval_N_{N}_c_25",
 #     f"heuristic_mpc_low_N_{N}_c_1",
@@ -79,9 +79,9 @@ with open(baseline_file_name, "rb") as f:
 labels = [
     "decup-MPC",
     "H-L-MPC",
-    "H-MPC",
-    "MIQP-MPC",
-    "MINLP-MPC",
+    # "H-MPC",
+    # "MIQP-MPC",
+    # "MINLP-MPC",
 ]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
