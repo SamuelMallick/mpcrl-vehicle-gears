@@ -419,7 +419,7 @@ class HeuristicGearAgent(Agent):
         starts = super().initial_guesses_vals(state, num_guesses)
         for i in range(num_guesses):
             starts[i]["F_trac"] = self.np_random.uniform(
-                NonlinearMPC.F_trac_min, F_trac_max, (1, self.mpc.prediction_horizon)
+                self.mpc.F_trac_min, F_trac_max, (1, self.mpc.prediction_horizon)
             )
         return starts
 

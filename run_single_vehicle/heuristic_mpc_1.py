@@ -6,9 +6,9 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents import MINLPAgent
+from agents import HeuristicGearAgent
 from env import VehicleTracking
-from mpcs.mip_mpc import MIPMPC
+from mpcs.nonlinear_mpc import NonlinearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 from gymnasium.wrappers import TimeLimit
@@ -50,27 +50,22 @@ env: VehicleTracking = MonitorEpisodes(
 )
 
 mpc = SolverTimeRecorder(
-    MIPMPC(
+    NonlinearMPC(
         N,
-        optimize_fuel=True,
-        convexify_fuel=True,
-        convexify_dynamics=True,
-        solver="gurobi",
+        solver="ipopt",
         multi_starts=config.multi_starts,
     )
 )
-agent = MINLPAgent(
+agent = HeuristicGearAgent(
     mpc,
     np_random=np_random,
     multi_starts=config.multi_starts,
+    gear_priority="low"
 )
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
     seed=eval_seed,
-    allow_failure=False,
-    save_every_episode=config.save_every_episode,
-    log_progress=True,
 )
 
 fuel = info["fuel"]
@@ -90,7 +85,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"miqp_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb") as f:
+    with open(f"heuristic_mpc_1_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
