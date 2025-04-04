@@ -57,7 +57,9 @@ class NonlinearMPC(VehicleMPC):
             multi_starts=multi_starts,
         )
 
-        self.F_trac_min = self.T_e_idle * self.z_t[-1] * self.z_f / self.r_r - self.F_b_max
+        self.F_trac_min = (
+            self.T_e_idle * self.z_t[-1] * self.z_f / self.r_r - self.F_b_max
+        )
 
         # explicit velocity constraints in place of engine speed constraints
         self.constraint("v_ub", self.x[1, :], "<=", self.v_max)

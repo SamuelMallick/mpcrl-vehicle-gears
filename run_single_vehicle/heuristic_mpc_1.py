@@ -57,10 +57,7 @@ mpc = SolverTimeRecorder(
     )
 )
 agent = HeuristicGearAgent(
-    mpc,
-    np_random=np_random,
-    multi_starts=config.multi_starts,
-    gear_priority="low"
+    mpc, np_random=np_random, multi_starts=config.multi_starts, gear_priority="low"
 )
 returns, info = agent.evaluate(
     env,
@@ -85,7 +82,9 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"heuristic_mpc_1_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb") as f:
+    with open(
+        f"heuristic_mpc_1_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb"
+    ) as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
