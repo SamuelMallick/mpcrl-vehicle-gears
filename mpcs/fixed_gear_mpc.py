@@ -89,6 +89,6 @@ class FixedGearMPC(HybridMPC):
             np.isclose(np.sum(gear[:, i], axis=0), 1) for i in range(gear.shape[1])
         ):
             raise ValueError("More than one gear selected for a time step.")
-        if self.A @ cs.horzcat(gear_prev, gear[:, :-1]) >= gear:
+        if not np.all(self.A @ cs.horzcat(gear_prev, gear[:, :-1]) >= gear):
             raise ValueError("Gear-shift schedule skipping gears.")
         return super().solve(pars, vals0=vals0)
