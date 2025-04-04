@@ -1,7 +1,7 @@
 from bisect import bisect_right
 from typing import Literal
 import numpy as np
-from agents.agent import SingleVehicleAgent
+from agents.agent import PlatoonAgent, SingleVehicleAgent
 from mpcs.nonlinear_mpc import NonlinearMPC
 from vehicle import Vehicle
 
@@ -71,7 +71,7 @@ class Heuristic1Agent(SingleVehicleAgent):
             return valid_indices[-1]
         return valid_indices[len(valid_indices) // 2]
 
-    def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
+    def solve_mpc(self, pars, vals0, T_e_prev) -> tuple[float, float, int, dict]:
         sol = self.mpc.solve(pars, vals0)
         if not sol.success:
             raise ValueError("MPC failed to solve")
@@ -88,10 +88,7 @@ class Heuristic1Agent(SingleVehicleAgent):
             F_b = 0
 
         # apply clipping to engine torque
-        T_e = (
-            np.clip(T_e - self.T_e_prev, -Vehicle.dT_e_max, Vehicle.dT_e_max)
-            + self.T_e_prev
-        )
+        T_e = np.clip(T_e - T_e_prev, -Vehicle.dT_e_max, Vehicle.dT_e_max) + T_e_prev
         return T_e, F_b, gear, {"sol": sol}
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
@@ -111,6 +108,35 @@ class Heuristic1Agent(SingleVehicleAgent):
             if self.prev_sol
             else self.initial_guesses_vals(state, F_trac_max, self.multi_starts)
         )
-        T_e, F_b, gear, info = self.solve_mpc(pars, vals0)
+        T_e, F_b, gear, info = self.solve_mpc(pars, vals0, self.T_e_prev)
         self.prev_sol = self.shift_sol(info["sol"])
         return T_e, F_b, gear, {}
+
+
+class DistributedHeuristic1Agent(PlatoonAgent, Heuristic1Agent):
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        xs = np.split(state, self.num_vehicles, axis=1)
+        T_e_list = []
+        F_b_list = []
+        gear_list = []
+        for i, x in enumerate(xs):
+            idx = bisect_right(self.max_v_per_gear, x[1].item())
+            n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
+            F_trac_max = Vehicle.T_e_max * n
+            pars = self.get_pars(x, i)
+            pars["F_trac_max"] = F_trac_max
+            vals0 = (
+                [self.prev_sols[i].vals]
+                + self.initial_guesses_vals(x, self.multi_starts - 1)
+                if self.prev_sols[i]
+                else self.initial_guesses_vals(x, self.multi_starts)
+            )
+            T_e, F_b, gear, info = self.solve_mpc(pars, vals0, self.T_e_prev[i])
+            T_e_list.append(T_e)
+            F_b_list.append(F_b)
+            gear_list.append(gear)
+            self.prev_sols[i] = info["sol"]
+        for i in range(self.num_vehicles):
+            self.prev_sols[i] = self.shift_sol(self.prev_sols[i])
+        return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}
