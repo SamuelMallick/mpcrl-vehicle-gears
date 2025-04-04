@@ -54,9 +54,9 @@ mpc = SolverTimeRecorder(
     MIPMPC(
         N,
         optimize_fuel=True,
-        convexify_fuel=False,
-        convexify_dynamics=False,
-        solver="knitro",
+        convexify_fuel=True,
+        convexify_dynamics=True,
+        solver="gurobi",
         multi_starts=config.multi_starts,
     )
 )
@@ -91,7 +91,7 @@ print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(
-        f"platoon_minlp_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb"
+        f"platoon_miqp_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb"
     ) as f:
         pickle.dump(
             {
