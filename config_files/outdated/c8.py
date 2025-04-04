@@ -2,7 +2,7 @@ import os
 import sys
 
 import torch
-from mpc import HybridTrackingMpc
+from mpcs.mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import os, sys
 

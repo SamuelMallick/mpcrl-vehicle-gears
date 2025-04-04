@@ -18,7 +18,7 @@ from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import numpy as np
 from visualisation.plot import plot_evaluation, plot_training
-from mpc import HybridTrackingMpc, HybridTrackingFuelMpcFixedGear, TrackingMpc
+from mpcs.mpc import HybridTrackingMpc, HybridTrackingFuelMpcFixedGear, TrackingMpc
 import torch
 import pickle
 from typing import Literal

@@ -1,7 +1,7 @@
 import os
 import pickle
 import sys
-from mpc import HybridTrackingMpc
+from mpcs.mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import os, sys
 import torch
@@ -26,11 +26,11 @@ class Config(ConfigDefault):
     # initial weights
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     init_state_dict = torch.load(
-        f"results/25/policy_net_step_4050000.pth",
+        f"dev/results/25/policy_net_step_4050000.pth",
         weights_only=True,
         map_location=device,
     )
-    with open(f"results/25/data_step_4050000.pkl", "rb") as f:
+    with open(f"dev/results/25/data_step_4050000.pkl", "rb") as f:
         data = pickle.load(f)
     init_normalization = data["normalization"]
 

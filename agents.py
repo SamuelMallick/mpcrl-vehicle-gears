@@ -6,7 +6,7 @@ from config_files.base import ConfigDefault
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
-from mpc import HybridTrackingMpc, TrackingMpc, HybridTrackingFuelMpcFixedGear
+from mpcs.mpc import HybridTrackingMpc, TrackingMpc, HybridTrackingFuelMpcFixedGear
 from network import DRQN, ReplayMemory, Transition
 from utils.running_mean_std import RunningMeanStd
 from vehicle import Vehicle

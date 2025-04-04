@@ -10,7 +10,8 @@ from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 N = 15
 types = [
     f"heuristic_mpc_low_N_{N}_c_25_s_1",
-    f"l_mpc_eval_N_{N}_c_25_s_1",
+    # f"l_mpc_eval_N_{N}_c_25_s_1",
+    f"l_mpc_eval_N_{N}_c_31_s_1",
     f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
     f"miqp_mpc_N_{N}_c_25_s_1",
 ]
@@ -56,12 +57,14 @@ for file_name in file_names:
             ]
             print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
 
-        if "dummy" in data and data["dummy"]:
+        if "heuristic" in data and data["heuristic"]:
             print(
-                f"Dummy count: {sum(sum(data["dummy"][i]) for i in range(len(data["dummy"])))}"
+                f"heuristic count: {sum(sum(data["heuristic"][i]) for i in range(len(data["heuristic"])))}"
             )
-            infeas_ep = [sum(data["dummy"][i]) for i in range(len(data["dummy"]))]
-            print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
+            infeas_ep = [
+                sum(data["heuristic"][i]) for i in range(len(data["heuristic"]))
+            ]
+            print(f"Average heuristic per episode: {sum(infeas_ep) / len(infeas_ep)}")
 with open(baseline_file_name, "rb") as f:
     baseline_data = pickle.load(f)
     baseline_R = baseline_data["R"]
@@ -74,9 +77,9 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_speed = baseline_data["w_e"]
 
 labels = [
+    "decup-MPC",
+    "H-L-MPC",
     "H-MPC",
-    "L2-MPC",
-    "L-MPC",
     "MIQP-MPC",
     "MINLP-MPC",
 ]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]

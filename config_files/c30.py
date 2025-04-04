@@ -1,7 +1,7 @@
 import os
 import pickle
 import sys
-from mpc import HybridTrackingMpc
+from mpcs.mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import os, sys
 import torch
