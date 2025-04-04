@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents_old import HeuristicGearAgent3
+from agents.heuristic_3_agent import Heuristic3Agent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
@@ -58,7 +58,7 @@ mpc = SolverTimeRecorder(
         multi_starts=config.multi_starts,
     )
 )
-agent = HeuristicGearAgent3(
+agent = Heuristic3Agent(
     mpc, np_random=np_random, multi_starts=config.multi_starts, gear_priority="low"
 )
 returns, info = agent.evaluate(
@@ -67,17 +67,13 @@ returns, info = agent.evaluate(
     seed=eval_seed,
 )
 
-fuel = info["fuel"]
-engine_torque = info["T_e"]
-engine_speed = info["w_e"]
-x_ref = info["x_ref"]
-if "cost" in info:
-    cost = info["cost"]
-
-
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
+fuel = list(env.fuel_consumption)
+engine_torque = list(env.engine_torque)
+engine_speed = list(env.engine_speed)
+x_ref = list(env.x_ref)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
