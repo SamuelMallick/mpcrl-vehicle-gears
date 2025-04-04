@@ -161,6 +161,9 @@ class LearningAgent(SingleVehicleAgent):
         else:
             gear_choice_explicit = np.argmax(network_pars["gear"], axis=0)
 
+        if not sol.success:
+            raise ValueError("MPC solver failed.")
+
         gear = int(gear_choice_explicit[0])
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
