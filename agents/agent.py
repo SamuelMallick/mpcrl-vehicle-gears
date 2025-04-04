@@ -264,7 +264,16 @@ class Agent:
 
     def shift_sol(self, sol) -> Solution:
         for key in sol.vals.keys():
-            sol.vals[key] = cs.horzcat(sol.vals[key][:, 1:], sol.vals[key][:, -1:])
+            if key == "x":
+                sol.vals[key] = cs.horzcat(
+                    sol.vals[key][:, 1:],
+                    cs.vertcat(
+                        sol.vals[key][0, -1] + self.mpc.dt * sol.vals[key][1, -1],
+                        sol.vals[key][1, -1],
+                    ),
+                )
+            else:
+                sol.vals[key] = cs.horzcat(sol.vals[key][:, 1:], sol.vals[key][:, -1:])
         return sol
 
 
