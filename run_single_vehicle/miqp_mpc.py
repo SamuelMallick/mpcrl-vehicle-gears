@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents import MINLPAgent
+from agents_old import MINLPAgent
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes

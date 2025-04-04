@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents import HeuristicGearAgent2
+from agents_old import HeuristicGearAgent2
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
@@ -78,6 +78,7 @@ if "cost" in info:
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
+F = list(env.fuel_consumption)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")

@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents import HeuristicGearAgent3
+from agents_old import HeuristicGearAgent3
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes

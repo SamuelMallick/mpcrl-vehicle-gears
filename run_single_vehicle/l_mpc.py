@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 sys.path.append(os.getcwd())
-from agents import DQNAgent
+from agents_old import DQNAgent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes

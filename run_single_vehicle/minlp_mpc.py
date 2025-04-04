@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents import MINLPAgent
+from agents.mip_agent import MIPAgent
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
@@ -59,10 +59,11 @@ mpc = SolverTimeRecorder(
         multi_starts=config.multi_starts,
     )
 )
-agent = MINLPAgent(
+agent = MIPAgent(
     mpc,
     np_random=np_random,
     multi_starts=config.multi_starts,
+    backup_mpc=None,
 )
 returns, info = agent.evaluate(
     env,
@@ -73,17 +74,14 @@ returns, info = agent.evaluate(
     log_progress=True,
 )
 
-fuel = info["fuel"]
-engine_torque = info["T_e"]
-engine_speed = info["w_e"]
-x_ref = info["x_ref"]
-if "cost" in info:
-    cost = info["cost"]
-
 
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
+fuel = list(env.fuel_consumption)
+engine_torque = list(env.engine_torque)
+engine_speed = list(env.engine_speed)
+x_ref = list(env.x_ref)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
