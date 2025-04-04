@@ -87,9 +87,9 @@ class DistributedHeuristic3Agent(PlatoonAgent, Heuristic3Agent):
                 gear_choice_binary[gear] = 1
             else:
                 gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
-                for i in range(self.mpc.prediction_horizon):
-                    gear = self.gear_from_velocity(self.prev_sols[i].vals["x"][1, i])
-                    gear_choice_binary[gear, i] = 1
+                for k in range(self.mpc.prediction_horizon):
+                    gear = self.gear_from_velocity(self.prev_sols[i].vals["x"][1, k])
+                    gear_choice_binary[gear, k] = 1
             pars = self.get_pars(x, i)
             pars["gear"] = gear_choice_binary
             vals0 = (
