@@ -223,10 +223,12 @@ class LearningAgent(SingleVehicleAgent):
         self.prev_gear_choice_explicit = np.concatenate(
             (gear_choice_explicit[1:], [gear_choice_explicit[-1]])
         )
+        T_e = sol.vals["T_e"].full()[0, 0]
+        F_b = sol.vals["F_b"].full()[0, 0]
         self.prev_sol = self.shift_sol(sol)
         return (
-            sol.vals["T_e"].full()[0, 0],
-            sol.vals["F_b"].full()[0, 0],
+            T_e,
+            F_b,
             gear,
             {
                 "nn_state": nn_state,
