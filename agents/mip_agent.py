@@ -2,7 +2,7 @@ import sys, os
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents.agent import SingleVehicleAgent
+from agents.agent import SingleVehicleAgent, PlatoonAgent
 from mpcs.mip_mpc import MIPMPC
 
 
@@ -33,46 +33,72 @@ class MIPAgent(SingleVehicleAgent):
         super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
         self.backup_mpc = backup_mpc
 
-    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+    def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
         solver = "primary"
-        sol = self.mpc.solve(
-            {
-                "x_0": state,
-                "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                "T_e_prev": self.T_e_prev,
-                "gear_prev": self.gear_prev,
-            },
-            vals0=(
-                [self.prev_sol.vals]
-                + self.initial_guesses_vals(state, self.multi_starts - 1)
-                if self.prev_sol
-                else self.initial_guesses_vals(state, self.multi_starts)
-            ),
-        )
+        sol = self.mpc.solve(pars, vals0)
 
         # special check for knitro timeout
         if (
             not sol.success and sol.status != "KN_RC_TIME_LIMIT_FEAS"
         ) and self.backup_mpc:
             solver = "backup"
-            sol = self.backup_mpc.solve(
-                {
-                    "x_0": state,
-                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-                    "T_e_prev": self.T_e_prev,
-                    "gear_prev": self.gear_prev,
-                },
-                vals0=(
-                    [self.prev_sol.vals]
-                    + self.initial_guesses_vals(state, self.multi_starts - 1)
-                    if self.prev_sol
-                    else self.initial_guesses_vals(state, self.multi_starts)
-                ),
-            )
+            sol = self.backup_mpc.solve(pars, vals0)
             if not sol.success:
                 raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
-        self.prev_sol = self.shift_sol(sol)
-        return T_e, F_b, gear, {"solver": solver, "cost": sol.f}
+        return T_e, F_b, gear, {"sol": sol, "solver": solver, "cost": sol.f}
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        pars = {
+            "x_0": state,
+            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+            "T_e_prev": self.T_e_prev,
+            "gear_prev": self.gear_prev,
+        }
+        vals0 = (
+            [self.prev_sol.vals]
+            + self.initial_guesses_vals(state, self.multi_starts - 1)
+            if self.prev_sol
+            else self.initial_guesses_vals(state, self.multi_starts)
+        )
+        T_e, F_b, gear, info = self.solve_mpc(pars, vals0)
+        self.prev_sol = self.shift_sol(info["sol"])
+        return T_e, F_b, gear, info
+
+
+class DistributedMIPAgent(PlatoonAgent, MIPAgent):
+
+    def __init__(
+        self,
+        mpc,
+        num_vehicles,
+        np_random,
+        multi_starts=1,
+        backup_mpc: MIPMPC | None = None,
+    ):
+        super().__init__(mpc, num_vehicles, np_random, multi_starts)
+        self.backup_mpc = backup_mpc
+
+    def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
+        xs = np.split(state, self.num_vehicles, axis=1)
+        T_e_list = []
+        F_b_list = []
+        gear_list = []
+        for i, x in enumerate(xs):
+            pars = self.get_pars(x, i)
+            vals0 = (
+                [self.prev_sols[i].vals]
+                + self.initial_guesses_vals(x, self.multi_starts - 1)
+                if self.prev_sols[i]
+                else self.initial_guesses_vals(x, self.multi_starts)
+            )
+            T_e, F_b, gear, info = self.solve_mpc(pars, vals0)
+            T_e_list.append(T_e)
+            F_b_list.append(F_b)
+            gear_list.append(gear)
+            self.prev_sols[i] = info["sol"]
+        for i in range(self.num_vehicles):
+            self.prev_sols[i] = self.shift_sol(self.prev_sols[i])
+        return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}

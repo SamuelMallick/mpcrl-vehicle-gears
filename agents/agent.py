@@ -134,7 +134,7 @@ class Agent:
                     solve_time = self.mpc.solver_time[-1]
                     with open(log_file, "a") as f:
                         f.write(
-                            f"Episode {episode} \t | Timestep {timestep} \t | Solver time: {solve_time} \t | Cost: {action_info["cost"]}\n"
+                            f"Episode {episode} \t | Timestep {timestep} \t | Solver time: {solve_time} \t | Cost: {action_info["cost"] if "cost" in action_info else np.nan}\n"
                         )
                         f.flush()
 
@@ -299,6 +299,9 @@ class SingleVehicleAgent(Agent):
 
 class PlatoonAgent(Agent):
 
+    d = 25  # inter-vehicle distance (m)
+    d_arr = np.array([[d], [0]])
+
     def __init__(
         self,
         mpc: VehicleMPC,
@@ -313,18 +316,44 @@ class PlatoonAgent(Agent):
         self.prev_sols = [None for _ in range(num_vehicles)]
 
     def on_episode_start(self, state, env):
-        super().on_episode_start(state, env)
+        Agent.on_episode_start(self, state, env)
         self.T_e_prev = [Vehicle.T_e_idle for _ in range(self.num_vehicles)]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
-        xs = np.split(state, self.num_vehicles)
+        xs = np.split(state, self.num_vehicles, axis=1)
         for i, x in enumerate(xs):
             gear = self.gear_from_velocity(x[1].item())
             self.gear_prev[i][gear] = 1
 
     def on_env_step(self, env, episode, timestep, info):
-        super().on_env_step(env, episode, timestep, info)
+        Agent.on_env_step(self, env, episode, timestep, info)
         self.T_e_prev = info["T_e"]
         gears = info["gear"]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(self.num_vehicles)]
         for i, gear in enumerate(gears):
             self.gear_prev[i][gear] = 1
+
+    def get_pars(self, x: np.ndarray, i: int) -> dict:
+        pars = {"x_0": x, "T_e_prev": self.T_e_prev[i], "gear_prev": self.gear_prev[i]}
+        if i == 0:
+            pars["x_ref"] = self.x_ref_predicition.T.reshape(2, -1)
+        else:
+            pars["x_ref"] = self.prev_sols[i - 1].vals["x"] - self.d_arr
+        if i < self.num_vehicles - 1:
+            if (
+                self.prev_sols[i + 1] is not None
+            ):  # for first solution behind constraint not considered
+                pars["p_b"] = self.prev_sols[i + 1].vals["x"][0, :]
+        if i > 0:
+            pars["p_a"] = self.prev_sols[i - 1].vals["x"][0, :]
+        return pars
+
+    def clip_action(self, action):
+        for i in range(self.num_vehicles):
+            if np.abs(np.argmax(self.gear_prev[i]) - action[2][i]) > 1:
+                print("Warning: clipping gear in evaluate")
+                action[2][i] = np.clip(
+                    action[2][i],
+                    np.argmax(self.gear_prev[i]) - 1,
+                    np.argmax(self.gear_prev[i]) + 1,
+                )
+        return action
