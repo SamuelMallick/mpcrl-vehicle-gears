@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 sys.path.append(os.getcwd())
-from agents_old import DQNAgent
+from agents.learning_agent import LearningAgent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
@@ -59,7 +59,7 @@ mpc = SolverTimeRecorder(
         multi_starts=config.multi_starts,
     )
 )
-agent = DQNAgent(
+agent = LearningAgent(
     mpc, np_random=np_random, config=config, multi_starts=config.multi_starts
 )
 
@@ -77,19 +77,16 @@ returns, info = agent.evaluate(
     seed=eval_seed,
     policy_net_state_dict=state_dict,
     normalization=data["normalization"],
+    use_heuristic=True,
 )
-
-fuel = info["fuel"]
-engine_torque = info["T_e"]
-engine_speed = info["w_e"]
-x_ref = info["x_ref"]
-if "cost" in info:
-    cost = info["cost"]
-
 
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
+fuel = list(env.fuel_consumption)
+engine_torque = list(env.engine_torque)
+engine_speed = list(env.engine_speed)
+x_ref = list(env.x_ref)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")

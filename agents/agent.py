@@ -32,6 +32,8 @@ class Agent:
         for i in range(6)
     ]
 
+    n_gears = 6
+
     def __init__(
         self, mpc: VehicleMPC, np_random: np.random.Generator, multi_starts: int = 1
     ):
@@ -275,16 +277,16 @@ class SingleVehicleAgent(Agent):
     def on_episode_start(self, state, env):
         super().on_episode_start(state, env)
         self.T_e_prev = Vehicle.T_e_idle
-        gear = self.gear_from_velocity(state[1].item())
+        self.gear = self.gear_from_velocity(state[1].item())
         self.gear_prev = np.zeros((6, 1))
-        self.gear_prev[gear] = 1
+        self.gear_prev[self.gear] = 1
 
     def on_env_step(self, env, episode, timestep, info):
         super().on_env_step(env, episode, timestep, info)
         self.T_e_prev = info["T_e"]
-        gear = info["gear"]
+        self.gear = info["gear"]
         self.gear_prev = np.zeros((6, 1))
-        self.gear_prev[gear] = 1
+        self.gear_prev[self.gear] = 1
 
     def clip_action(self, action):
         if np.abs(np.argmax(self.gear_prev) - action[2]) > 1:
