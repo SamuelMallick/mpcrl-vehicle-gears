@@ -4,6 +4,7 @@ import pickle
 import sys
 
 import numpy as np
+import torch
 
 sys.path.append(os.getcwd())
 from agents import DQNAgent
@@ -61,10 +62,21 @@ mpc = SolverTimeRecorder(
 agent = DQNAgent(
     mpc, np_random=np_random, config=config, multi_starts=config.multi_starts
 )
+
+state_dict = torch.load(
+    f"dev/results/31/policy_net_step_25000.pth",
+    weights_only=True,
+    map_location="cpu",
+)
+with open(f"dev/results/31/data_step_25000.pkl", "rb") as f:
+    data = pickle.load(f)
+
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
     seed=eval_seed,
+    policy_net_state_dict=state_dict,
+    normalization=data["normalization"],
 )
 
 fuel = info["fuel"]

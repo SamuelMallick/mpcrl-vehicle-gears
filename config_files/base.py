@@ -25,11 +25,11 @@ class ConfigDefault:
     # archticeture
     clip = False
     n_states = 8
-    n_hidden = 64
+    n_hidden = 256
     n_actions = 3
-    n_layers = 2
+    n_layers = 4
     bidirectional = True
-    normalize = False
+    normalize = True
 
     # exploration
     eps_start = 0.99
