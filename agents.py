@@ -753,6 +753,7 @@ class LearningAgent(Agent):
                 "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                 "T_e_prev": self.T_e_prev,
                 "gear": heurisitic_gear_choice_binary,
+                "gear_prev": self.gear_prev,
             },
             vals0=(
                 [self.prev_sol.vals]
@@ -782,6 +783,7 @@ class LearningAgent(Agent):
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                     "T_e_prev": self.T_e_prev,
                     "gear": gear_choice_binary,
+                    "gear_prev": self.gear_prev,
                 },
                 vals0=(
                     [self.prev_sol.vals]

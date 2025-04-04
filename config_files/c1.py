@@ -5,4 +5,4 @@ class Config(ConfigDefault):
     id = "1"
 
     # -----------general parameters----------------
-    ep_len = 20
+    ep_len = 50
