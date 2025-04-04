@@ -3,6 +3,8 @@ from mpcs.mpc import VehicleMPC
 import numpy as np
 import casadi as cs
 
+from utils.solver_options import solver_options
+
 
 class NonlinearMPC(VehicleMPC):
     """An MPC controller that uses a nonlinear model of the vehicle dynamics.
@@ -81,3 +83,4 @@ class NonlinearMPC(VehicleMPC):
 
         self.set_nonlinear_dynamics(lambda x, u: self.nonlinear_model(x, u, self.dt, 0))
         self.minimize(self.tracking_cost)
+        self.init_solver(solver_options[solver], solver=solver)

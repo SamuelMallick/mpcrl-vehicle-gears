@@ -1,8 +1,3 @@
-import os
-import sys
-from mpcs.mpc import HybridTrackingMpc
-from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-
 
 class ConfigDefault:
     id = "base"
@@ -51,17 +46,3 @@ class ConfigDefault:
     batch_size = 128
 
     max_grad = 100
-
-    def __init__(self, sim_type: str):
-        # used for generating gears at first time step of episodes
-        if sim_type == "minlp_mpc":
-            self.expert_mpc = None
-        else:
-            self.expert_mpc = SolverTimeRecorder(
-                HybridTrackingMpc(
-                    self.N,
-                    optimize_fuel=True,
-                    convexify_fuel=True,
-                    convexify_dynamics=True,
-                )
-            )

@@ -3,6 +3,8 @@ from typing import Literal
 import casadi as cs
 import numpy as np
 
+from utils.solver_options import solver_options
+
 
 class MIPMPC(HybridMPC):
     """An MPC controller that solves a mixed-integer optimization problem
@@ -176,3 +178,5 @@ class MIPMPC(HybridMPC):
             self.set_nonlinear_dynamics(
                 lambda x, u: self.nonlinear_hybrid_model(x, u, self.dt, 0)
             )
+
+        self.init_solver(solver_options[solver], solver=solver)

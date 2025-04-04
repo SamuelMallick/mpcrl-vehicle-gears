@@ -6,7 +6,10 @@ from config_files.base import ConfigDefault
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
-from mpcs.mpc import HybridTrackingMpc, TrackingMpc, HybridTrackingFuelMpcFixedGear
+from mpcs.mpc import Mpc
+from mpcs.hybrid_mpc import HybridMPC
+from mpcs.nonlinear_mpc import NonlinearMPC
+from mpcs.fixed_gear_mpc import FixedGearMPC
 from network import DRQN, ReplayMemory, Transition
 from utils.running_mean_std import RunningMeanStd
 from vehicle import Vehicle
@@ -338,9 +341,9 @@ class MINLPAgent(Agent):
 
     def __init__(
         self,
-        mpc: HybridTrackingMpc,
+        mpc: HybridMPC,
         np_random: np.random.Generator,
-        backup_mpc: HybridTrackingMpc | None = None,
+        backup_mpc: HybridMPC | None = None,
         multi_starts: int = 1,
     ):
         super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
@@ -404,7 +407,7 @@ class HeuristicGearAgent(Agent):
 
     def __init__(
         self,
-        mpc: TrackingMpc,
+        mpc: NonlinearMPC,
         np_random: np.random.Generator,
         gear_priority: Literal["low", "high", "mid"] = "mid",
         multi_starts: int = 1,
@@ -416,7 +419,7 @@ class HeuristicGearAgent(Agent):
         starts = super().initial_guesses_vals(state, num_guesses)
         for i in range(num_guesses):
             starts[i]["F_trac"] = self.np_random.uniform(
-                TrackingMpc.F_trac_min, F_trac_max, (1, self.mpc.prediction_horizon)
+                NonlinearMPC.F_trac_min, F_trac_max, (1, self.mpc.prediction_horizon)
             )
         return starts
 
@@ -495,11 +498,11 @@ class HeuristicGearAgent2(HeuristicGearAgent):
 
     def __init__(
         self,
-        mpc: HybridTrackingFuelMpcFixedGear,
+        mpc: FixedGearMPC,
         np_random: np.random.Generator,
         gear_priority: Literal["low", "high", "mid"] = "mid",
         multi_starts: int = 1,
-        expert_mpc: HybridTrackingMpc | None = None,
+        expert_mpc: HybridMPC | None = None,
     ):
         self.gear_priority = gear_priority
         self.expert_mpc = expert_mpc
@@ -562,7 +565,7 @@ class HeuristicGearAgent3(HeuristicGearAgent):
 
     def __init__(
         self,
-        mpc: HybridTrackingFuelMpcFixedGear,
+        mpc: FixedGearMPC,
         np_random: np.random.Generator,
         gear_priority: Literal["low", "high", "mid"] = "mid",
         multi_starts: int = 1,
@@ -622,7 +625,7 @@ class LearningAgent(Agent):
 
     def __init__(
         self,
-        mpc: HybridTrackingMpc,
+        mpc: HybridMPC,
         np_random: np.random.Generator,
         config: ConfigDefault,
         multi_starts: int = 1,
@@ -1111,7 +1114,7 @@ class SupervisedLearningAgent(LearningAgent):
         env: VehicleTracking,
         episodes: int,
         ep_len: int,
-        mpc: HybridTrackingMpc,
+        mpc: FixedGearMPC,
         save_path: str,
         save_freq: int = 10000,
         seed: int = 0,
@@ -1620,7 +1623,7 @@ class DistributedLearningAgent(DistributedAgent, LearningAgent):
 
     def __init__(
         self,
-        mpc: HybridTrackingMpc,
+        mpc: HybridMPC,
         num_vehicles: int,
         np_random: np.random.Generator,
         config: ConfigDefault,

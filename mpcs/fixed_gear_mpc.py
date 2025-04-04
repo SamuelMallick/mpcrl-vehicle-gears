@@ -5,6 +5,8 @@ from mpcs.hybrid_mpc import HybridMPC
 import numpy as np
 import casadi as cs
 
+from utils.solver_options import solver_options
+
 
 class FixedGearMPC(HybridMPC):
     """An MPC controller that is passed a fixed gear schedule, and optimizes
@@ -69,6 +71,8 @@ class FixedGearMPC(HybridMPC):
             )
         X_next = cs.horzcat(*X_next)
         self.constraint("dynamics", self.x[:, 1:], "==", X_next)
+
+        self.init_solver(solver_options[solver], solver=solver)
 
     def solve(
         self,

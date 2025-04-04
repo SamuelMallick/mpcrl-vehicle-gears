@@ -95,8 +95,6 @@ class VehicleMPC(Mpc):
             ]
         )
 
-        self.init_solver(solver_options[solver], solver=solver)
-
     def solve(
         self,
         pars: dict,
