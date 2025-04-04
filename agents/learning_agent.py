@@ -341,3 +341,19 @@ class LearningAgent(SingleVehicleAgent):
         binary = np.zeros((self.n_gears, self.mpc.prediction_horizon))
         binary[explicit.astype(int), np.arange(self.mpc.prediction_horizon)] = 1
         return binary
+
+    def on_env_step(self, env, episode, timestep, info):
+        self.steps_done += 1
+        if self.normalize:
+            diff = info["x"] - info["x_ref"]
+            self.running_mean_std.update(
+                diff.T
+            )  # transpose needed as the mean is taken over axis 0
+        if self.use_heuristic:
+            if "heuristic" in info:
+                self.heuristic_flags[-1].append(info["heuristic"])
+        return super().on_env_step(env, episode, timestep, info)
+
+    def on_episode_start(self, state, env):
+        self.heuristic_flags.append([])
+        return super().on_episode_start(state, env)
