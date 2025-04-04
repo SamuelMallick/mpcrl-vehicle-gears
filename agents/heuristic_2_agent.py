@@ -35,7 +35,7 @@ class Heuristic2Agent(SingleVehicleAgent):
         self.gear_priority = gear_priority
         super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
 
-    def solve_mpc(self, pars, vals0, T_e_prev) -> tuple[float, float, int, dict]:
+    def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
         sol = self.mpc.solve(pars, vals0)
         if not sol.success:
             raise ValueError("MPC failed to solve")
@@ -68,7 +68,7 @@ class Heuristic2Agent(SingleVehicleAgent):
         return T_e, F_b, gear, {}
 
 
-class DistributedHeuristic1Agent(PlatoonAgent, Heuristic2Agent):
+class DistributedHeuristic2Agent(PlatoonAgent, Heuristic2Agent):
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         xs = np.split(state, self.num_vehicles, axis=1)
@@ -76,18 +76,18 @@ class DistributedHeuristic1Agent(PlatoonAgent, Heuristic2Agent):
         F_b_list = []
         gear_list = []
         for i, x in enumerate(xs):
-            idx = bisect_right(self.max_v_per_gear, x[1].item())
-            n = Vehicle.z_f * Vehicle.z_t[idx] / Vehicle.r_r
-            F_trac_max = Vehicle.T_e_max * n
+            gear = self.gear_from_velocity(x[1].item(), self.gear_priority)
+            gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+            gear_choice_binary[gear] = 1
             pars = self.get_pars(x, i)
-            pars["F_trac_max"] = F_trac_max
+            pars["gear"] = gear_choice_binary
             vals0 = (
                 [self.prev_sols[i].vals]
                 + self.initial_guesses_vals(x, self.multi_starts - 1)
                 if self.prev_sols[i]
                 else self.initial_guesses_vals(x, self.multi_starts)
             )
-            T_e, F_b, gear, info = self.solve_mpc(pars, vals0, self.T_e_prev[i])
+            T_e, F_b, gear, info = self.solve_mpc(pars, vals0)
             T_e_list.append(T_e)
             F_b_list.append(F_b)
             gear_list.append(gear)
