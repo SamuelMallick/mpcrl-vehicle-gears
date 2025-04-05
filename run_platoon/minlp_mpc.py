@@ -16,8 +16,8 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = False
-PLOT = True
+SAVE = True
+PLOT = False
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -34,7 +34,7 @@ seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
 eval_seed = 10  # seed 10 used for evaluation
 num_eval_eps = 1
-num_vehicles = 3
+num_vehicles = 5
 
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
@@ -81,6 +81,7 @@ X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
 fuel = list(env.fuel_consumption)
+fuel = [np.sum(f, axis=1) for f in fuel]
 engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
 x_ref = list(env.x_ref)

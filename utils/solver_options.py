@@ -51,14 +51,14 @@ solver_options = {
         "record_time": True,
         "error_on_fail": False,
         "knitro": {
-            "outlev": 2,
+            "outlev": 0,
             "maxit": 1000,
             "ms_enable": 1,  # 1
             "ms_numthreads": 12,  # 12
             "ms_maxsolves": 2,  # 10
             "mip_numthreads": 12,  # 12
             "mip_multistart": 1,  # 1
-            "maxtime": 10,
+            "maxtime": 50,
         },
     },
     "clp": {

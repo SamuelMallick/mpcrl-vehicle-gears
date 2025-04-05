@@ -83,6 +83,12 @@ class VehicleMPC(Mpc):
         self.constraint(
             "collision_behind", self.x[0, :] - p_b, ">=", self.d_safe, soft=False
         )
+        # s_a, _, _ = self.constraint(
+        #     "collision_ahead", self.x[0, :] - p_a, "<=", -self.d_safe, soft=True
+        # )
+        # s_b, _, _ = self.constraint(
+        #     "collision_behind", self.x[0, :] - p_b, ">=", self.d_safe, soft=True
+        # )
 
         # reference trajectory to track
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
@@ -93,7 +99,7 @@ class VehicleMPC(Mpc):
                 )
                 for i in range(prediction_horizon + 1)
             ]
-        )
+        ) # + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
 
     def solve(
         self,
