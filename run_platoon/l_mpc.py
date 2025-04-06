@@ -17,7 +17,7 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = True
+SAVE = False
 PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
@@ -90,6 +90,7 @@ X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
 fuel = list(env.fuel_consumption)
+fuel = [np.sum(f, axis=1) for f in fuel]
 engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
 x_ref = list(env.x_ref)
