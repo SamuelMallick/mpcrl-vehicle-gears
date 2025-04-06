@@ -115,7 +115,8 @@ class LearningAgent(SingleVehicleAgent):
         self.steps_done = 0
         self.eps_start = 0  # no exploration for evaluation
 
-        self.policy_net.load_state_dict(policy_net_state_dict)
+        if policy_net_state_dict:
+            self.policy_net.load_state_dict(policy_net_state_dict)
         if self.normalize:
             if not normalization:
                 raise ValueError(

@@ -126,6 +126,7 @@ class Agent:
                 else:
                     *action, action_info = self.get_action(state)
                 action = self.clip_action(action)
+                prev_state = state
                 state, reward, truncated, terminated, step_info = env.step(action)
                 self.on_env_step(env, episode, timestep, action_info | step_info)
 
@@ -140,8 +141,10 @@ class Agent:
                         )
                         f.flush()
 
+                self.on_timestep_end(
+                    timestep, prev_state, state, action, action_info | step_info
+                )
                 timestep += 1
-                # self.on_timestep_end()
 
             # self.on_episode_end(episode, env, save=save_every_episode)
 
@@ -275,6 +278,16 @@ class Agent:
             else:
                 sol.vals[key] = cs.horzcat(sol.vals[key][:, 1:], sol.vals[key][:, -1:])
         return sol
+
+    def on_timestep_end(
+        self,
+        timestep: int,
+        prev_state: np.ndarray,
+        state: np.ndarray,
+        action: tuple[float, float, int],
+        info: dict,
+    ) -> None:
+        pass
 
 
 class SingleVehicleAgent(Agent):
