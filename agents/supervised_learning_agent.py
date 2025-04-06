@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torch
 from agents.learning_agent import LearningAgent
 from config_files.base import ConfigDefault
@@ -71,7 +72,7 @@ class SupervisedLearningAgent(LearningAgent):
         self.prev_gear_choice_explicit = np.concatenate(
             (gear_choice_explicit[1:], [gear_choice_explicit[-1]])
         )
-        self.prev_sol = self.shift_sol(sol)
+        self.prev_sol = self.shift_sol(deepcopy(sol))
         return (
             T_e,
             F_b,

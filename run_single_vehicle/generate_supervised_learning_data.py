@@ -35,7 +35,7 @@ seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
 data_seed = 100
 num_eps = 1
-ep_len = 3
+ep_len = 5
 
 vehicle = Vehicle()
 env: VehicleTracking = MonitorEpisodes(
