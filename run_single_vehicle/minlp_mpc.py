@@ -57,6 +57,7 @@ mpc = SolverTimeRecorder(
         convexify_dynamics=False,
         solver="knitro",
         multi_starts=config.multi_starts,
+        max_time=config.max_time,
     )
 )
 agent = MIPAgent(

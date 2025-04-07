@@ -51,9 +51,7 @@ env: VehicleTracking = MonitorEpisodes(
 
 mpc = SolverTimeRecorder(
     NonlinearMPC(
-        N,
-        solver="ipopt",
-        multi_starts=config.multi_starts,
+        N, solver="ipopt", multi_starts=config.multi_starts, max_time=config.max_time
     )
 )
 agent = Heuristic1Agent(

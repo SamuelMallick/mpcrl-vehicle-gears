@@ -3,14 +3,17 @@ class ConfigDefault:
 
     # -----------general parameters----------------
     N = 15
-    ep_len = 100
+    ep_len = 1000
     num_eps = 50000
     trajectory_type = "type_3"
     windy = False
     save_every_episode = False
-    infinite_episodes = False
+    infinite_episodes = True
     max_steps = ep_len * num_eps
+
+    # -----------solver parameters----------------
     multi_starts = 1
+    max_time = None
 
     # -----------network parameters----------------
     # initial weights
@@ -23,7 +26,6 @@ class ConfigDefault:
     tau = 0.001
 
     # archticeture
-    clip = False
     n_states = 8
     n_hidden = 256
     n_actions = 3

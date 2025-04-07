@@ -56,6 +56,7 @@ mpc = SolverTimeRecorder(
         optimize_fuel=True,
         convexify_fuel=False,
         multi_starts=config.multi_starts,
+        max_time=config.max_time,
     )
 )
 agent = Heuristic2Agent(

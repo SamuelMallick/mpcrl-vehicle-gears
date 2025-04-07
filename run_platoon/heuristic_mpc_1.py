@@ -52,9 +52,7 @@ env: PlatoonTracking = MonitorEpisodes(
 
 mpc = SolverTimeRecorder(
     NonlinearMPC(
-        N,
-        solver="ipopt",
-        multi_starts=config.multi_starts,
+        N, solver="ipopt", multi_starts=config.multi_starts, max_time=config.max_time
     )
 )
 agent = DistributedHeuristic1Agent(

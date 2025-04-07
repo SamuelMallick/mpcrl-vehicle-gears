@@ -22,6 +22,8 @@ class VehicleMPC(Mpc):
         'bonmin' (MINLP), 'gurobi' (MIQP), and 'knitro' (NLP).
     multi_starts : int, optional
         The number of multi-starts to use for the optimization problem, by default 1.
+    max_time : float, optional
+        The maximum time to solve the optimization problem, by default None.
     """
 
     # ---------------------- Vehicle parameters ----------------------
@@ -59,6 +61,7 @@ class VehicleMPC(Mpc):
         prediction_horizon: int,
         solver: Literal["ipopt", "bonmin", "gurobi", "knitro"],
         multi_starts: int = 1,
+        max_time: Optional[float] = None,
     ):
         nlp = ParallelMultistartNlp[cs.SX](sym_type="SX", starts=multi_starts)
         super().__init__(nlp, prediction_horizon)

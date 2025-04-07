@@ -1,5 +1,5 @@
 from mpcs.hybrid_mpc import HybridMPC
-from typing import Literal
+from typing import Literal, Optional
 import casadi as cs
 import numpy as np
 
@@ -33,6 +33,8 @@ class MIPMPC(HybridMPC):
         and the solvers bonmin or knitro must be used.
     multi_starts : int, optional
         The number of multi-starts to use for the optimization problem, by default 1.
+    max_time : float, optional
+        The maximum time to solve the optimization problem, by default None.
     """
 
     def __init__(
@@ -43,6 +45,7 @@ class MIPMPC(HybridMPC):
         convexify_fuel: bool = False,
         convexify_dynamics: bool = False,
         multi_starts: int = 1,
+        max_time: Optional[float] = None,
     ):
         super().__init__(
             prediction_horizon=prediction_horizon,
@@ -192,4 +195,12 @@ class MIPMPC(HybridMPC):
                 lambda x, u: self.nonlinear_hybrid_model(x, u, self.dt, 0)
             )
 
-        self.init_solver(solver_options[solver], solver=solver)
+        opts = solver_options[solver]
+        if max_time is not None:
+            if solver == "gurobi":
+                opts["gurobi"]["TimeLimit"] = max_time
+            elif solver == "knitro":
+                opts["knitro"]["maxtime"] = max_time
+            else:
+                opts["bonmin"]["time_limit"] = max_time
+        self.init_solver(opts, solver=solver)

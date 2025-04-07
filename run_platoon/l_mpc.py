@@ -17,7 +17,7 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = False
+SAVE = True
 PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
@@ -58,6 +58,7 @@ mpc = SolverTimeRecorder(
         convexify_fuel=False,
         solver="ipopt",
         multi_starts=config.multi_starts,
+        max_time=config.max_time,
     )
 )
 agent = DistributedLearningAgent(

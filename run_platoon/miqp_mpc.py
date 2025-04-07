@@ -58,6 +58,7 @@ mpc = SolverTimeRecorder(
         convexify_dynamics=True,
         solver="gurobi",
         multi_starts=config.multi_starts,
+        max_time=config.max_time,
     )
 )
 agent = DistributedMIPAgent(

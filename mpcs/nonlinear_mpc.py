@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from mpcs.mpc import VehicleMPC
 import numpy as np
 import casadi as cs
@@ -17,6 +17,8 @@ class NonlinearMPC(VehicleMPC):
         The solver to use for the optimization problem. Options are 'ipopt' (NLP).
     multi_starts : int, optional
         The number of multi-starts to use for the optimization problem, by default 1.
+    max_time : float, optional
+        The maximum time to solve the optimization problem, by default None.
     """
 
     def nonlinear_model(self, x: cs.SX, u: cs.SX, dt: float, alpha: float) -> cs.SX:
@@ -50,6 +52,7 @@ class NonlinearMPC(VehicleMPC):
         prediction_horizon: int,
         solver: Literal["ipopt"],
         multi_starts: int = 1,
+        max_time: Optional[float] = None,
     ):
         super().__init__(
             prediction_horizon=prediction_horizon,
@@ -71,4 +74,9 @@ class NonlinearMPC(VehicleMPC):
 
         self.set_nonlinear_dynamics(lambda x, u: self.nonlinear_model(x, u, self.dt, 0))
         self.minimize(self.tracking_cost)
-        self.init_solver(solver_options[solver], solver=solver)
+        opts = solver_options[solver]
+        if max_time is not None:
+            opts["ipopt"][
+                "max_wall_time"
+            ] = max_time  # specific to IPOPT as no other solver is used for this mpc
+        self.init_solver(opts, solver=solver)

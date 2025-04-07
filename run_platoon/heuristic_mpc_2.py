@@ -16,7 +16,7 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = False
+SAVE = True
 PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
@@ -34,7 +34,7 @@ seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
 eval_seed = 10  # seed 10 used for evaluation
 num_eval_eps = 1
-num_vehicles = 2
+num_vehicles = 5
 
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
@@ -57,6 +57,7 @@ mpc = SolverTimeRecorder(
         optimize_fuel=True,
         convexify_fuel=False,
         multi_starts=config.multi_starts,
+        max_time=config.max_time,
     )
 )
 agent = DistributedHeuristic2Agent(
@@ -64,7 +65,7 @@ agent = DistributedHeuristic2Agent(
     np_random=np_random,
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
-    gear_priority="high",
+    gear_priority="low",
 )
 returns, info = agent.evaluate(
     env,

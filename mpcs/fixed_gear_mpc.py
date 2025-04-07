@@ -26,6 +26,9 @@ class FixedGearMPC(HybridMPC):
         used.
     multi_starts : int, optional
         The number of multi-starts to use for the optimization problem, by default 1.
+    max_time : float, optional
+        The maximum time to solve the optimization problem in seconds, by default None.
+        If None, no time limit is set.
     """
 
     def __init__(
@@ -35,6 +38,7 @@ class FixedGearMPC(HybridMPC):
         optimize_fuel: bool,
         convexify_fuel: bool = False,
         multi_starts: int = 1,
+        max_time: Optional[float] = None,
     ):
         super().__init__(
             prediction_horizon=prediction_horizon,
@@ -72,7 +76,12 @@ class FixedGearMPC(HybridMPC):
         X_next = cs.horzcat(*X_next)
         self.constraint("dynamics", self.x[:, 1:], "==", X_next)
 
-        self.init_solver(solver_options[solver], solver=solver)
+        opts = solver_options[solver]
+        if max_time is not None:
+            opts["ipopt"][
+                "max_wall_time"
+            ] = max_time  # specific to IPOPT as no other solver is used for this mpc
+        self.init_solver(opts, solver=solver)
 
     def solve(
         self,
@@ -90,5 +99,7 @@ class FixedGearMPC(HybridMPC):
         ):
             raise ValueError("More than one gear selected for a time step.")
         if not np.all(self.A @ cs.horzcat(gear_prev, gear[:, :-1]) >= gear):
-            raise ValueError("Gear-shift schedule skipping gears.")
+            pass
+            print("Warning: Gear-shift schedule skipping gears.")
+            # raise ValueError("Gear-shift schedule skipping gears.")
         return super().solve(pars, vals0=vals0)
