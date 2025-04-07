@@ -68,7 +68,6 @@ agent = DistributedLearningAgent(
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
     config=config,
-    inter_vehicle_distance=config.inter_vehicle_distance,
 )
 
 state_dict = torch.load(
