@@ -79,10 +79,10 @@ class DistributedHeuristic2Agent(PlatoonAgent, Heuristic2Agent):
     ):
         self.gear_priority = gear_priority
         super().__init__(
-            mpc,
-            num_vehicles,
-            np_random,
-            multi_starts,
+            mpc=mpc,
+            num_vehicles=num_vehicles,
+            np_random=np_random,
+            multi_starts=multi_starts,
             inter_vehicle_distance=inter_vehicle_distance,
         )
 

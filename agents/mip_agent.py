@@ -80,10 +80,10 @@ class DistributedMIPAgent(PlatoonAgent, MIPAgent):
         backup_mpc: MIPMPC | None = None,
     ):
         super().__init__(
-            mpc,
-            num_vehicles,
-            np_random,
-            multi_starts,
+            mpc=mpc,
+            num_vehicles=num_vehicles,
+            np_random=np_random,
+            multi_starts=multi_starts,
             inter_vehicle_distance=inter_vehicle_distance,
         )
         self.backup_mpc = backup_mpc
