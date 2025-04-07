@@ -73,14 +73,19 @@ def plot_evaluation(
     infeasible: np.ndarray = None,
 ):
     fig, ax = plt.subplots(5, 1, sharex=True)
-    ax[0].plot(x_ref[:, 0] - X[:-1, 0])
+    for i in range(X.shape[2]):
+        if i == 0:
+            ax[0].plot(x_ref[:, 0, 0] - X[:-1, 0, i])
+        else:
+            ax[0].plot(X[:-1, 0, i] - X[:-1, 0, i - 1])
+    ax[0].hlines(-10, 0, X.shape[0], color="red", linestyle="--")
     ax[0].set_ylabel("d_e (m)")
-    ax[1].plot(X[:, 0])
-    ax[1].plot(x_ref[:, 0])
-    ax[1].legend(["actual", "desired"])
-    ax[2].plot(X[:, 1])
-    ax[2].plot(x_ref[:, 1])
-    ax[2].legend(["actual", "desired"])
+    ax[1].plot(X[:, 0], label="_nolegend_")
+    ax[1].plot(x_ref[:, 0], "--")
+    ax[1].legend(["ref"])
+    ax[2].plot(X[:, 1], label="_nolegend_")
+    ax[2].plot(x_ref[:, 1], "--")
+    ax[2].legend(["ref"])
     ax[2].set_ylabel("v (m/s)")
     ax[3].plot(np.cumsum(fuel))
     ax[3].set_ylabel("Fuel (L)")
