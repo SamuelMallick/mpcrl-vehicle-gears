@@ -34,14 +34,6 @@ class Agent:
 
     n_gears = 6
 
-    def __init__(
-        self, mpc: VehicleMPC, np_random: np.random.Generator, multi_starts: int = 1
-    ):
-        self.mpc = mpc
-        self.np_random = np_random
-        self.multi_starts = multi_starts
-        self.x_ref_predicition: np.ndarray = np.empty((0, 2, 1))
-
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the vehicle action, given its current state.
 
@@ -292,9 +284,16 @@ class Agent:
 
 class SingleVehicleAgent(Agent):
 
-    T_e_prev = Vehicle.T_e_idle
-    gear_prev = np.zeros((6, 1))
-    prev_sol = None
+    def __init__(
+        self, mpc: VehicleMPC, np_random: np.random.Generator, multi_starts: int = 1
+    ):
+        self.mpc = mpc
+        self.np_random = np_random
+        self.multi_starts = multi_starts
+        self.x_ref_predicition: np.ndarray = np.empty((0, 2, 1))
+        self.T_e_prev = Vehicle.T_e_idle
+        self.gear_prev = np.zeros((6, 1))
+        self.prev_sol = None
 
     def on_episode_start(self, state, env):
         super().on_episode_start(state, env)
@@ -333,7 +332,10 @@ class PlatoonAgent(Agent):
         np_random: np.random.Generator,
         multi_starts=1,
     ):
-        super().__init__(mpc, np_random, multi_starts)
+        self.mpc = mpc
+        self.np_random = np_random
+        self.multi_starts = multi_starts
+        self.x_ref_predicition: np.ndarray = np.empty((0, 2, 1))
         self.num_vehicles = num_vehicles
         self.T_e_prev = [Vehicle.T_e_idle for _ in range(num_vehicles)]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(num_vehicles)]

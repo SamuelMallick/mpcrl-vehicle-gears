@@ -64,6 +64,7 @@ agent = DistributedHeuristic2Agent(
     np_random=np_random,
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
+    gear_priority="high",
 )
 returns, info = agent.evaluate(
     env,
