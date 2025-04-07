@@ -77,18 +77,18 @@ class VehicleMPC(Mpc):
         # method to disable the constraints if they are not passed as parameters
         p_a = self.parameter("p_a", (1, prediction_horizon + 1))
         p_b = self.parameter("p_b", (1, prediction_horizon + 1))
-        self.constraint(
-            "collision_ahead", self.x[0, :] - p_a, "<=", -self.d_safe, soft=False
-        )
-        self.constraint(
-            "collision_behind", self.x[0, :] - p_b, ">=", self.d_safe, soft=False
-        )
-        # s_a, _, _ = self.constraint(
-        #     "collision_ahead", self.x[0, :] - p_a, "<=", -self.d_safe, soft=True
+        # self.constraint(
+        #     "collision_ahead", self.x[0, :] - p_a, "<=", -self.d_safe, soft=False
         # )
-        # s_b, _, _ = self.constraint(
-        #     "collision_behind", self.x[0, :] - p_b, ">=", self.d_safe, soft=True
+        # self.constraint(
+        #     "collision_behind", self.x[0, :] - p_b, ">=", self.d_safe, soft=False
         # )
+        _, _, s_a = self.constraint(
+            "collision_ahead", self.x[0, :] - p_a, "<=", -self.d_safe, soft=True
+        )
+        _, _, s_b = self.constraint(
+            "collision_behind", self.x[0, :] - p_b, ">=", self.d_safe, soft=True
+        )
 
         # reference trajectory to track
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
@@ -99,7 +99,7 @@ class VehicleMPC(Mpc):
                 )
                 for i in range(prediction_horizon + 1)
             ]
-        )  # + 1e10 * (cs.sum2(s_a) + cs.sum2(s_b))
+        ) + 1e3 * (cs.sum2(s_a) + cs.sum2(s_b))
 
     def solve(
         self,
