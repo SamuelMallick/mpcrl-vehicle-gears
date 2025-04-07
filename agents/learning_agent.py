@@ -412,6 +412,7 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
         T_e_list = []
         F_b_list = []
         gear_list = []
+        info_list = []
         for i, x in enumerate(xs):
             nn_state = None
             network_action = None
@@ -458,8 +459,12 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
             F_b_list.append(F_b)
             gear_list.append(gear)
             self.prev_sols[i] = info["sol"]
+            info_list.append(info)
         for i in range(self.num_vehicles):
             self.prev_sols[i] = self.shift_sol(self.prev_sols[i])
+        info = {}
+        for key in info_list[0].keys():
+            info[key] = [info_list[i][key] for i in range(self.num_vehicles)]
         return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, info
 
     def on_env_step(self, env, episode, timestep, info):
