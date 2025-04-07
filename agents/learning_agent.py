@@ -460,7 +460,7 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
             self.prev_sols[i] = info["sol"]
         for i in range(self.num_vehicles):
             self.prev_sols[i] = self.shift_sol(self.prev_sols[i])
-        return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, {}
+        return np.asarray(T_e_list), np.asarray(F_b_list), gear_list, info
 
     def on_env_step(self, env, episode, timestep, info):
         # doing the below manually as we don't call LearningAgent.on_env_step()
@@ -478,6 +478,12 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
             if "heuristic" in info:
                 self.heuristic_flags[-1].append(info["heuristic"])
         return PlatoonAgent.on_env_step(self, env, episode, timestep, info)
+
+    def on_episode_start(self, state, env):
+        self.heuristic_flags.append(
+            []
+        )  # doing manually as we don't call LearningAgent.on_episode_start()
+        return super().on_episode_start(state, env)
 
     def train_supervised(
         self,
