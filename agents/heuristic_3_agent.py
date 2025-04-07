@@ -80,12 +80,17 @@ class DistributedHeuristic3Agent(PlatoonAgent, Heuristic3Agent):
         mpc: FixedGearMPC,
         num_vehicles: int,
         np_random: np.random.Generator,
+        inter_vehicle_distance: float,
         gear_priority: Literal["low", "high", "mid"] = "low",
         multi_starts: int = 1,
     ):
         self.gear_priority = gear_priority
         super().__init__(
-            mpc, num_vehicles, np_random=np_random, multi_starts=multi_starts
+            mpc,
+            num_vehicles,
+            np_random=np_random,
+            multi_starts=multi_starts,
+            inter_vehicle_distance=inter_vehicle_distance,
         )
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:

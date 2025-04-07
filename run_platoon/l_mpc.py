@@ -46,6 +46,7 @@ env: PlatoonTracking = MonitorEpisodes(
             trajectory_type=config.trajectory_type,
             windy=config.windy,
             infinite_episodes=config.infinite_episodes,
+            inter_vehicle_distance=config.inter_vehicle_distance,
         ),
         max_episode_steps=config.ep_len,
     )
@@ -67,6 +68,7 @@ agent = DistributedLearningAgent(
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
     config=config,
+    inter_vehicle_distance=config.inter_vehicle_distance,
 )
 
 state_dict = torch.load(
@@ -117,6 +119,7 @@ if SAVE:
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
+                "heuristic": info["heuristic"] if "heuristic" in info else None,
             },
             f,
         )

@@ -108,6 +108,7 @@ if SAVE:
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
+                "heuristic": info["heuristic"] if "heuristic" in info else None,
             },
             f,
         )

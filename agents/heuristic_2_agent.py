@@ -69,10 +69,22 @@ class Heuristic2Agent(SingleVehicleAgent):
 class DistributedHeuristic2Agent(PlatoonAgent, Heuristic2Agent):
 
     def __init__(
-        self, mpc, num_vehicles, np_random, gear_priority="low", multi_starts=1
+        self,
+        mpc,
+        num_vehicles,
+        np_random,
+        inter_vehicle_distance: float,
+        gear_priority="low",
+        multi_starts=1,
     ):
         self.gear_priority = gear_priority
-        super().__init__(mpc, num_vehicles, np_random, multi_starts)
+        super().__init__(
+            mpc,
+            num_vehicles,
+            np_random,
+            multi_starts,
+            inter_vehicle_distance=inter_vehicle_distance,
+        )
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         xs = np.split(state, self.num_vehicles, axis=1)

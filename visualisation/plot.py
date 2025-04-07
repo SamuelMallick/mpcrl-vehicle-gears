@@ -70,12 +70,12 @@ def plot_evaluation(
     fuel: np.ndarray,
     T_e: np.ndarray,
     w_e: np.ndarray,
-    infeasible: np.ndarray = None,
+    mark: np.ndarray = None,
 ):
-    fig, ax = plt.subplots(5, 1, sharex=True)
+    fig, ax = plt.subplots(5 if not mark else 6, 1, sharex=True)
     for i in range(X.shape[2]):
         if i == 0:
-            ax[0].plot(x_ref[:, 0, 0] - X[:-1, 0, i])
+            ax[0].plot(X[:-1, 0, i] - x_ref[:, 0, 0])
         else:
             ax[0].plot(X[:-1, 0, i] - X[:-1, 0, i - 1])
     ax[0].hlines(-10, 0, X.shape[0], color="red", linestyle="--")
@@ -89,11 +89,13 @@ def plot_evaluation(
     ax[2].set_ylabel("v (m/s)")
     ax[3].plot(np.cumsum(fuel))
     ax[3].set_ylabel("Fuel (L)")
-    ax[4].plot(np.cumsum(R))
-    # ax[4].plot(R)
+    # ax[4].plot(np.cumsum(R))
+    ax[4].plot(R)
     ax[4].set_ylabel("Reward")
+    if mark is not None:
+        ax[5].plot(mark)
 
-    fig, ax = plt.subplots(4, 1, sharex=True)
+    fig, ax = plt.subplots(4 if not mark else 5, 1, sharex=True)
     ax[0].plot(T_e)  # T_e actual
     ax[0].plot(U[:, 0])  # T_e desired
     ax[0].legend(["actual", "desired"])
@@ -104,19 +106,11 @@ def plot_evaluation(
     ax[2].set_ylabel("F_b (N)")
     ax[3].plot(U[:, 2])
     ax[3].set_ylabel("gear")
-    if infeasible is not None:
-        ax[3].fill_between(
-            np.arange(U.shape[0]),
-            0,
-            5,
-            where=infeasible,
-            color="red",
-            alpha=1,
-            label="Shaded Region",
-        )
-    ax[3].set_xticks([i for i in range(len(U))])
+    # ax[3].set_xticks([i for i in range(len(U))])
     ax[3].set_yticks([i for i in range(6)])
-    ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
+    # ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
+    if mark is not None:
+        ax[4].plot(mark)
     plt.show()
 
 

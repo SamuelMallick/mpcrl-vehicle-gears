@@ -8,26 +8,26 @@ sys.path.append(os.getcwd())
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
+# types = [
+#     f"heuristic_mpc_low_N_{N}_c_25_s_1",
+#     # f"l_mpc_eval_N_{N}_c_25_s_1",
+#     # f"l_mpc_eval_N_{N}_c_31_s_1",
+#     f"l_mpc_N_{N}_c_1_s_1",
+#     f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
+#     f"miqp_mpc_N_{N}_c_25_s_1",
+# ]
+# baseline_type = f"minlp_mpc_N_{N}_c_25_s_1_ms_2_100s"
+# file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
+# baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
+
 types = [
-    f"heuristic_mpc_low_N_{N}_c_25_s_1",
-    # f"l_mpc_eval_N_{N}_c_25_s_1",
-    f"l_mpc_eval_N_{N}_c_31_s_1",
-    f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
-    f"miqp_mpc_N_{N}_c_25_s_1",
+    "platoon_heuristic_1_mpc_N_15_c_1_s_1",
+    "platoon_l_mpc_N_15_c_1_s_1_nocnstr",
+    "platoon_heuristic_2_mpc_N_15_c_1_s_1",
 ]
-baseline_type = f"minlp_mpc_N_{N}_c_25_s_1_ms_2_100s"
-# baseline_type = f"heuristic_mpc_low_N_{N}"
+baseline_type = "platoon_minlp_mpc_N_15_c_1_s_1_ms_2_t_50"
 file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
 baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
-# types = [
-#     f"l_mpc_eval_N_{N}_c_25",
-#     f"heuristic_mpc_low_N_{N}_c_1",
-#     f"miqp_mpc_N_{N}_c_1"
-# ]
-# baseline_type = f"miqp_mpc_N_{N}_c_1"
-# # baseline_type = f"heuristic_mpc_low_N_{N}"
-# file_names = [f"dev/results/evaluations/short_eps/{type}.pkl" for type in types]
-# baseline_file_name = f"dev/results/evaluations/short_eps/{baseline_type}.pkl"
 
 X = []
 U = []
@@ -57,14 +57,14 @@ for file_name in file_names:
             ]
             print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
 
-        if "heuristic" in data and data["heuristic"]:
-            print(
-                f"heuristic count: {sum(sum(data["heuristic"][i]) for i in range(len(data["heuristic"])))}"
-            )
-            infeas_ep = [
-                sum(data["heuristic"][i]) for i in range(len(data["heuristic"]))
-            ]
-            print(f"Average heuristic per episode: {sum(infeas_ep) / len(infeas_ep)}")
+        # if "heuristic" in data and data["heuristic"]:
+        #     print(
+        #         f"heuristic count: {sum(sum(data["heuristic"][i]) for i in range(len(data["heuristic"])))}"
+        #     )
+        #     infeas_ep = [
+        #         sum(data["heuristic"][i]) for i in range(len(data["heuristic"]))
+        #     ]
+        #     print(f"Average heuristic per episode: {sum(infeas_ep) / len(infeas_ep)}")
 with open(baseline_file_name, "rb") as f:
     baseline_data = pickle.load(f)
     baseline_R = baseline_data["R"]
@@ -81,7 +81,7 @@ labels = [
     "H-L-MPC",
     "H-MPC",
     "MIQP-MPC",
-    "MINLP-MPC",
+    # "MINLP-MPC",
 ]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])

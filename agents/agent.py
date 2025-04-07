@@ -322,17 +322,17 @@ class SingleVehicleAgent(Agent):
 
 class PlatoonAgent(Agent):
 
-    d = 25  # inter-vehicle distance (m)
-    d_arr = np.array([[d], [0]])
-
     def __init__(
         self,
         mpc: VehicleMPC,
         num_vehicles: int,
+        inter_vehicle_distance: float,
         np_random: np.random.Generator,
         multi_starts=1,
     ):
         self.mpc = mpc
+        self.d = inter_vehicle_distance
+        self.d_arr = np.array([[self.d], [0]])
         self.np_random = np_random
         self.multi_starts = multi_starts
         self.x_ref_predicition: np.ndarray = np.empty((0, 2, 1))

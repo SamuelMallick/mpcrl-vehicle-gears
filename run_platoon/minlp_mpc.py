@@ -45,6 +45,7 @@ env: PlatoonTracking = MonitorEpisodes(
             trajectory_type=config.trajectory_type,
             windy=config.windy,
             infinite_episodes=config.infinite_episodes,
+            inter_vehicle_distance=config.inter_vehicle_distance,
         ),
         max_episode_steps=config.ep_len,
     )
@@ -67,6 +68,7 @@ agent = DistributedMIPAgent(
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
     backup_mpc=None,
+    inter_vehicle_distance=config.inter_vehicle_distance,
 )
 returns, info = agent.evaluate(
     env,

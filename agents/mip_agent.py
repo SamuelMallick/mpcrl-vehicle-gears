@@ -75,10 +75,17 @@ class DistributedMIPAgent(PlatoonAgent, MIPAgent):
         mpc,
         num_vehicles,
         np_random,
+        inter_vehicle_distance: float,
         multi_starts=1,
         backup_mpc: MIPMPC | None = None,
     ):
-        super().__init__(mpc, num_vehicles, np_random, multi_starts)
+        super().__init__(
+            mpc,
+            num_vehicles,
+            np_random,
+            multi_starts,
+            inter_vehicle_distance=inter_vehicle_distance,
+        )
         self.backup_mpc = backup_mpc
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:

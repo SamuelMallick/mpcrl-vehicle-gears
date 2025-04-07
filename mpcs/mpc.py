@@ -102,7 +102,7 @@ class VehicleMPC(Mpc):
                 )
                 for i in range(prediction_horizon + 1)
             ]
-        ) + 1e3 * (cs.sum2(s_a) + cs.sum2(s_b))
+        )  # + 1e3 * (cs.sum2(s_a) + cs.sum2(s_b))
 
     def solve(
         self,

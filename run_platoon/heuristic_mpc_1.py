@@ -16,7 +16,7 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = False
+SAVE = True
 PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
@@ -25,7 +25,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config()
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c2 import Config  # type: ignore
 
     config = Config()
 
@@ -34,7 +34,7 @@ seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
 eval_seed = 10  # seed 10 used for evaluation
 num_eval_eps = 1
-num_vehicles = 2
+num_vehicles = 5
 
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
@@ -45,6 +45,7 @@ env: PlatoonTracking = MonitorEpisodes(
             trajectory_type=config.trajectory_type,
             windy=config.windy,
             infinite_episodes=config.infinite_episodes,
+            inter_vehicle_distance=config.inter_vehicle_distance,
         ),
         max_episode_steps=config.ep_len,
     )
@@ -61,6 +62,7 @@ agent = DistributedHeuristic1Agent(
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
     gear_priority="low",
+    inter_vehicle_distance=config.inter_vehicle_distance,
 )
 returns, info = agent.evaluate(
     env,

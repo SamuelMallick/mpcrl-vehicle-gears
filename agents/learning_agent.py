@@ -484,6 +484,8 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
             multi_starts=multi_starts,
         )
         # these done manually as we don't call PlatoonAgent.__init__()
+        self.d = config.inter_vehicle_distance
+        self.d_arr = np.array([[self.d], [0]])
         self.num_vehicles = num_vehicles
         self.T_e_prev = [Vehicle.T_e_idle for _ in range(num_vehicles)]
         self.gear_prev = [np.zeros((6, 1)) for _ in range(num_vehicles)]

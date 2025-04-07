@@ -10,6 +10,7 @@ class ConfigDefault:
     save_every_episode = False
     infinite_episodes = True
     max_steps = ep_len * num_eps
+    inter_vehicle_distance = 25
 
     # -----------solver parameters----------------
     multi_starts = 1

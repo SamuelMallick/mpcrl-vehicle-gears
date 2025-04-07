@@ -210,19 +210,20 @@ class VehicleTracking(gym.Env):
 
 
 class PlatoonTracking(VehicleTracking):
-    d = 25  # inter-vehicle distance (m)
-    d_arr = np.array([[d], [0]])
 
     # TODO doc string
     def __init__(
         self,
         vehicles: list[Vehicle],
         prediction_horizon: int,
+        inter_vehicle_distance: float,
         windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
         infinite_episodes: bool = False,
     ):
         gym.Env.__init__(self)
+        self.d = inter_vehicle_distance
+        self.d_arr = np.array([[self.d], [0]])
         self.vehicles = vehicles
         self.x = np.concatenate([v.x for v in self.vehicles], axis=1)
         self.prediction_horizon = prediction_horizon
@@ -240,7 +241,7 @@ class PlatoonTracking(VehicleTracking):
         else:
             vel = self.np_random.uniform(Vehicle.v_min + 5, Vehicle.v_max - 5)
             for i, v in enumerate(self.vehicles):
-                v.x = np.array([[-25 * i], [vel]])
+                v.x = np.array([[-self.d * i], [vel]])
             self.x = np.concatenate([v.x for v in self.vehicles], axis=1)
 
         # generate reference trajectory - starting from first vehicle state
