@@ -382,6 +382,89 @@ class LearningAgent(SingleVehicleAgent):
         self.heuristic_flags.append([])
         return super().on_episode_start(state, env)
 
+    def train_supervised(
+        self,
+        nn_inputs: torch.Tensor,
+        nn_targets: torch.Tensor,
+        train_epochs: int = 100,
+        save_freq: int = 100,
+        save_path: str = "",
+        nn_inputs_eval: torch.Tensor = None,
+        nn_targets_eval: torch.Tensor = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Train the gear selection policy network using supervised learning.
+
+        Parameters
+        ----------
+        nn_inputs : torch.Tensor
+            The input data for the neural network, shape (num_samples, num_features).
+        nn_targets : torch.Tensor
+            The target data for the neural network, shape (num_samples, num_classes).
+        train_epochs : int, optional
+            The number of training epochs, by default 100.
+        save_freq : int, optional
+            The epoch frequency to save the model, by default every 100.
+        save_path : str, optional
+            The location at which to save the model, by default an empty string,
+            resulting in saving in the cwd.
+        nn_inputs_eval : torch.Tensor, optional
+            Input data for evaluation during training, by default None, in which case
+            no evaluation is performed.
+        nn_targets_eval : torch.Tensor, optional
+            Target data for evaluation during training, by default None."""
+        num_steps = nn_inputs.shape[0]
+
+        self.policy_net.to(self.device)
+        nn_targets = torch.argmax(nn_targets, 2)
+        s_train_tensor = nn_inputs.to(self.device, dtype=torch.float32)
+        a_train_tensor = nn_targets.to(self.device, dtype=torch.long)
+        dataset = TensorDataset(s_train_tensor, a_train_tensor)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        loss_history_train = np.empty(train_epochs, dtype=float)
+        loss_history_eval = np.empty(train_epochs, dtype=float)
+        criterion = nn.CrossEntropyLoss()
+
+        if nn_inputs_eval is not None and nn_targets_eval is not None:
+            nn_targets_eval = torch.argmax(nn_targets_eval, 2)
+            s_eval_tensor = nn_inputs_eval.to(self.device, dtype=torch.float32)
+            a_eval_tensor = nn_targets_eval.to(self.device, dtype=torch.long)
+
+        for epoch in range(train_epochs):
+            if epoch % save_freq == 0:
+                torch.save(
+                    self.policy_net.state_dict(),
+                    f"{save_path}policy_net_{num_steps}_epoch_{epoch}.pth",
+                )
+            running_loss = 0.0
+            self.policy_net.train()
+            for inputs, labels in dataloader:
+                self.optimizer.zero_grad()
+                # Forward pass
+                outputs = self.policy_net(inputs)
+                # Compute loss
+                loss = criterion(outputs.transpose(1, 2), labels)
+                # Backward pass
+                loss.backward()
+                # Update weights
+                self.optimizer.step()
+                running_loss += loss.item()
+            loss_history_train[epoch] = running_loss
+            print(f"Epoch [{epoch+1}/{train_epochs}], Loss: {running_loss}")
+
+            if nn_inputs_eval is not None and nn_targets_eval is not None:
+                self.policy_net.eval()
+                with torch.no_grad():
+                    outputs = self.policy_net(s_eval_tensor)
+                    loss = criterion(outputs.transpose(1, 2), a_eval_tensor)
+                    loss_history_eval[epoch] = loss.item()
+                    print(f"Eval loss: {loss_history_eval[epoch]}")
+
+        torch.save(
+            self.policy_net.state_dict(),
+            f"{save_path}policy_net_{num_steps}_epoch_{train_epochs}.pth",
+        )
+        return loss_history_train, loss_history_eval
+
 
 class DistributedLearningAgent(PlatoonAgent, LearningAgent):
 
@@ -489,86 +572,3 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
             []
         )  # doing manually as we don't call LearningAgent.on_episode_start()
         return super().on_episode_start(state, env)
-
-    def train_supervised(
-        self,
-        nn_inputs: torch.Tensor,
-        nn_targets: torch.Tensor,
-        train_epochs: int = 100,
-        save_freq: int = 100,
-        save_path: str = "",
-        nn_inputs_eval: torch.Tensor = None,
-        nn_targets_eval: torch.Tensor = None,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Train the gear selection policy network using supervised learning.
-
-        Parameters
-        ----------
-        nn_inputs : torch.Tensor
-            The input data for the neural network, shape (num_samples, num_features).
-        nn_targets : torch.Tensor
-            The target data for the neural network, shape (num_samples, num_classes).
-        train_epochs : int, optional
-            The number of training epochs, by default 100.
-        save_freq : int, optional
-            The epoch frequency to save the model, by default every 100.
-        save_path : str, optional
-            The location at which to save the model, by default an empty string,
-            resulting in saving in the cwd.
-        nn_inputs_eval : torch.Tensor, optional
-            Input data for evaluation during training, by default None, in which case
-            no evaluation is performed.
-        nn_targets_eval : torch.Tensor, optional
-            Target data for evaluation during training, by default None."""
-        num_steps = nn_inputs.shape[0]
-
-        self.policy_net.to(self.device)
-        nn_targets = torch.argmax(nn_targets, 2)
-        s_train_tensor = nn_inputs.to(self.device, dtype=torch.float32)
-        a_train_tensor = nn_targets.to(self.device, dtype=torch.long)
-        dataset = TensorDataset(s_train_tensor, a_train_tensor)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-        loss_history_train = np.empty(train_epochs, dtype=float)
-        loss_history_eval = np.empty(train_epochs, dtype=float)
-        criterion = nn.CrossEntropyLoss()
-
-        if nn_inputs_eval is not None and nn_targets_eval is not None:
-            nn_targets_eval = torch.argmax(nn_targets_eval, 2)
-            s_eval_tensor = nn_inputs_eval.to(self.device, dtype=torch.float32)
-            a_eval_tensor = nn_targets_eval.to(self.device, dtype=torch.long)
-
-        for epoch in range(train_epochs):
-            if epoch % save_freq == 0:
-                torch.save(
-                    self.policy_net.state_dict(),
-                    f"{save_path}policy_net_{num_steps}_epoch_{epoch}.pth",
-                )
-            running_loss = 0.0
-            self.policy_net.train()
-            for inputs, labels in dataloader:
-                self.optimizer.zero_grad()
-                # Forward pass
-                outputs = self.policy_net(inputs)
-                # Compute loss
-                loss = criterion(outputs.transpose(1, 2), labels)
-                # Backward pass
-                loss.backward()
-                # Update weights
-                self.optimizer.step()
-                running_loss += loss.item()
-            loss_history_train[epoch] = running_loss
-            print(f"Epoch [{epoch+1}/{train_epochs}], Loss: {running_loss}")
-
-            if nn_inputs_eval is not None and nn_targets_eval is not None:
-                self.policy_net.eval()
-                with torch.no_grad():
-                    outputs = self.policy_net(s_eval_tensor)
-                    loss = criterion(outputs.transpose(1, 2), a_eval_tensor)
-                    loss_history_eval[epoch] = loss.item()
-                    print(f"Eval loss: {loss_history_eval[epoch]}")
-
-        torch.save(
-            self.policy_net.state_dict(),
-            f"{save_path}policy_net_{num_steps}_epoch_{train_epochs}.pth",
-        )
-        return loss_history_train, loss_history_eval
