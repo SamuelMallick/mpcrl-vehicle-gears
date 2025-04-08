@@ -356,7 +356,7 @@ class LearningAgent(SingleVehicleAgent):
             gear_shift = (network_action - 1).cpu().numpy()
             o = []
             for i in range(self.mpc.prediction_horizon):
-                o.append(np.clip(gear + gear_shift[:, i], 0, 5))
+                o.append(np.clip(gear + gear_shift[:, i], 0, 5).item())
             self.gear_choice_explicit = np.array(o)
         elif self.n_actions == 6:
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
