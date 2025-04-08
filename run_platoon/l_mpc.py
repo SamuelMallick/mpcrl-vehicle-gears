@@ -45,7 +45,7 @@ env: PlatoonTracking = MonitorEpisodes(
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
-            infinite_episodes=config.infinite_episodes,
+            terminate_on_distance=config.terminate_on_distance,
             inter_vehicle_distance=config.inter_vehicle_distance,
         ),
         max_episode_steps=config.ep_len,

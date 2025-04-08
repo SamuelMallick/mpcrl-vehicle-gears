@@ -279,10 +279,10 @@ class Agent:
         action: tuple[float, float, int],
         info: dict,
     ) -> None:
-        raise NotImplementedError
+        pass
 
     def on_validation_start(self):
-        raise NotImplementedError
+        pass
 
 
 class SingleVehicleAgent(Agent):
