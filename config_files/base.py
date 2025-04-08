@@ -4,12 +4,13 @@ class ConfigDefault:
     # -----------general parameters----------------
     N = 15
     ep_len = 1000
-    num_eps = 50000
+    max_train_steps = ep_len * 5000
+    max_episodes = 50000
     trajectory_type = "type_3"
     windy = False
     save_every_episode = False
-    infinite_episodes = True
-    max_steps = ep_len * num_eps
+    finite_episodes = False
+    terminate_on_distance = True
     inter_vehicle_distance = 25
 
     # -----------solver parameters----------------
@@ -36,10 +37,9 @@ class ConfigDefault:
 
     # exploration
     eps_start = 0.99
-    esp_zero_steps = int(ep_len * num_eps / 2)
+    exp_zero_steps = int(max_train_steps / 2)
 
     # penalties
-    clip_pen = 0
     infeas_pen = 1e4
     rl_reward = -1e2
 

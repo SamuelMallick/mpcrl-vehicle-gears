@@ -44,7 +44,7 @@ env: PlatoonTracking = MonitorEpisodes(
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
-            infinite_episodes=config.infinite_episodes,
+            terminate_on_distance=config.terminate_on_distance,
             inter_vehicle_distance=config.inter_vehicle_distance,
         ),
         max_episode_steps=config.ep_len,
@@ -86,7 +86,7 @@ R = list(env.rewards)
 fuel = list(env.fuel_consumption)
 engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
-x_ref = list(env.x_ref)
+x_ref = list(env.reference_trajectory)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")

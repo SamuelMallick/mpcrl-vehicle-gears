@@ -16,12 +16,21 @@ class VehicleTracking(gym.Env):
     ----------
     vehicle : Vehicle
         The vehicle to be controlled.
+    prediction_horizon : int
+        The length of the prediction horizon used by the MPC that
+        interacts with the env.
+    windy : bool, optional
+        Whether to include wind in the simulation, by default False.
     trajectory_type : Literal["type_1", "type_2", "type_3"], optional
         The type of reference trajectory to track, by default "type_1".
         Type_1 trajectories are constance velocity and fixed initial
         conditions, while the others are randomized.
         Type_2 trajectories have less aggressive velocity changes and
-        less variable initial conditions, with respect to type_3."""
+        less variable initial conditions, with respect to type_3.
+    terminate_on_distance : bool, optional
+        Whether to terminate the episode if the vehicle is too far from
+        the reference trajectory, by default False. The distance is
+        100m."""
 
     ts = 1  # sample time (s)
     alpha = 0  # road inclination (rad)
@@ -40,7 +49,7 @@ class VehicleTracking(gym.Env):
         prediction_horizon: int,
         windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
-        infinite_episodes: bool = False,
+        terminate_on_distance: bool = False,
     ):
         super().__init__()
         self.vehicle = vehicle
@@ -48,7 +57,7 @@ class VehicleTracking(gym.Env):
         self.prediction_horizon = prediction_horizon
         self.trajectory_type = trajectory_type
         self.windy = windy
-        self.infinite_episodes = infinite_episodes
+        self.terminate_on_distance = terminate_on_distance
 
     def reset(self, *, seed=None, options=None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed, options=options)
@@ -82,7 +91,7 @@ class VehicleTracking(gym.Env):
         self, action: tuple[float, float, int]
     ) -> tuple[np.ndarray, float, bool, bool, dict]:
         terminated = False
-        if self.infinite_episodes and np.abs(self.x[0] - self.x_ref[0, 0]) > 100:
+        if self.terminate_on_distance and np.abs(self.x[0] - self.x_ref[0, 0]) > 100:
             terminated = True
         T_e, F_b, gear = action
         prev_x = self.x
@@ -219,7 +228,7 @@ class PlatoonTracking(VehicleTracking):
         inter_vehicle_distance: float,
         windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
-        infinite_episodes: bool = False,
+        terminate_on_distance: bool = False,
     ):
         gym.Env.__init__(self)
         self.d = inter_vehicle_distance
@@ -229,7 +238,7 @@ class PlatoonTracking(VehicleTracking):
         self.prediction_horizon = prediction_horizon
         self.trajectory_type = trajectory_type
         self.windy = windy
-        self.infinite_episodes = infinite_episodes
+        self.terminate_on_distance = terminate_on_distance
 
     def reset(self, *, seed=None, options=None) -> tuple[np.ndarray, dict]:
         gym.Env.reset(self, seed=seed, options=options)
@@ -281,7 +290,7 @@ class PlatoonTracking(VehicleTracking):
         terminated = False
         # TODO add in desired distance here
         if (
-            self.infinite_episodes
+            self.terminate_on_distance
             and np.max(
                 [np.abs(prev_x[0][0] - prev_x_ref[0, 0])]
                 + [

@@ -93,7 +93,7 @@ class Agent:
 
         # self.reset()
         returns = np.zeros(episodes)
-        # self.on_validation_start()
+        self.on_validation_start()
 
         # create log file
         if log_progress:
@@ -281,6 +281,9 @@ class Agent:
     ) -> None:
         pass
 
+    def on_validation_start(self):
+        pass
+
 
 class SingleVehicleAgent(Agent):
 
@@ -311,7 +314,7 @@ class SingleVehicleAgent(Agent):
 
     def clip_action(self, action):
         if np.abs(np.argmax(self.gear_prev) - action[2]) > 1:
-            print("Warning: clipping gear in evaluate")
+            print("Warning: clipping gear in train")
             action[2] = np.clip(
                 action[2],
                 np.argmax(self.gear_prev) - 1,
