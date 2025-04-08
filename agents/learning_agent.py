@@ -354,15 +354,14 @@ class LearningAgent(SingleVehicleAgent):
         network_action = self.network_action(nn_state)
         if self.n_actions == 3:
             gear_shift = (network_action - 1).cpu().numpy()
-            self.gear_choice_explicit = np.array(
-                [
-                    gear + np.sum(gear_shift[:, : i + 1])
-                    for i in range(self.mpc.prediction_horizon)
-                ]
-            )
-            self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
+            o = []
+            for i in range(self.mpc.prediction_horizon):
+                o.append(np.clip(gear + gear_shift[:, i], 0, 5))
+            self.gear_choice_explicit = np.array(o)
         elif self.n_actions == 6:
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
+        if not np.all(self.gear_choice_explicit == self.prev_gear_choice_explicit[0]):
+            pass
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def network_action(self, state: torch.Tensor) -> torch.Tensor:
