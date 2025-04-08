@@ -74,7 +74,7 @@ R = list(env.rewards)
 fuel = list(env.fuel_consumption)
 engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
-x_ref = list(env.x_ref)
+x_ref = list(env.reference_trajectory)
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")

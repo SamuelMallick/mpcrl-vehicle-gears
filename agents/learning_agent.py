@@ -47,6 +47,9 @@ class LearningAgent(SingleVehicleAgent):
             print("Using GPU")
 
         self.use_heuristic = False  # changed on call to train or evaluate
+        self.heuristic_flags: list[list[bool]] = (
+            []
+        )  # reset on call to train or evaluate
 
         self.n_actions = config.n_actions
 
@@ -122,9 +125,7 @@ class LearningAgent(SingleVehicleAgent):
         -------
         tuple[np.ndarray, dict]
             The returns for each episode, and a dictionary of additional information."""
-        self.steps_done = 0
         self.eps_start = 0  # no exploration for evaluation
-
         if policy_net_state_dict:
             self.policy_net.load_state_dict(policy_net_state_dict)
         if self.normalize:
@@ -139,10 +140,6 @@ class LearningAgent(SingleVehicleAgent):
 
         self.use_heuristic = use_heuristic
         self.heursitic_gear_priorities = heursitic_gear_priorities
-        if self.use_heuristic:
-            self.heuristic_flags: list[list[bool]] = []
-        else:
-            self.heuristic_flags = None
         returns, info = super().evaluate(
             env,
             episodes,
@@ -157,14 +154,17 @@ class LearningAgent(SingleVehicleAgent):
         self, network_pars: dict, heuristic_pars: list[dict], vals0: dict, first_step
     ) -> tuple[float, float, int, dict]:
         heuristic_flag = False
+        infeasible_flag = False
         if not first_step:
             sol = self.mpc.solve(network_pars, vals0)
+            if not sol.success:
+                infeasible_flag = True
         if self.use_heuristic or first_step or (not first_step and not sol.success):
             heuristic_sols = [self.mpc.solve(p, vals0) for p in heuristic_pars]
-        if first_step:
-            improved_sols = [True] * len(heuristic_sols)
-        else:
-            improved_sols = [s.f < sol.f for s in heuristic_sols]
+            if first_step:
+                improved_sols = [True] * len(heuristic_sols)
+            else:
+                improved_sols = [s.f < sol.f for s in heuristic_sols]
         if (
             first_step
             or (not first_step and not sol.success)
@@ -190,6 +190,7 @@ class LearningAgent(SingleVehicleAgent):
             {
                 "sol": sol,
                 "heuristic": heuristic_flag,
+                "infeasible": infeasible_flag,
                 "gear_choice_explicit": gear_choice_explicit,
             },
         )
@@ -295,6 +296,7 @@ class LearningAgent(SingleVehicleAgent):
                 "nn_state": nn_state,
                 "network_action": network_action,
                 "heuristic": info["heuristic"],
+                "infeasible": info["infeasible"],
             },
         )
 
@@ -407,7 +409,7 @@ class LearningAgent(SingleVehicleAgent):
             self.running_mean_std.update(
                 diff.T
             )  # transpose needed as the mean is taken over axis 0
-        if self.heursitic_gear_priorities:
+        if self.use_heuristic:
             if "heuristic" in info:
                 self.heuristic_flags[-1].append(info["heuristic"])
         return super().on_env_step(env, episode, timestep, info)
@@ -415,6 +417,10 @@ class LearningAgent(SingleVehicleAgent):
     def on_episode_start(self, state, env):
         self.heuristic_flags.append([])
         return super().on_episode_start(state, env)
+
+    def on_validation_start(self):
+        self.heuristic_flags: list[list[bool]] = []
+        self.steps_done = 0
 
     def train_supervised(
         self,

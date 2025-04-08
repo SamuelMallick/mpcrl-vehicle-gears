@@ -52,7 +52,9 @@ class MonitorEpisodes(
         )
         self.engine_torque: Deque[npt.NDArray[np.floating]] = deque(maxlen=deque_size)
         self.engine_speed: Deque[npt.NDArray[np.floating]] = deque(maxlen=deque_size)
-        self.x_ref: Deque[npt.NDArray[np.floating]] = deque(maxlen=deque_size)
+        self.reference_trajectory: Deque[npt.NDArray[np.floating]] = deque(
+            maxlen=deque_size
+        )
 
         self.episode_lengths: Deque[int] = deque(maxlen=deque_size)
         self.exec_times: Deque[float] = deque(maxlen=deque_size)
@@ -64,7 +66,7 @@ class MonitorEpisodes(
         self.ep_fuel_consumption: list[SupportsFloat] = []
         self.ep_engine_torque: list[SupportsFloat] = []
         self.ep_engine_speed: list[SupportsFloat] = []
-        self.ep_x_ref: list[SupportsFloat] = []
+        self.ep_reference_trajectory: list[SupportsFloat] = []
 
         self.t0: float = perf_counter()
         self.ep_length: int = 0
@@ -94,7 +96,7 @@ class MonitorEpisodes(
         self.ep_fuel_consumption.append(info["fuel"])
         self.ep_engine_torque.append(info["T_e"])
         self.ep_engine_speed.append(info["w_e"])
-        self.ep_x_ref.append(info["x_ref"])
+        self.ep_reference_trajectory.append(info["x_ref"])
 
         self.ep_length += 1
 
@@ -108,7 +110,7 @@ class MonitorEpisodes(
             self.fuel_consumption.append(np.asarray(self.ep_fuel_consumption))
             self.engine_torque.append(np.asarray(self.ep_engine_torque))
             self.engine_speed.append(np.asarray(self.ep_engine_speed))
-            self.x_ref.append(np.asarray(self.ep_x_ref))
+            self.reference_trajectory.append(np.asarray(self.ep_reference_trajectory))
 
             self.episode_lengths.append(self.ep_length)
             self.exec_times.append(perf_counter() - self.t0)
@@ -127,7 +129,7 @@ class MonitorEpisodes(
         self.ep_fuel_consumption.clear()
         self.ep_engine_torque.clear()
         self.ep_engine_speed.clear()
-        self.ep_x_ref.clear()
+        self.ep_reference_trajectory.clear()
 
         self.t0 = perf_counter()
         self.ep_length = 0
