@@ -61,12 +61,13 @@ mpc = SolverTimeRecorder(
         max_time=config.max_time,
     )
 )
+gear_priority = ["low", "mid", "high"]
 agent = DistributedHeuristic2Agent(
     mpc,
     np_random=np_random,
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
-    gear_priority="low",
+    gear_priority=gear_priority,
     inter_vehicle_distance=config.inter_vehicle_distance,
 )
 returns, info = agent.evaluate(
@@ -91,7 +92,8 @@ print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(
-        f"platoon_heuristic_2_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb"
+        f"platoon_heuristic_2_{gear_priority}_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl",
+        "wb",
     ) as f:
         pickle.dump(
             {

@@ -16,7 +16,7 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = False
+SAVE = True
 PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
@@ -59,8 +59,12 @@ mpc = SolverTimeRecorder(
         max_time=config.max_time,
     )
 )
+gear_priority = ["low", "mid", "high"]
 agent = Heuristic2Agent(
-    mpc, np_random=np_random, multi_starts=config.multi_starts, gear_priority="low"
+    mpc,
+    np_random=np_random,
+    multi_starts=config.multi_starts,
+    gear_priority=gear_priority,
 )
 returns, info = agent.evaluate(
     env,
@@ -82,7 +86,8 @@ print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(
-        f"heuristic_mpc_2_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb"
+        f"heuristic_mpc_2_{gear_priority}_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl",
+        "wb",
     ) as f:
         pickle.dump(
             {

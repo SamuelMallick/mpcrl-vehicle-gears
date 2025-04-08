@@ -85,6 +85,7 @@ returns, info = agent.evaluate(
     policy_net_state_dict=state_dict,
     normalization=data["normalization"],
     use_heuristic=True,
+    heursitic_gear_priorities=["low", "mid", "high"],
 )
 
 

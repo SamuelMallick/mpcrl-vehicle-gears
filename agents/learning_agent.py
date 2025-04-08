@@ -1,3 +1,4 @@
+from typing import Literal
 from csnlp import Solution
 import numpy as np
 import torch
@@ -45,7 +46,7 @@ class LearningAgent(SingleVehicleAgent):
         if self.device.type == "cuda":
             print("Using GPU")
 
-        self.use_heuristic = True  # changed on call to train or evaluate
+        self.use_heuristic = False  # changed on call to train or evaluate
 
         self.n_actions = config.n_actions
 
@@ -78,7 +79,8 @@ class LearningAgent(SingleVehicleAgent):
         env: VehicleTracking,
         episodes,
         policy_net_state_dict: dict,
-        use_heuristic: bool = True,
+        use_heuristic: bool,
+        heursitic_gear_priorities: list[Literal["low", "high", "mid"]],
         seed=0,
         normalization: tuple = (),
         allow_failure: bool = False,
@@ -96,10 +98,12 @@ class LearningAgent(SingleVehicleAgent):
             The number of episodes to evaluate the agent for.
         policy_net_state_dict : dict
             The state dictionary of the policy network to load.
-        use_heuristic : bool, optional
-            If True, the agent also evaluate an MPC using a heuristic gear-shift
-            schedule (see heursitic_2_mpc). The input from the mpc controller with
-            the lowest cost is used.
+        use_heuristic : bool
+            If True, a heuristic MPC will also solve the problem at each timestep,
+            and the best solution between the heuristic and the neural network will be used.
+        heursitic_gear_priorities : list[Literal["low", "high", "mid"]]
+            If use_heuristic is True: For each entry in the list an MPC will also be solved
+            using a fixed gear schedule determined by the heuristic (see also heuristic_2_agent.py).
         seed : int, optional
             The seed to use for the random number generator, by default 0.
         normalization : tuple, optional
@@ -132,7 +136,9 @@ class LearningAgent(SingleVehicleAgent):
             self.running_mean_std.mean = normalization[0]
             self.running_mean_std.var = normalization[1]
         self.policy_net.eval()
+
         self.use_heuristic = use_heuristic
+        self.heursitic_gear_priorities = heursitic_gear_priorities
         if self.use_heuristic:
             self.heuristic_flags: list[list[bool]] = []
         else:
@@ -148,23 +154,26 @@ class LearningAgent(SingleVehicleAgent):
         return returns, {**info, "heuristic": self.heuristic_flags}
 
     def solve_mpc(
-        self, network_pars, heuristic_pars, vals0, first_step
+        self, network_pars: dict, heuristic_pars: list[dict], vals0: dict, first_step
     ) -> tuple[float, float, int, dict]:
         heuristic_flag = False
         if not first_step:
             sol = self.mpc.solve(network_pars, vals0)
-        if (
-            self.use_heuristic or first_step or (not first_step and not sol.success)
-        ):  # heuristic is always true for the first timestep and if learned policy fails
-            heuristic_sol = self.mpc.solve(heuristic_pars, vals0)
+        if self.use_heuristic or first_step or (not first_step and not sol.success):
+            heuristic_sols = [self.mpc.solve(p, vals0) for p in heuristic_pars]
+        if first_step:
+            improved_sols = [True] * len(heuristic_sols)
+        else:
+            improved_sols = [s.f < sol.f for s in heuristic_sols]
         if (
             first_step
             or (not first_step and not sol.success)
-            or (self.use_heuristic and sol.success and heuristic_sol.f < sol.f)
+            or (self.use_heuristic and sol.success and any(improved_sols))
         ):
             heuristic_flag = True
-            sol = heuristic_sol
-            gear_choice_explicit = np.argmax(heuristic_pars["gear"], axis=0)
+            indx = np.argmin([s.f for s in heuristic_sols])
+            sol = heuristic_sols[indx]
+            gear_choice_explicit = np.argmax(heuristic_pars[indx]["gear"], axis=0)
         else:
             gear_choice_explicit = np.argmax(network_pars["gear"], axis=0)
 
@@ -231,16 +240,41 @@ class LearningAgent(SingleVehicleAgent):
         else:
             network_pars = {}
 
-        heuristic_gear = self.gear_from_velocity(state[1].item(), "low")
-        heurisitic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
-        heurisitic_gear_choice_binary[heuristic_gear] = 1
-        heuristic_pars = {
-            "x_0": state,
-            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
-            "T_e_prev": self.T_e_prev,
-            "gear": heurisitic_gear_choice_binary,
-            "gear_prev": self.gear_prev,
-        }
+        heuristic_pars = []
+        if not self.use_heuristic:
+            heuristic_gear = self.gear_from_velocity(
+                state[1].item(), "low"
+            )  # low heuristic used as backup sol
+            heurisitic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+            heurisitic_gear_choice_binary[heuristic_gear] = 1
+            heuristic_pars.append(
+                {
+                    "x_0": state,
+                    "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                    "T_e_prev": self.T_e_prev,
+                    "gear": heurisitic_gear_choice_binary,
+                    "gear_prev": self.gear_prev,
+                }
+            )
+        else:
+            gears = []
+            for gear_priority in self.heursitic_gear_priorities:
+                heuristic_gear = self.gear_from_velocity(state[1].item(), gear_priority)
+                if heuristic_gear not in gears:
+                    gears.append(heuristic_gear)
+                    heurisitic_gear_choice_binary = np.zeros(
+                        (6, self.mpc.prediction_horizon)
+                    )
+                    heurisitic_gear_choice_binary[heuristic_gear] = 1
+                    heuristic_pars.append(
+                        {
+                            "x_0": state,
+                            "x_ref": self.x_ref_predicition.T.reshape(2, -1),
+                            "T_e_prev": self.T_e_prev,
+                            "gear": heurisitic_gear_choice_binary,
+                            "gear_prev": self.gear_prev,
+                        }
+                    )
 
         T_e, F_b, gear, info = self.solve_mpc(
             network_pars,
@@ -373,7 +407,7 @@ class LearningAgent(SingleVehicleAgent):
             self.running_mean_std.update(
                 diff.T
             )  # transpose needed as the mean is taken over axis 0
-        if self.use_heuristic:
+        if self.heursitic_gear_priorities:
             if "heuristic" in info:
                 self.heuristic_flags[-1].append(info["heuristic"])
         return super().on_env_step(env, episode, timestep, info)
@@ -525,10 +559,29 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
             else:
                 network_pars = {}
 
-            heuristic_gear = self.gear_from_velocity(x[1].item(), "low")
-            heurisitic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
-            heurisitic_gear_choice_binary[heuristic_gear] = 1
-            heuristic_pars = {**pars, "gear": heurisitic_gear_choice_binary}
+            heuristic_pars = []
+            if not self.use_heuristic:
+                heuristic_gear = self.gear_from_velocity(
+                    x[1].item(), "low"
+                )  # low heuristic used as backup sol
+                heurisitic_gear_choice_binary = np.zeros(
+                    (6, self.mpc.prediction_horizon)
+                )
+                heurisitic_gear_choice_binary[heuristic_gear] = 1
+                heuristic_pars.append({**pars, "gear": heurisitic_gear_choice_binary})
+            else:
+                gears = []
+                for gear_priority in self.heursitic_gear_priorities:
+                    heuristic_gear = self.gear_from_velocity(x[1].item(), gear_priority)
+                    if heuristic_gear not in gears:
+                        gears.append(heuristic_gear)
+                        heurisitic_gear_choice_binary = np.zeros(
+                            (6, self.mpc.prediction_horizon)
+                        )
+                        heurisitic_gear_choice_binary[heuristic_gear] = 1
+                        heuristic_pars.append(
+                            {**pars, "gear": heurisitic_gear_choice_binary}
+                        )
 
             T_e, F_b, gear, info = self.solve_mpc(
                 network_pars,
@@ -564,7 +617,7 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
                 self.running_mean_std.update(
                     diff.T
                 )  # transpose needed as the mean is taken over axis 0
-        if self.use_heuristic:
+        if self.heursitic_gear_priorities:
             if "heuristic" in info:
                 self.heuristic_flags[-1].append(info["heuristic"])
         return PlatoonAgent.on_env_step(self, env, episode, timestep, info)
