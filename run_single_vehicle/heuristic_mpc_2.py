@@ -86,7 +86,7 @@ print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(
-        f"heuristic_mpc_2_{gear_priority}_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl",
+        f"heuristic_mpc_2_{gear_priority}_N_{N}_c_{config.id}.pkl",
         "wb",
     ) as f:
         pickle.dump(
