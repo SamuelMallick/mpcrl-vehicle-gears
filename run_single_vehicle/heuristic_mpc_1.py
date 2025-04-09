@@ -16,9 +16,6 @@ from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-SAVE = False
-PLOT = True
-
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
     config_file = sys.argv[1]
@@ -29,10 +26,13 @@ else:
 
     config = Config()
 
+SAVE = config.SAVE
+PLOT = config.PLOT
+
 N = config.N
 seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
-eval_seed = 10  # seed 10 used for evaluation
+eval_seed = config.eval_seed
 num_eval_eps = 1
 
 vehicle = Vehicle()
@@ -51,7 +51,10 @@ env: VehicleTracking = MonitorEpisodes(
 
 mpc = SolverTimeRecorder(
     NonlinearMPC(
-        N, solver="ipopt", multi_starts=config.multi_starts, max_time=config.max_time
+        N,
+        solver="ipopt",
+        multi_starts=config.multi_starts,
+        extra_opts=config.extra_opts,
     )
 )
 agent = Heuristic1Agent(

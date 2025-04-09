@@ -14,7 +14,6 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 from gymnasium.wrappers import TimeLimit
 
 from vehicle import Vehicle
-from visualisation.plot import plot_evaluation
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -29,7 +28,7 @@ else:
 N = config.N
 seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
-training_seed = 0
+training_seed = config.train_seed
 
 vehicle = Vehicle()
 env: VehicleTracking = MonitorEpisodes(
@@ -55,6 +54,7 @@ mpc = SolverTimeRecorder(
         convexify_fuel=False,
         multi_starts=config.multi_starts,
         max_time=config.max_time,
+        extra_opts=config.extra_opts,
     )
 )
 agent = DQNAgent(

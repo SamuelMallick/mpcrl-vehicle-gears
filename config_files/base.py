@@ -1,6 +1,9 @@
 class ConfigDefault:
     id = "base"
 
+    SAVE = True
+    PLOT = False
+
     # -----------general parameters----------------
     N = 15
     ep_len = 1000
@@ -12,10 +15,27 @@ class ConfigDefault:
     finite_episodes = False
     terminate_on_distance = True
     inter_vehicle_distance = 25
+    eval_seed = 10
+    train_seed = 0
+    num_vehicles = 5
 
     # -----------solver parameters----------------
     multi_starts = 1
+    extra_opts = {
+        "gurobi": {
+            # "MIPFocus": 2,
+            # "MIPGap": 1e-9
+        },
+        "knitro": {},
+        "bonmin": {},
+        "ipopt": {},
+    }
     max_time = None
+    if max_time is not None:
+        extra_opts["gurobi"]["TimeLimit"] = max_time
+        extra_opts["knitro"]["maxtime"] = max_time
+        extra_opts["bonmin"]["time_limit"] = max_time
+        extra_opts["ipopt"]["max_wall_time"] = max_time
 
     # -----------network parameters----------------
     # initial weights
