@@ -15,6 +15,5 @@ class SolverTimeRecorder(Wrapper[SymType]):
 
     def solve(self, *args: Any, **kwds: Any) -> Any:
         sol = self.nlp.solve(*args, **kwds)
-        if sol.success:
-            self.solver_time.append(sol.stats["t_wall_total"])
+        self.solver_time.append(sol.stats["t_wall_total"])
         return sol
