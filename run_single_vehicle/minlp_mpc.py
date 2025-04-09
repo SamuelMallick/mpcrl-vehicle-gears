@@ -71,7 +71,7 @@ returns, info = agent.evaluate(
     seed=eval_seed,
     allow_failure=False,
     save_every_episode=config.save_every_episode,
-    log_progress=True,
+    log_progress=False,
 )
 
 
