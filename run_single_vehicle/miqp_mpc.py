@@ -22,7 +22,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config()
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.gurobi_mipgap.c1 import Config  # type: ignore
 
     config = Config()
 
@@ -70,7 +70,7 @@ returns, info = agent.evaluate(
     seed=eval_seed,
     allow_failure=False,
     save_every_episode=config.save_every_episode,
-    log_progress=True,
+    log_progress=False,
 )
 
 X = list(env.observations)

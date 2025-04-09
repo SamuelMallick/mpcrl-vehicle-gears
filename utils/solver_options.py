@@ -35,7 +35,7 @@ solver_options = {
         "print_time": False,
         "record_time": True,
         "error_on_fail": False,
-        "gurobi": {"OutputFlag": 0, "LogToConsole": 0, "MIPGap": 1e-9},
+        "gurobi": {"OutputFlag": 0, "LogToConsole": 0},
     },
     "bonmin": {
         "print_time": False,

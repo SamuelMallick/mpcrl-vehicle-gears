@@ -197,5 +197,5 @@ class MIPMPC(HybridMPC):
 
         opts = solver_options[solver]
         if extra_opts is not None:
-            opts.update(extra_opts[solver])
+            opts[solver].update(extra_opts[solver])
         self.init_solver(opts, solver=solver)
