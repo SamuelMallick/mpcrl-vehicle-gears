@@ -166,26 +166,13 @@ class DQNAgent(LearningAgent):
                     print(f"Episode {episode}: Step {timestep}")
 
                 if self.steps_done >= max_learning_steps:
-                    break
+                    self.save(env=env, step=self.steps_done, path=save_path)
+                    return returns, {}
                 if save_freq and self.steps_done % save_freq == 0:
                     self.save(env=env, step=self.steps_done, path=save_path)
 
-        print("Training complete")
         self.save(env=env, step=self.steps_done, path=save_path)
-        info = {
-            "fuel": self.fuel,
-            "T_e": self.engine_torque,
-            "w_e": self.engine_speed,
-            "x_ref": self.x_ref,
-            "cost": self.cost,
-            "heuristic": self.heuristic,
-        }
-        if self.normalize:
-            info["normalization"] = (
-                self.running_mean_std.mean,
-                self.running_mean_std.var,
-            )
-        return returns, info
+        return returns, {}
 
     def optimize_model(self):
         """Apply a policy update based on the current memory buffer"""

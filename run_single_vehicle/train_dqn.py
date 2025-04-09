@@ -60,6 +60,7 @@ mpc = SolverTimeRecorder(
 agent = DQNAgent(
     mpc, np_random=np_random, config=config, multi_starts=config.multi_starts
 )
+os.makedirs(f"results/{config.id}", exist_ok=True)
 agent.train(
     env,
     episodes=config.max_episodes,
@@ -81,18 +82,3 @@ x_ref = list(env.reference_trajectory)
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
-
-with open(f"l_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb") as f:
-    pickle.dump(
-        {
-            "x_ref": x_ref,
-            "X": X,
-            "U": U,
-            "R": R,
-            "fuel": fuel,
-            "T_e": engine_torque,
-            "w_e": engine_speed,
-            "mpc_solve_time": mpc.solver_time,
-        },
-        f,
-    )
