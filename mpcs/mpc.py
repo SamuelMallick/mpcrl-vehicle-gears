@@ -117,4 +117,8 @@ class VehicleMPC(Mpc):
             pars["p_b"] = np.full(
                 (1, self.prediction_horizon + 1), pars["x_0"][0] - 1e6
             )
-        return self.nlp.solve_multi(pars, vals0)
+        sols = self.nlp.solve_multi(pars, vals0, return_all_sols=True)
+        best_sol = min(sols, key=lambda s: s.f)
+        longest_time = max([s.stats["t_wall_total"] for s in sols])
+        best_sol.stats["t_wall_total"] = longest_time
+        return best_sol
