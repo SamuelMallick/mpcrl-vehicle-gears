@@ -22,7 +22,7 @@ class ConfigDefault:
     # -----------solver parameters----------------
     multi_starts = 1
     extra_opts = {
-        "gurobi": {},
+        "gurobi": {"MIPGap": 1e-9},
         "knitro": {},
         "bonmin": {},
         "ipopt": {},
