@@ -5,7 +5,7 @@ class Config(ConfigDefault):
 
     def __init__(self):
         super().__init__()
-        self.id = "eval_1"
+        self.id = "eval_time_limited_1"
         self.eval_seed = 10
         max_time = 1
         self.extra_opts["gurobi"]["TimeLimit"] = max_time
