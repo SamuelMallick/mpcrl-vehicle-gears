@@ -4,7 +4,7 @@ import sys, os
 sys.path.append(os.getcwd())
 from visualisation.plot import plot_evaluation
 
-with open("dev/results/evaluations/l_mpc_N_15_c_1_s_1.pkl", "rb") as f:
+with open("miqp_mpc_N_15_c_1.pkl", "rb") as f:
     # with open("dev/results/evaluations/platoon_minlp_mpc_N_15_c_1_s_1_ms_2_t_50.pkl", "rb") as f:
     # with open("dev/results/evaluations/platoon_l_mpc_N_15_c_1_s_1_nocnstr.pkl", "rb") as f:
     # with open("dev/results/evaluations/platoon_heuristic_2_mpc_N_15_c_1_s_1.pkl", "rb") as f:
@@ -16,6 +16,7 @@ R = data["R"]
 fuel = data["fuel"]
 engine_torque = data["T_e"]
 engine_speed = data["w_e"]
+times = data["mpc_solve_time"]
 if "heuristic" in data:
     heuristic = data["heuristic"]
     if isinstance(heuristic[0][0], list):
