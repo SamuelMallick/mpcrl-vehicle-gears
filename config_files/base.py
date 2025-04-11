@@ -41,7 +41,7 @@ class ConfigDefault:
 
     # penalties
     infeas_pen = 1e4
-    rl_reward = -1e2
+    rl_reward = 0 # -1e2
 
     # memory
     memory_size = 100000
