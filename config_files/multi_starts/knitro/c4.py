@@ -7,7 +7,7 @@ class Config(ConfigDefault):
         super().__init__()
         self.id = "multi_starts_knitro_4"
         self.multi_starts = 100
-        max_time = 1
+        max_time = 5
         self.extra_opts["gurobi"]["TimeLimit"] = max_time
         self.extra_opts["knitro"]["maxtime"] = max_time
         self.extra_opts["bonmin"]["time_limit"] = max_time
