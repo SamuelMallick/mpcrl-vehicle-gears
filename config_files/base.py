@@ -7,7 +7,7 @@ class ConfigDefault:
     # -----------general parameters----------------
     N = 15
     ep_len = 1000
-    max_train_steps = ep_len * 5000
+    max_train_steps = ep_len * 50000
     max_episodes = 50000
     trajectory_type = "type_3"
     windy = False
@@ -58,7 +58,7 @@ class ConfigDefault:
 
     # penalties
     infeas_pen = 1e4
-    rl_reward = 0 # -1e2
+    rl_reward = 0  # -1e2
 
     # memory
     memory_size = 100000
