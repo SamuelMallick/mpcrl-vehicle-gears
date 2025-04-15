@@ -7,7 +7,7 @@ class ConfigDefault:
     # -----------general parameters----------------
     N = 15
     ep_len = 1000
-    max_train_steps = ep_len * 50000
+    max_train_steps = 100 * 50000
     max_episodes = 50000
     trajectory_type = "type_3"
     windy = False
