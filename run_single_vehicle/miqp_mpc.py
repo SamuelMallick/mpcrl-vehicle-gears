@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents_old import MINLPAgent
+from agents.mip_agent import MIPAgent
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
@@ -15,9 +15,6 @@ from gymnasium.wrappers import TimeLimit
 
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
-
-SAVE = False
-PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -29,10 +26,12 @@ else:
 
     config = Config()
 
+SAVE = config.SAVE
+PLOT = config.PLOT
 N = config.N
 seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
-eval_seed = 10  # seed 10 used for evaluation
+eval_seed = config.eval_seed
 num_eval_eps = 1
 
 vehicle = Vehicle()
@@ -57,10 +56,10 @@ mpc = SolverTimeRecorder(
         convexify_dynamics=True,
         solver="gurobi",
         multi_starts=config.multi_starts,
-        max_time=config.max_time,
+        extra_opts=config.extra_opts,
     )
 )
-agent = MINLPAgent(
+agent = MIPAgent(
     mpc,
     np_random=np_random,
     multi_starts=config.multi_starts,
@@ -71,7 +70,7 @@ returns, info = agent.evaluate(
     seed=eval_seed,
     allow_failure=False,
     save_every_episode=config.save_every_episode,
-    log_progress=True,
+    log_progress=False,
 )
 
 X = list(env.observations)
@@ -87,7 +86,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"miqp_mpc_N_{N}_c_{config.id}_s_{config.multi_starts}.pkl", "wb") as f:
+    with open(f"miqp_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,

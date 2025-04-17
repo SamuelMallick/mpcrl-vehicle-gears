@@ -1,6 +1,5 @@
 import importlib
 import os
-import pickle
 import sys
 
 import numpy as np
@@ -15,10 +14,6 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 from gymnasium.wrappers import TimeLimit
 
 from vehicle import Vehicle
-from visualisation.plot import plot_evaluation
-
-SAVE = True
-PLOT = True
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:

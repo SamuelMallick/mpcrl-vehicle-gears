@@ -50,6 +50,9 @@ class LearningAgent(SingleVehicleAgent):
         self.heuristic_flags: list[list[bool]] = (
             []
         )  # reset on call to train or evaluate
+        self.infeasible_flags: list[list[bool]] = (
+            []
+        )  # reset on call to train or evaluate
 
         self.n_actions = config.n_actions
 
@@ -408,17 +411,20 @@ class LearningAgent(SingleVehicleAgent):
             self.running_mean_std.update(
                 diff.T
             )  # transpose needed as the mean is taken over axis 0
-        if self.use_heuristic:
-            if "heuristic" in info:
-                self.heuristic_flags[-1].append(info["heuristic"])
+        if "heuristic" in info:
+            self.heuristic_flags[-1].append(info["heuristic"])
+        if "infeasible" in info:
+            self.infeasible_flags[-1].append(info["infeasible"])
         return super().on_env_step(env, episode, timestep, info)
 
     def on_episode_start(self, state, env):
         self.heuristic_flags.append([])
+        self.infeasible_flags.append([])
         return super().on_episode_start(state, env)
 
     def on_validation_start(self):
         self.heuristic_flags: list[list[bool]] = []
+        self.infeasible_flags: list[list[bool]] = []
         self.steps_done = 0
 
     def train_supervised(

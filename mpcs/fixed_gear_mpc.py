@@ -26,9 +26,8 @@ class FixedGearMPC(HybridMPC):
         used.
     multi_starts : int, optional
         The number of multi-starts to use for the optimization problem, by default 1.
-    max_time : float, optional
-        The maximum time to solve the optimization problem in seconds, by default None.
-        If None, no time limit is set.
+    extra_opts : dict, optional
+        Extra options for the solver, by default None.
     """
 
     def __init__(
@@ -38,7 +37,7 @@ class FixedGearMPC(HybridMPC):
         optimize_fuel: bool,
         convexify_fuel: bool = False,
         multi_starts: int = 1,
-        max_time: Optional[float] = None,
+        extra_opts: Optional[dict] = None,
     ):
         super().__init__(
             prediction_horizon=prediction_horizon,
@@ -77,10 +76,8 @@ class FixedGearMPC(HybridMPC):
         self.constraint("dynamics", self.x[:, 1:], "==", X_next)
 
         opts = solver_options[solver]
-        if max_time is not None:
-            opts["ipopt"][
-                "max_wall_time"
-            ] = max_time  # specific to IPOPT as no other solver is used for this mpc
+        if extra_opts is not None:
+            opts[solver].update(extra_opts[solver])
         self.init_solver(opts, solver=solver)
 
     def solve(

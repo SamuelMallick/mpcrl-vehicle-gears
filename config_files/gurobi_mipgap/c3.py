@@ -5,4 +5,5 @@ class Config(ConfigDefault):
 
     def __init__(self):
         super().__init__()
-        self.id = "1"
+        self.id = "gurobi_mipgap_c3"
+        self.extra_opts["gurobi"]["MIPGap"] = 1e-7

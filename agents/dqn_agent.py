@@ -262,6 +262,7 @@ class DQNAgent(LearningAgent):
             "x_ref": list(env.reference_trajectory)
             + [np.asarray(env.ep_reference_trajectory)],
             "heuristic": self.heuristic_flags,
+            "infeasible": list(self.infeasible_flags),
             "R": list(env.rewards) + [np.asarray(env.ep_rewards)],
             "X": list(env.observations) + [np.asarray(env.ep_observations)],
             "U": list(env.actions) + [np.asarray(env.ep_actions)],

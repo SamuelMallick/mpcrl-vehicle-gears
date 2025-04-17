@@ -38,12 +38,22 @@ class MIPAgent(SingleVehicleAgent):
         sol = self.mpc.solve(pars, vals0)
 
         # special check for knitro timeout
-        if (
-            not sol.success and sol.status != "KN_RC_TIME_LIMIT_FEAS"
-        ) and self.backup_mpc:
-            solver = "backup"
-            sol = self.backup_mpc.solve(pars, vals0)
-            if not sol.success:
+        if not sol.success:
+            if sol.status == "TIME_LIMIT":  # timeout for gurobi
+                if sol.stats["pool_sol_nr"] == 0:
+                    raise ValueError("MPC failed to find feasible solution in time")
+            elif (
+                sol.status == "KN_RC_TIME_LIMIT_INFEAS"
+                or sol.status == "KN_RC_TIME_LIMIT_FEAS"
+            ):
+                if sol.status == "KN_RC_TIME_LIMIT_INFEAS":
+                    raise ValueError("MPC failed to find feasible solution in time")
+            elif self.backup_mpc:
+                solver = "backup"
+                sol = self.backup_mpc.solve(pars, vals0)
+                if not sol.success:
+                    raise ValueError("MPC failed to solve")
+            else:
                 raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]

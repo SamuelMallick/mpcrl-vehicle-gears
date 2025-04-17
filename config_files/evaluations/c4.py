@@ -5,4 +5,5 @@ class Config(ConfigDefault):
 
     def __init__(self):
         super().__init__()
-        self.id = "1"
+        self.id = "eval_4"
+        self.eval_seed = 13

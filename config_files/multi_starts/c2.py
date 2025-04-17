@@ -5,4 +5,5 @@ class Config(ConfigDefault):
 
     def __init__(self):
         super().__init__()
-        self.id = "1"
+        self.id = "multi_starts_2"
+        self.multi_starts = 5

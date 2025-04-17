@@ -33,8 +33,8 @@ class MIPMPC(HybridMPC):
         and the solvers bonmin or knitro must be used.
     multi_starts : int, optional
         The number of multi-starts to use for the optimization problem, by default 1.
-    max_time : float, optional
-        The maximum time to solve the optimization problem, by default None.
+    extra_opts : dict, optional
+        Extra options for the solver, by default None.
     """
 
     def __init__(
@@ -45,7 +45,7 @@ class MIPMPC(HybridMPC):
         convexify_fuel: bool = False,
         convexify_dynamics: bool = False,
         multi_starts: int = 1,
-        max_time: Optional[float] = None,
+        extra_opts: Optional[dict] = None,
     ):
         super().__init__(
             prediction_horizon=prediction_horizon,
@@ -196,11 +196,6 @@ class MIPMPC(HybridMPC):
             )
 
         opts = solver_options[solver]
-        if max_time is not None:
-            if solver == "gurobi":
-                opts["gurobi"]["TimeLimit"] = max_time
-            elif solver == "knitro":
-                opts["knitro"]["maxtime"] = max_time
-            else:
-                opts["bonmin"]["time_limit"] = max_time
+        if extra_opts is not None:
+            opts[solver].update(extra_opts[solver])
         self.init_solver(opts, solver=solver)

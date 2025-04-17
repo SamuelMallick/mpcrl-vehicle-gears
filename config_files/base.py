@@ -1,10 +1,13 @@
 class ConfigDefault:
     id = "base"
 
+    SAVE = True
+    PLOT = False
+
     # -----------general parameters----------------
     N = 15
     ep_len = 1000
-    max_train_steps = ep_len * 5000
+    max_train_steps = 100 * 50000
     max_episodes = 50000
     trajectory_type = "type_3"
     windy = False
@@ -12,10 +15,24 @@ class ConfigDefault:
     finite_episodes = False
     terminate_on_distance = True
     inter_vehicle_distance = 25
+    eval_seed = 10
+    train_seed = 0
+    num_vehicles = 5
 
     # -----------solver parameters----------------
     multi_starts = 1
+    extra_opts = {
+        "gurobi": {"MIPGap": 1e-9},
+        "knitro": {},
+        "bonmin": {},
+        "ipopt": {},
+    }
     max_time = None
+    if max_time is not None:
+        extra_opts["gurobi"]["TimeLimit"] = max_time
+        extra_opts["knitro"]["maxtime"] = max_time
+        extra_opts["bonmin"]["time_limit"] = max_time
+        extra_opts["ipopt"]["max_wall_time"] = max_time
 
     # -----------network parameters----------------
     # initial weights
@@ -41,7 +58,7 @@ class ConfigDefault:
 
     # penalties
     infeas_pen = 1e4
-    rl_reward = 0 # -1e2
+    rl_reward = 0  # -1e2
 
     # memory
     memory_size = 100000
