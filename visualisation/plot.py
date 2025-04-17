@@ -16,8 +16,12 @@ def plot_training(
     average_interval: int = 100,
     log_scales: bool = False,
     only_averages: bool = False,
-):
-    fig, ax = plt.subplots(5 if infeasible is None else 6, 1, sharex=True)
+    ax: list = None,
+):  
+    ax_passed = True
+    if ax is None:
+        fig, ax = plt.subplots(5 if infeasible is None else 6, 1, sharex=True)
+        ax_passed = False
     if not only_averages:
         ax[0].plot(cost)
         ax[1].plot(fuel)
@@ -59,7 +63,9 @@ def plot_training(
             )
         )
         ax[5].set_ylabel("Infeasible")
-    plt.show()
+    
+    if not ax_passed:
+        plt.show()
 
 
 def plot_evaluation(

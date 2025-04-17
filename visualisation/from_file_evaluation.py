@@ -8,26 +8,76 @@ sys.path.append(os.getcwd())
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
-# types = [
-#     f"heuristic_mpc_low_N_{N}_c_25_s_1",
-#     # f"l_mpc_eval_N_{N}_c_25_s_1",
-#     # f"l_mpc_eval_N_{N}_c_31_s_1",
-#     f"l_mpc_N_{N}_c_1_s_1",
-#     f"heuristic_mpc_2_low_N_{N}_c_25_s_1",
-#     f"miqp_mpc_N_{N}_c_25_s_1",
-# ]
-# baseline_type = f"minlp_mpc_N_{N}_c_25_s_1_ms_2_100s"
-# file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
-# baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
-
+c = "eval_4"
+pre = ""
 types = [
-    "platoon_heuristic_1_mpc_N_15_c_1_s_1",
-    "platoon_l_mpc_N_15_c_1_s_1_nocnstr",
-    "platoon_heuristic_2_mpc_N_15_c_1_s_1",
+    f"{pre}heuristic_mpc_1_N_{N}_c_{c}",
+    f"{pre}heuristic_mpc_2_['low', 'mid', 'high']_N_{N}_c_{c}",
+    f"{pre}heuristic_mpc_3_N_{N}_c_{c}",
+    f"{pre}l_mpc_N_{N}_c_{c}",
+    f"{pre}miqp_mpc_N_15_c_eval_time_limited_4",
+    f"{pre}miqp_mpc_N_{N}_c_{c}",
 ]
-baseline_type = "platoon_minlp_mpc_N_15_c_1_s_1_ms_2_t_50"
+baseline_type = f"{pre}miqp_mpc_N_{N}_c_{c}"
 file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
 baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
+labels = [
+    "H-MPC-1",
+    "H-MPC-2",
+    "H-MPC-3",
+    "L-MPC",
+    "MIQP-MPC-tl",
+    "MIQP-MPC",
+    "MINLP-MPC",
+]
+
+# types = [
+#     "platoon_miqp_mpc_N_15_c_gurobi_mipgap_c1",
+#     "platoon_miqp_mpc_N_15_c_gurobi_mipgap_c2",
+#     "platoon_miqp_mpc_N_15_c_gurobi_mipgap_c3",
+#     "platoon_miqp_mpc_N_15_c_gurobi_mipgap_c4",
+# ]
+# baseline_type = "platoon_miqp_mpc_N_15_c_gurobi_mipgap_c4"
+# file_names = [f"dev/results/gurobi_mipgap/{type}.pkl" for type in types]
+# baseline_file_name = f"dev/results/gurobi_mipgap/{baseline_type}.pkl"
+# labels = ["1e-3", "1e-5", "1e-7", "1e-9", "1e-9"]
+
+# types = [
+#     "heuristic_mpc_2_['low', 'mid', 'high']_N_15_c_multi_starts_1",
+#     "heuristic_mpc_2_['low', 'mid', 'high']_N_15_c_multi_starts_2",
+#     "heuristic_mpc_2_['low', 'mid', 'high']_N_15_c_multi_starts_3",
+#     "heuristic_mpc_2_['low', 'mid', 'high']_N_15_c_multi_starts_4",
+# ]
+# baseline_type = "heuristic_mpc_2_['low', 'mid', 'high']_N_15_c_multi_starts_4"
+# types = [
+#     "l_mpc_N_15_c_multi_starts_1",
+#     "l_mpc_N_15_c_multi_starts_2",
+#     "l_mpc_N_15_c_multi_starts_3",
+#     "l_mpc_N_15_c_multi_starts_4",
+# ]
+# baseline_type = "l_mpc_N_15_c_multi_starts_4"
+# file_names = [f"dev/results/multi_starts/{type}.pkl" for type in types]
+# baseline_file_name = f"dev/results/multi_starts/{baseline_type}.pkl"
+# labels = ["1", "5", "10", "100", "100"]
+
+# types = [
+#     f"minlp_mpc_N_15_c_1_s_1_ms_50_500s",
+#     f"minlp_mpc_N_15_c_25_s_1_ms_10_100s",
+#     f"minlp_mpc_N_15_c_25_s_1_ms_2_100s",
+#     f"minlp_mpc_N_15_c_25_s_1_ms_10_50s",
+#     f"minlp_mpc_N_15_c_25_s_1_ms_2_50s",
+# ]
+# baseline_type = f"minlp_mpc_N_15_c_1_s_1_ms_50_500s"
+# file_names = [f"dev/results/evaluations_old/{type}.pkl" for type in types]
+# baseline_file_name = f"dev/results/evaluations_old/{baseline_type}.pkl"
+# labels = [
+#     "50_500",
+#     "10_100",
+#     "2_100",
+#     "10_50",
+#     "2_50",
+#     "50_500",
+# ]
 
 X = []
 U = []
@@ -48,14 +98,14 @@ for file_name in file_names:
         x_ref.append(data["x_ref"])
         engine_torque.append(data["T_e"])
         engine_speed.append(data["w_e"])
-        if "infeasible" in data and data["infeasible"]:
-            print(
-                f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
-            )
-            infeas_ep = [
-                sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
-            ]
-            print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
+        # if "infeasible" in data and data["infeasible"]:
+        #     print(
+        #         f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
+        #     )
+        #     infeas_ep = [
+        #         sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
+        #     ]
+        #     print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
 
         # if "heuristic" in data and data["heuristic"]:
         #     print(
@@ -75,14 +125,6 @@ with open(baseline_file_name, "rb") as f:
     baseline_x_ref = baseline_data["x_ref"]
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
-
-labels = [
-    "decup-MPC",
-    "H-L-MPC",
-    "H-MPC",
-    "MIQP-MPC",
-    # "MINLP-MPC",
-]  # , "H-MPC-2"]  #  "MIQP" , "base"]  # , "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
