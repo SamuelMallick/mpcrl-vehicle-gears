@@ -12,11 +12,11 @@ class Config(ConfigDefault):
         # initial weights
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.init_state_dict = torch.load(
-            f"dev/results/1_exp_bug_fix_2/policy_net_step_4325000.pth",
+            f"results/1_exp_bug_fix_2/policy_net_step_4325000.pth",
             weights_only=True,
             map_location=device,
         )
-        with open(f"dev/results/1_exp_bug_fix_2/data_step_4325000.pkl", "rb") as f:
+        with open(f"results/1_exp_bug_fix_2/data_step_4325000.pkl", "rb") as f:
             data = pickle.load(f)
         self.init_normalization = data["normalization"]
 
