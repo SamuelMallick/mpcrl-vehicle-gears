@@ -18,6 +18,8 @@ class ConfigDefault:
     eval_seed = 10
     train_seed = 0
     num_vehicles = 5
+    use_heuristic = False
+    heursitic_gear_priorities = ["low", "mid", "high"]
 
     # -----------solver parameters----------------
     multi_starts = 1

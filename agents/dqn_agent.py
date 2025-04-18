@@ -1,4 +1,5 @@
 import pickle
+from typing import Literal
 import numpy as np
 import torch
 import torch.optim as optim
@@ -68,6 +69,8 @@ class DQNAgent(LearningAgent):
         save_freq: int = 0,
         save_path: str = "",
         exp_zero_steps: int = 0,
+        use_heuristic: bool = False,
+        heursitic_gear_priorities: list[Literal["low", "high", "mid"]] = ["low"],
         init_state_dict: dict = {},
         init_normalization: tuple = (),
         max_learning_steps: int = np.inf,
@@ -89,12 +92,21 @@ class DQNAgent(LearningAgent):
         exp_zero_steps : int, optional
             The number of steps at which the exploration rate is desired to be
             approximately zero (1e-3), by default 0 (no exploration).
+        use_heuristic : bool
+            If True, a heuristic MPC will also solve the problem at each timestep,
+            and the best solution between the heuristic and the neural network will be used.
+        heursitic_gear_priorities : list[Literal["low", "high", "mid"]]
+            If use_heuristic is True: For each entry in the list an MPC will also be solved
+            using a fixed gear schedule determined by the heuristic (see also heuristic_2_agent.py).
         init_state_dict : dict, optional
             The initial state dictionary for the Q and target network, by default {}
             in which case a randomized start is used.
         max_learning_steps : int, optional
             The maximum total number of learning steps across all episodes, after
             which the training terminates."""
+        self.use_heuristic = use_heuristic
+        self.heursitic_gear_priorities = heursitic_gear_priorities
+
         if self.normalize:
             self.running_mean_std = RunningMeanStd(shape=(2,))
             if init_normalization:

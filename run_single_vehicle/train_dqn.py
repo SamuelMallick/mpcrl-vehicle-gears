@@ -68,6 +68,10 @@ agent.train(
     save_path=f"results/{config.id}",
     exp_zero_steps=config.exp_zero_steps,
     max_learning_steps=config.max_train_steps,
+    init_state_dict=config.init_state_dict,
+    init_normalization=config.init_normalization,
+    use_heuristic=config.use_heuristic,
+    heursitic_gear_priorities=config.heursitic_gear_priorities,
 )
 
 X = list(env.observations)
