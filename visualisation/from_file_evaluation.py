@@ -8,23 +8,25 @@ sys.path.append(os.getcwd())
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
-c = "eval_4"
+c = "eval_1"
 pre = ""
 types = [
     f"{pre}heuristic_mpc_1_N_{N}_c_{c}",
     f"{pre}heuristic_mpc_2_['low', 'mid', 'high']_N_{N}_c_{c}",
     f"{pre}heuristic_mpc_3_N_{N}_c_{c}",
+    f"{pre}l_mpc_N_{N}_c_{c}_pre",
     f"{pre}l_mpc_N_{N}_c_{c}",
-    f"{pre}miqp_mpc_N_15_c_eval_time_limited_4",
+    f"{pre}miqp_mpc_N_15_c_eval_time_limited_1",
     f"{pre}miqp_mpc_N_{N}_c_{c}",
 ]
-baseline_type = f"{pre}miqp_mpc_N_{N}_c_{c}"
+baseline_type = f"{pre}minlp_mpc_N_{N}_c_{c}"
 file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
 baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
 labels = [
     "H-MPC-1",
     "H-MPC-2",
     "H-MPC-3",
+    "L-MPC_pre",
     "L-MPC",
     "MIQP-MPC-tl",
     "MIQP-MPC",

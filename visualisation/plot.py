@@ -17,7 +17,7 @@ def plot_training(
     log_scales: bool = False,
     only_averages: bool = False,
     ax: list = None,
-):  
+):
     ax_passed = True
     if ax is None:
         fig, ax = plt.subplots(5 if infeasible is None else 6, 1, sharex=True)
@@ -63,7 +63,7 @@ def plot_training(
             )
         )
         ax[5].set_ylabel("Infeasible")
-    
+
     if not ax_passed:
         plt.show()
 
