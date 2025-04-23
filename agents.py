@@ -245,15 +245,15 @@ class Agent:
                 raise ValueError("Velocity out of bounds")
         valid_gears = [
             (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            <= Vehicle.w_e_max
+            <= Vehicle.w_e_max + 1e-6
             and (v * Vehicle.z_f * Vehicle.z_t[i] * 60) / (2 * np.pi * Vehicle.r_r)
-            >= Vehicle.w_e_idle
+            >= Vehicle.w_e_idle - 1e-6
             for i in range(6)
         ]
         valid_indices = [i for i, valid in enumerate(valid_gears) if valid]
         if not valid_indices:
             raise ValueError("No gear found")
-        return valid_indices[len(valid_indices) // 2]
+        return valid_indices[-1]
 
 
 class MINLPAgent(Agent):
@@ -396,6 +396,7 @@ class LearningAgent(Agent):
     infeasible: list[list[float]] = (
         []
     )  # flag to store if the gear choice was infeasible
+    gear_diff: list[list[float]] = ([])  # flag to store the difference between the gear choice and the explicit gear choice when infeas
 
     def __init__(
         self,
@@ -498,7 +499,7 @@ class LearningAgent(Agent):
             episodes,
             seed,
         )
-        return returns, {**info, "infeasible": self.infeasible}
+        return returns, {**info, "infeasible": self.infeasible, "gear_diff": self.gear_diff}
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the MPC action for the given state. Gears are chosen by
@@ -566,9 +567,10 @@ class LearningAgent(Agent):
         )
         if not self.sol.success:
             infeas_flag = True
-            self.sol, self.gear_choice_explicit = self.backup_1(state)
+            # self.sol, self.gear_choice_explicit = self.backup_1(state)
             if not self.sol.success:
                 self.sol, self.gear_choice_explicit = self.backup_2(state)
+                gear_diff = np.linalg.norm(np.argmax(gear_choice_binary, axis=0) - self.gear_choice_explicit, 1)
                 if not self.sol.success:
                     if not self.train_flag:
                         raise RuntimeError(
@@ -582,15 +584,18 @@ class LearningAgent(Agent):
 
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
+        info = {
+                "nn_state": nn_state,
+                "network_action": network_action,
+                "infeas": infeas_flag,
+            }
+        if infeas_flag:
+            info["gear_diff"] = gear_diff
         return (
             self.sol.vals["T_e"].full()[0, 0],
             self.sol.vals["F_b"].full()[0, 0],
             self.gear,
-            {
-                "nn_state": nn_state,
-                "network_action": network_action,
-                "infeas": infeas_flag,
-            },
+            info,
         )
 
     def backup_1(self, state: np.ndarray) -> tuple[Solution, np.ndarray]:
@@ -684,6 +689,7 @@ class LearningAgent(Agent):
     def on_train_start(self):
         self.steps_done = 0
         self.infeasible = []
+        self.gear_diff = []
 
     def on_validation_start(self):
         self.T_e = torch.empty((1, self.N), device=self.device, dtype=torch.float32)
@@ -695,6 +701,7 @@ class LearningAgent(Agent):
     def on_episode_start(self, state: np.ndarray, env: VehicleTracking):
         self.first_timestep = True
         self.infeasible.append([])
+        self.gear_diff.append([])
         # store a default gear based on velocity when episode starts
         self.gear = self.gear_from_velocity(state[1])
         self.gear_choice_explicit: np.ndarray = np.ones((self.N,)) * self.gear
@@ -709,6 +716,8 @@ class LearningAgent(Agent):
             )  # transpose needed as the mean is taken over axis 0
         if "infeas" in info:
             self.infeasible[-1].append(info["infeas"])
+        if "gear_diff" in info:
+            self.gear_diff[-1].append(info["gear_diff"])
         return super().on_env_step(env, episode, timestep, info)
 
     def relative_state(
@@ -775,6 +784,8 @@ class LearningAgent(Agent):
             self.gear_choice_explicit = np.clip(self.gear_choice_explicit, 0, 5)
         elif self.n_actions == 6:
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
+            for i in range(1, self.N):
+                self.gear_choice_explicit[i] = np.clip(self.gear_choice_explicit[i], self.gear_choice_explicit[i-1]-1, self.gear_choice_explicit[i-1]+1)
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_shifted_values_from_sol(

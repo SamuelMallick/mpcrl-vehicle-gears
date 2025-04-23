@@ -23,15 +23,18 @@ from typing import Literal
 SAVE = True
 PLOT = False
 
-sim_type: Literal[
-    "sl_train",
-    "sl_data",
-    "rl_mpc_train",
-    "l_mpc_eval",
-    "miqp_mpc",
-    "minlp_mpc",
-    "heuristic_mpc",
-] = "miqp_mpc"
+if len(sys.argv) > 2:
+    sim_type = sys.argv[2] 
+else:
+    sim_type: Literal[
+        "sl_train",
+        "sl_data",
+        "rl_mpc_train",
+        "l_mpc_eval",
+        "miqp_mpc",
+        "minlp_mpc",
+        "heuristic_mpc",
+    ] = "l_mpc_eval"
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -39,7 +42,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config(sim_type)
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.c5 import Config  # type: ignore
 
     config = Config(sim_type)
 
@@ -236,6 +239,7 @@ if SAVE:
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
                 "infeasible": info["infeasible"] if "infeasible" in info else None,
+                "gear_diff": info["gear_diff"] if "gear_diff" in info else None,
             },
             f,
         )
