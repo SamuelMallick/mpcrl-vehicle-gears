@@ -16,7 +16,6 @@ g = 9.81  # gravitational acceleration (m/s^2)
 r_r = 0.3554  # wheel radius (m)
 z_f = 3.39  # final drive ratio
 z_t = [4.484, 2.872, 1.842, 1.414, 1.000, 0.742]  # gear ratios
-alpha = 0  # road gradient (radians)
 
 w_e_max = 3000  # maximum engine speed (rpm)
 T_e_max = 300  # maximum engine torque (Nm)
@@ -31,20 +30,6 @@ dt = 1  # time step (s)
 v_max = (w_e_max * r_r * 2 * np.pi) / (z_t[-1] * z_f * 60)
 v_min = (w_e_idle * r_r * 2 * np.pi) / (z_t[0] * z_f * 60)
 a_max = 3  # maximum acceleration (deceleration) (m/s^2)
-
-# maximum values of F_r in T_e *n = F_r + F_b
-F_r_max = (
-    g * mu * m * np.cos(alpha)
-    + g * m * np.sin(alpha)
-    + C_wind * v_max**2
-    + m * (v_max - v_min) / dt
-)
-F_r_min = (
-    g * mu * m * np.cos(alpha)
-    + g * m * np.sin(alpha)
-    + C_wind * v_min**2
-    + m * (v_min - v_max) / dt
-)
 
 # drag approximation parameters
 beta = (3 * C_wind * v_max**2) / (16)
@@ -151,7 +136,21 @@ class HybridTrackingMpc(Mpc):
         optimize_fuel: bool = False,
         convexify_fuel: bool = False,
         convexify_dynamics: bool = False,
+        alpha: float = 0,
     ):
+        # maximum values of F_r in T_e *n = F_r + F_b
+        F_r_max = (
+            g * mu * m * np.cos(alpha)
+            + g * m * np.sin(alpha)
+            + C_wind * v_max**2
+            + m * (v_max - v_min) / dt
+        )
+        F_r_min = (
+            g * mu * m * np.cos(alpha)
+            + g * m * np.sin(alpha)
+            + C_wind * v_min**2
+            + m * (v_min - v_max) / dt
+        )
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 
@@ -377,7 +376,11 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
     """
 
     def __init__(
-        self, prediction_horizon: int, optimize_fuel: bool, convexify_fuel: bool = False
+        self,
+        prediction_horizon: int,
+        optimize_fuel: bool,
+        convexify_fuel: bool = False,
+        alpha: float = 0,
     ):
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
@@ -498,7 +501,7 @@ class TrackingMpc(Mpc):
         The length of the prediction horizon.
     """
 
-    def __init__(self, prediction_horizon: int):
+    def __init__(self, prediction_horizon: int, alpha: float = 0):
         nlp = Nlp[cs.SX](sym_type="SX")
         super().__init__(nlp, prediction_horizon)
 

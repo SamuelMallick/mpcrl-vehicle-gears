@@ -59,6 +59,7 @@ env: VehicleTracking = MonitorEpisodes(
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
+            alpha=config.alpha,
         ),
         max_episode_steps=ep_length,
     )
@@ -67,7 +68,9 @@ agent: Agent | None = None
 
 if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
     mpc = SolverTimeRecorder(
-        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+        HybridTrackingFuelMpcFixedGear(
+            N, optimize_fuel=True, convexify_fuel=False, alpha=config.alpha
+        )
     )
     seed = 0  # seed 0 used for agents
     np_random = np.random.default_rng(seed)
@@ -111,7 +114,9 @@ if sim_type == "rl_mpc_train" or sim_type == "l_mpc_eval":
         )
 if sim_type == "sl_train" or sim_type == "sl_data":
     mpc = SolverTimeRecorder(
-        HybridTrackingFuelMpcFixedGear(N, optimize_fuel=True, convexify_fuel=False)
+        HybridTrackingFuelMpcFixedGear(
+            N, optimize_fuel=True, convexify_fuel=False, alpha=config.alpha
+        )
     )
     seed = 0  # seed 0 used for agents
     np_random = np.random.default_rng(seed)
@@ -162,6 +167,7 @@ elif sim_type == "miqp_mpc":
             optimize_fuel=True,
             convexify_fuel=True,
             convexify_dynamics=True,
+            alpha=config.alpha,
         )
     )
     agent = MINLPAgent(mpc)
@@ -179,6 +185,7 @@ elif sim_type == "minlp_mpc":
             convexify_fuel=False,
             convexify_dynamics=False,
             solver="knitro",
+            alpha=config.alpha,
         )
     )
     backup_mpc = SolverTimeRecorder(
@@ -188,6 +195,7 @@ elif sim_type == "minlp_mpc":
             convexify_fuel=False,
             convexify_dynamics=False,
             solver="bonmin",
+            alpha=config.alpha,
         )
     )
     agent = MINLPAgent(mpc, backup_mpc=backup_mpc)
@@ -200,7 +208,7 @@ elif sim_type == "minlp_mpc":
         log_progress=True,
     )
 elif sim_type == "heuristic_mpc":
-    mpc = SolverTimeRecorder(TrackingMpc(N))
+    mpc = SolverTimeRecorder(TrackingMpc(N, alpha=config.alpha))
     gear_priority = "low"
     sim_type = f"{sim_type}_{gear_priority}"
     agent = HeuristicGearAgent(mpc, gear_priority=gear_priority)

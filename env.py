@@ -24,7 +24,6 @@ class VehicleTracking(gym.Env):
         less variable initial conditions, with respect to type_3."""
 
     ts = 1  # sample time (s)
-    alpha = 0  # road inclination (rad)
 
     gamma = 0.01  # weight for tracking in cost
     Q = np.array([[1, 0], [0, 0.1]])  # tracking cost weight
@@ -36,6 +35,7 @@ class VehicleTracking(gym.Env):
         prediction_horizon: int,
         windy: bool = False,
         trajectory_type: Literal["type_1", "type_2", "type_3"] = "type_1",
+        alpha: float = 0.0,
     ):
         super().__init__()
         self.vehicle = vehicle
@@ -44,6 +44,7 @@ class VehicleTracking(gym.Env):
         self.prediction_horizon = prediction_horizon
         self.trajectory_type = trajectory_type
         self.windy = windy
+        self.alpha = alpha
 
     def reset(self, *, seed=None, options=None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed, options=options)
