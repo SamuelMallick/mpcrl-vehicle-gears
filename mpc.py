@@ -16,6 +16,7 @@ g = 9.81  # gravitational acceleration (m/s^2)
 r_r = 0.3554  # wheel radius (m)
 z_f = 3.39  # final drive ratio
 z_t = [4.484, 2.872, 1.842, 1.414, 1.000, 0.742]  # gear ratios
+alpha = 0  # road gradient (radians)
 
 w_e_max = 3000  # maximum engine speed (rpm)
 T_e_max = 300  # maximum engine torque (Nm)
@@ -33,14 +34,14 @@ a_max = 3  # maximum acceleration (deceleration) (m/s^2)
 
 # maximum values of F_r in T_e *n = F_r + F_b
 F_r_max = (
-    g * mu * m * np.cos(0)
-    + g * m * np.sin(0)
+    g * mu * m * np.cos(alpha)
+    + g * m * np.sin(alpha)
     + C_wind * v_max**2
     + m * (v_max - v_min) / dt
 )
 F_r_min = (
-    g * mu * m * np.cos(0)
-    + g * m * np.sin(0)
+    g * mu * m * np.cos(alpha)
+    + g * m * np.sin(alpha)
     + C_wind * v_min**2
     + m * (v_min - v_max) / dt
 )
@@ -209,8 +210,8 @@ class HybridTrackingMpc(Mpc):
 
             a = (x[1, 1:] - x[1, :-1]) / dt
             F_r = (
-                g * mu * m * np.cos(0)
-                + g * m * np.sin(0)
+                g * mu * m * np.cos(alpha)
+                + g * m * np.sin(alpha)
                 + (a1 * z[0, :])
                 + (a2 * z[1, :] + delta[1, :] * b)
                 + m * a
@@ -285,7 +286,7 @@ class HybridTrackingMpc(Mpc):
                 x[1, 1:-1] * n[:, :-1] * 60 / (2 * np.pi),
             )
             self.set_nonlinear_dynamics(
-                lambda x, u: nonlinear_hybrid_model(x, u, dt, 0)
+                lambda x, u: nonlinear_hybrid_model(x, u, dt, alpha)
             )
 
         if optimize_fuel:
@@ -422,7 +423,7 @@ class HybridTrackingFuelMpcFixedGear(Mpc):
         for k in range(prediction_horizon):
             X_next.append(
                 nonlinear_hybrid_model(
-                    x[:, k], cs.vertcat(T_e[k], F_b[k], gear[:, k]), dt, 0
+                    x[:, k], cs.vertcat(T_e[k], F_b[k], gear[:, k]), dt, alpha
                 )
             )
         X_next = cs.horzcat(*X_next)
@@ -514,7 +515,7 @@ class TrackingMpc(Mpc):
         self.constraint("traction_force", F_trac, "<=", F_trac_max)
 
         x_ref = self.parameter("x_ref", (2, prediction_horizon + 1))
-        self.set_nonlinear_dynamics(lambda x, u: nonlinear_model(x, u, dt, 0))
+        self.set_nonlinear_dynamics(lambda x, u: nonlinear_model(x, u, dt, alpha))
         self.minimize(
             gamma
             * sum(
