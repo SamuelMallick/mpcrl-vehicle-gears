@@ -396,7 +396,9 @@ class LearningAgent(Agent):
     infeasible: list[list[float]] = (
         []
     )  # flag to store if the gear choice was infeasible
-    gear_diff: list[list[float]] = ([])  # flag to store the difference between the gear choice and the explicit gear choice when infeas
+    gear_diff: list[list[float]] = (
+        []
+    )  # flag to store the difference between the gear choice and the explicit gear choice when infeas
 
     def __init__(
         self,
@@ -499,7 +501,11 @@ class LearningAgent(Agent):
             episodes,
             seed,
         )
-        return returns, {**info, "infeasible": self.infeasible, "gear_diff": self.gear_diff}
+        return returns, {
+            **info,
+            "infeasible": self.infeasible,
+            "gear_diff": self.gear_diff,
+        }
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:
         """Get the MPC action for the given state. Gears are chosen by
@@ -570,7 +576,9 @@ class LearningAgent(Agent):
             # self.sol, self.gear_choice_explicit = self.backup_1(state)
             if not self.sol.success:
                 self.sol, self.gear_choice_explicit = self.backup_2(state)
-                gear_diff = np.linalg.norm(np.argmax(gear_choice_binary, axis=0) - self.gear_choice_explicit, 1)
+                gear_diff = np.linalg.norm(
+                    np.argmax(gear_choice_binary, axis=0) - self.gear_choice_explicit, 1
+                )
                 if not self.sol.success:
                     if not self.train_flag:
                         raise RuntimeError(
@@ -585,10 +593,10 @@ class LearningAgent(Agent):
         self.gear = int(self.gear_choice_explicit[0])
         self.last_gear_choice_explicit = self.gear_choice_explicit
         info = {
-                "nn_state": nn_state,
-                "network_action": network_action,
-                "infeas": infeas_flag,
-            }
+            "nn_state": nn_state,
+            "network_action": network_action,
+            "infeas": infeas_flag,
+        }
         if infeas_flag:
             info["gear_diff"] = gear_diff
         return (
@@ -785,7 +793,11 @@ class LearningAgent(Agent):
         elif self.n_actions == 6:
             self.gear_choice_explicit = network_action.cpu().numpy().squeeze()
             for i in range(1, self.N):
-                self.gear_choice_explicit[i] = np.clip(self.gear_choice_explicit[i], self.gear_choice_explicit[i-1]-1, self.gear_choice_explicit[i-1]+1)
+                self.gear_choice_explicit[i] = np.clip(
+                    self.gear_choice_explicit[i],
+                    self.gear_choice_explicit[i - 1] - 1,
+                    self.gear_choice_explicit[i - 1] + 1,
+                )
         return self.binary_from_explicit(self.gear_choice_explicit), network_action
 
     def get_shifted_values_from_sol(

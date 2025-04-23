@@ -24,7 +24,7 @@ SAVE = True
 PLOT = False
 
 if len(sys.argv) > 2:
-    sim_type = sys.argv[2] 
+    sim_type = sys.argv[2]
 else:
     sim_type: Literal[
         "sl_train",
