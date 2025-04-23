@@ -66,12 +66,11 @@ class LearningAgent(SingleVehicleAgent):
         self.steps_done = 0  # gets reset on calls to train or evaluate
 
         # seeded initialization of networks
-        seed = np_random.integers(0, 2**32 - 1)
         if self.device.type == "cuda":
-            torch.cuda.manual_seed(seed)
-            torch.cuda.manual_seed_all(seed)
+            torch.cuda.manual_seed(config.cuda_seed)
+            torch.cuda.manual_seed_all(config.cuda_seed)
         else:
-            torch.manual_seed(seed)
+            torch.manual_seed(config.cuda_seed)
         self.policy_net = DRQN(
             config.n_states,
             config.n_hidden,

@@ -17,6 +17,7 @@ class ConfigDefault:
     inter_vehicle_distance = 25
     eval_seed = 10
     train_seed = 0
+    cuda_seed = 3653403230
     num_vehicles = 5
     use_heuristic = False
     heursitic_gear_priorities = ["low", "mid", "high"]
