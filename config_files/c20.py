@@ -16,7 +16,7 @@ class Config(ConfigDefault):
     ep_len = 100
     num_eps = 50000
     trajectory_type = "type_2"
-    alpha = 0.05
+    alpha = 0.03
 
     # -----------network parameters----------------
     # hyperparameters
