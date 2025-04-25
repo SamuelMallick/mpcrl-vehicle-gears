@@ -9,13 +9,13 @@ from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 types = [
-    f"miqp_mpc_N_{N}",
-    f"l_mpc_eval_N_{N}_new",
-    f"heuristic_mpc_low_N_{N}_new",
+    # f"miqp_mpc_N_{N}",
+    f"l_mpc_eval_N_{N}",
+    f"heuristic_mpc_low_N_{N}",
 ]
 baseline_type = f"minlp_mpc_N_{N}"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
-file_names = [f"results/evaluations/{type}.pkl" for type in types]
+file_names = [f"results/evaluations/alpha/{type}.pkl" for type in types]
 baseline_file_name = f"results/evaluations/{baseline_type}.pkl"
 
 X = []
@@ -60,7 +60,7 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-labels = ["MIQP-MPC", "L-MPC", "H-MPC", "MINLP-MPC"]
+labels = ["L-MPC", "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
