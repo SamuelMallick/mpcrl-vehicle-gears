@@ -1,5 +1,6 @@
 import sys, os
 import numpy as np
+import casadi as cs
 
 sys.path.append(os.getcwd())
 from vehicle import Vehicle
@@ -13,18 +14,23 @@ min_v_per_gear = [
     for i in range(6)
 ]
 
+alpha = 0.05
+
+H = cs.DM(0)
+g = cs.DM([1, 1])
+lbx = np.array([Vehicle.T_e_idle, 0])
+ubx = np.array([Vehicle.T_e_max, Vehicle.F_b_max])
+lp = {'h': cs.Sparsity(2, 2), 'a': cs.Sparsity.dense(1, 2)}
+lpsolver = cs.conic("lp_solver", "clp", lp)
+
 for i in range(6):
-    v = min_v_per_gear[i]
-    T = (
-        Vehicle.r_r
-        * (Vehicle.C_wind * v**2 + Vehicle.m * Vehicle.g * Vehicle.mu)
-        / (Vehicle.z_t[i] * Vehicle.z_f)
-    )
-    print(f"Gear {i+1}: {v} m/s, {T} Nm")
     v = max_v_per_gear[i]
-    T = (
-        Vehicle.r_r
-        * (Vehicle.C_wind * v**2 + Vehicle.m * Vehicle.g * Vehicle.mu)
-        / (Vehicle.z_t[i] * Vehicle.z_f)
-    )
-    print(f"Gear {i+1}: {v} m/s, {T} Nm")
+    A = cs.DM([[(Vehicle.z_t[i] * Vehicle.z_f)/Vehicle.r_r, -1]])
+    b = cs.DM([Vehicle.C_wind * v**2 + Vehicle.m * Vehicle.g * Vehicle.mu  * np.cos(alpha) + Vehicle.m * Vehicle.g * np.sin(alpha)])
+    sol = lpsolver(h=0, g=g, a=A, lba=b, uba=b, lbx=lbx, ubx=ubx)
+    print(f"Gear {i+1}: {v} m/s, {sol['x'][0]} T, {sol['x'][1]} F_b")
+    v = min_v_per_gear[i]
+    A = cs.DM([[(Vehicle.z_t[i] * Vehicle.z_f)/Vehicle.r_r, -1]])
+    b = cs.DM([Vehicle.C_wind * v**2 + Vehicle.m * Vehicle.g * Vehicle.mu * np.cos(alpha) + Vehicle.m * Vehicle.g * np.sin(alpha)])
+    sol = lpsolver(h=0, g=g, a=A, lba=b, uba=b, lbx=lbx, ubx=ubx)
+    print(f"Gear {i+1}: {v} m/s, {sol['x'][0]} T, {sol['x'][1]} F_b")
