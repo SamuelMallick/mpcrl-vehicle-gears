@@ -10,7 +10,7 @@ class Config(ConfigDefault):
         self.ep_len = 100
         self.trajectory_type = "type_2"
         self.finite_episodes = True
-        self. extra_opts = {
+        self.extra_opts = {
             "gurobi": {},
             "knitro": {},
             "bonmin": {},

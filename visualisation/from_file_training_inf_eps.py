@@ -9,7 +9,12 @@ from visualisation.plot import plot_evaluation, plot_training
 #     "dev/results/1_bf/data_step_2300000.pkl",
 #     "dev/results/25/data_step_4950000.pkl",
 # ]
-file_names = ["dev/results/2/data_step_50000.pkl", "dev/results/31/data_step_50000.pkl"]
+# file_names = ["dev/results/2/data_step_50000.pkl", "dev/results/31/data_step_50000.pkl"]
+file_names = [
+    "dev/results/1_seeds/1/data_step_4425000.pkl",
+    "dev/results/1_seeds/2/data_step_3950000.pkl",
+    "dev/results/1_seeds/3/data_step_4100000.pkl",
+]
 fig, ax = plt.subplots(6, 1, sharex=True)
 
 for file_name in file_names:
@@ -58,7 +63,7 @@ for file_name in file_names:
         ),
         only_averages=True,
         log_scales=False,
-        average_interval=100,
+        average_interval=1000,
         ax=ax,
     )
 plt.show()
