@@ -3,7 +3,7 @@ import sys, os
 import matplotlib.pyplot as plt
 
 sys.path.append(os.getcwd())
-# from utils.tikz import save2tikz
+from utils.tikz import save2tikz
 
 
 def plot_training(
@@ -137,7 +137,7 @@ def plot_comparison(
     ax[2].set_ylabel("Fuel (L)")
 
     ax[3].set_ylabel("Reward")
-    # save2tikz(plt.gcf())
+    save2tikz(plt.gcf())
 
     fig, ax = plt.subplots(4, 1, sharex=True)
     for i in range(len(x_ref)):
@@ -149,7 +149,7 @@ def plot_comparison(
     ax[1].set_ylabel("w_e (rpm)")
     ax[2].set_ylabel("F_b (N)")
     ax[3].set_ylabel("gear")
-    # save2tikz(plt.gcf())
+    save2tikz(plt.gcf())
 
     plt.show()
 

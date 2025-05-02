@@ -3,19 +3,20 @@ import sys, os
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pgf import _tex_escape as mpl_common_texification
+
 sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 types = [
-    # f"miqp_mpc_N_{N}",
+    f"miqp_mpc_N_{N}",
     f"l_mpc_eval_N_{N}",
     f"heuristic_mpc_low_N_{N}",
 ]
 baseline_type = f"minlp_mpc_N_{N}"
 # baseline_type = f"heuristic_mpc_low_N_{N}"
-file_names = [f"results/evaluations/alpha/{type}.pkl" for type in types]
+file_names = [f"results/evaluations/{type}.pkl" for type in types]
 baseline_file_name = f"results/evaluations/{baseline_type}.pkl"
 
 X = []
@@ -37,18 +38,18 @@ for file_name in file_names:
         x_ref.append(data["x_ref"])
         engine_torque.append(data["T_e"])
         engine_speed.append(data["w_e"])
-        if "infeasible" in data and data["infeasible"]:
-            print(
-                f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
-            )
-            infeas_ep = [
-                sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
-            ]
-            print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
-        if "gear_diff" in data and data["gear_diff"]:
-            o = [i for l in data['gear_diff'] for i in l]
-            print(f"Average gear diff: {sum(o) / len(o)}")
-            
+        # if "infeasible" in data and data["infeasible"]:
+        #     print(
+        #         f"Infeasible count: {sum(sum(data["infeasible"][i]) for i in range(len(data["infeasible"])))}"
+        #     )
+        #     infeas_ep = [
+        #         sum(data["infeasible"][i]) for i in range(len(data["infeasible"]))
+        #     ]
+        #     print(f"Average infeasible per episode: {sum(infeas_ep) / len(infeas_ep)}")
+        # if "gear_diff" in data and data["gear_diff"]:
+        #     o = [i for l in data['gear_diff'] for i in l]
+        #     print(f"Average gear diff: {sum(o) / len(o)}")
+
 with open(baseline_file_name, "rb") as f:
     baseline_data = pickle.load(f)
     baseline_R = baseline_data["R"]
@@ -60,7 +61,7 @@ with open(baseline_file_name, "rb") as f:
     baseline_engine_torque = baseline_data["T_e"]
     baseline_engine_speed = baseline_data["w_e"]
 
-labels = ["L-MPC", "H-MPC", "MINLP-MPC"]
+labels = ["MIQP-MPC", "L-MPC", "H-MPC", "MINLP-MPC"]
 
 num_eps = len(R[0])
 R_rel = [
