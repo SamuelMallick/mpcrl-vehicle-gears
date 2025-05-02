@@ -106,19 +106,25 @@ class VehicleMPC(Mpc):
 
     def solve(
         self,
-        pars: dict,
+        pars: dict | list[dict],
         vals0: Optional[dict] = None,
-    ) -> Solution:
-        if "p_a" not in pars:
-            pars["p_a"] = np.full(
-                (1, self.prediction_horizon + 1), pars["x_0"][0] + 1e6
-            )
-        if "p_b" not in pars:
-            pars["p_b"] = np.full(
-                (1, self.prediction_horizon + 1), pars["x_0"][0] - 1e6
-            )
+    ) -> tuple[Solution, dict]:
+        for p in pars:
+            if "p_a" not in p:
+                p["p_a"] = np.full((1, self.prediction_horizon + 1), p["x_0"][0] + 1e6)
+            if "p_b" not in p:
+                p["p_b"] = np.full((1, self.prediction_horizon + 1), p["x_0"][0] - 1e6)
+        # match the num of vals0 and pars
+        n = len(vals0) if vals0 is not None else 1
+        vals0 = vals0 * len(pars) if vals0 is not None else None
+        pars = [p for p in pars for _ in range(n)]
+
         sols = self.nlp.solve_multi(pars, vals0, return_all_sols=True)
-        best_sol = min(sols, key=lambda s: s.f)
+        best_indx = np.argmin([s.f for s in sols])
+        best_sol = sols[best_indx]
         longest_time = max([s.stats["t_wall_total"] for s in sols])
         best_sol.stats["t_wall_total"] = longest_time
-        return best_sol
+        return best_sol, {
+            "best_indx": best_indx,
+            "infeas": [not s.success for s in sols],
+        }

@@ -82,20 +82,26 @@ class FixedGearMPC(HybridMPC):
 
     def solve(
         self,
-        pars: dict,
+        pars: dict | list[dict],
         vals0: Optional[dict] = None,
-    ) -> Solution:
-        if "gear" not in pars:
+    ) -> tuple[Solution, dict]:
+        if isinstance(pars, dict):
+            pars = [pars]
+        if any("gear" not in p for p in pars):
             raise ValueError("Fixed gear schedule must be provided.")
-        if "gear_prev" not in pars:
+        if any("gear_prev" not in p for p in pars):
             raise ValueError("Previous gear position must be provided.")
-        gear = pars["gear"]
-        gear_prev = pars["gear_prev"]
+        gear = [p["gear"] for p in pars]
+        gear_prev = [p["gear_prev"] for p in pars]
         if not all(
-            np.isclose(np.sum(gear[:, i], axis=0), 1) for i in range(gear.shape[1])
+            all(np.isclose(np.sum(g[:, i], axis=0), 1) for i in range(g.shape[1]))
+            for g in gear
         ):
             raise ValueError("More than one gear selected for a time step.")
-        if not np.all(self.A @ cs.horzcat(gear_prev, gear[:, :-1]) >= gear):
+        if not all(
+            np.all(self.A @ cs.horzcat(gp, g[:, :-1]) >= g)
+            for gp, g in zip(gear_prev, gear)
+        ):
             pass
             print("Warning: Gear-shift schedule skipping gears.")
             # raise ValueError("Gear-shift schedule skipping gears.")

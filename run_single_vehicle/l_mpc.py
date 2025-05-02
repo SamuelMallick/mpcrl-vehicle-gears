@@ -49,13 +49,19 @@ env: VehicleTracking = MonitorEpisodes(
     )
 )
 
+use_heuristic = True
+heursitic_gear_priorities = ["low", "mid", "high"]
 mpc = SolverTimeRecorder(
     FixedGearMPC(
         N,
         solver="ipopt",
         optimize_fuel=True,
         convexify_fuel=False,
-        multi_starts=config.multi_starts,
+        multi_starts=(
+            config.multi_starts
+            if not use_heuristic
+            else len(heursitic_gear_priorities) * config.multi_starts
+        ),  # also multistarts for gear schedules
         extra_opts=config.extra_opts,
     )
 )
@@ -64,12 +70,12 @@ agent = LearningAgent(
 )
 
 state_dict = torch.load(
-    f"dev/results/1_exp_bug_fix_2/policy_net_step_4325000.pth",
-    # f"dev/results/2/policy_net_step_25000.pth",
+    # f"dev/results/1_exp_bug_fix_2/policy_net_step_4325000.pth",
+    f"dev/results/2/policy_net_step_25000.pth",
     weights_only=True,
     map_location="cpu",
 )
-with open(f"dev/results/1_exp_bug_fix_2/data_step_4325000.pkl", "rb") as f:
+with open(f"dev/results/2/data_step_25000.pkl", "rb") as f:
     data = pickle.load(f)
 
 returns, info = agent.evaluate(
@@ -79,7 +85,7 @@ returns, info = agent.evaluate(
     policy_net_state_dict=state_dict,
     normalization=data["normalization"],
     use_heuristic=True,
-    heursitic_gear_priorities=["low", "mid", "high"],
+    heursitic_gear_priorities=heursitic_gear_priorities,
 )
 
 X = list(env.observations)

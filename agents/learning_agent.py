@@ -157,27 +157,33 @@ class LearningAgent(SingleVehicleAgent):
     ) -> tuple[float, float, int, dict]:
         heuristic_flag = False
         infeasible_flag = False
+        pars = []  # the list of pars passed to the multi-start solver
         if not first_step:
-            sol = self.mpc.solve(network_pars, vals0)
-            if not sol.success:
+            pars.append(network_pars)
+        if self.use_heuristic or first_step:
+            pars.extend(heuristic_pars)
+        sol, solve_info = self.mpc.solve(pars, vals0)
+        gear_choice_explicit = np.argmax(
+            [p for p in pars for _ in range(self.multi_starts)][
+                solve_info["best_indx"]
+            ]["gear"],
+            axis=0,
+        )
+        if not first_step:
+            if solve_info["infeas"][0]:
                 infeasible_flag = True
-        if self.use_heuristic or first_step or (not first_step and not sol.success):
-            heuristic_sols = [self.mpc.solve(p, vals0) for p in heuristic_pars]
-            if first_step:
-                improved_sols = [True] * len(heuristic_sols)
-            else:
-                improved_sols = [s.f < sol.f for s in heuristic_sols]
-        if (
-            first_step
-            or (not first_step and not sol.success)
-            or (self.use_heuristic and sol.success and any(improved_sols))
-        ):
+        if first_step or solve_info["best_indx"] >= self.multi_starts:
             heuristic_flag = True
-            indx = np.argmin([s.f for s in heuristic_sols])
-            sol = heuristic_sols[indx]
-            gear_choice_explicit = np.argmax(heuristic_pars[indx]["gear"], axis=0)
-        else:
-            gear_choice_explicit = np.argmax(network_pars["gear"], axis=0)
+        if (
+            not self.use_heuristic and not sol.success
+        ):  # hueristic has not been run yet and main sol failed, run heuristic now
+            sol, solve_info = self.mpc.solve(heuristic_pars, vals0)
+            gear_choice_explicit = np.argmax(
+                [p for p in heuristic_pars for _ in range(self.multi_starts)][
+                    solve_info["best_indx"]
+                ]["gear"],
+                axis=0,
+            )
 
         if not sol.success:
             raise ValueError("MPC solver failed.")
