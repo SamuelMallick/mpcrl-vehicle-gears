@@ -2,8 +2,15 @@ import numpy as np
 import sys, os
 import matplotlib.pyplot as plt
 
+plt.rc("text", usetex=True)
+plt.rc("text.latex", preamble=r"\usepackage{bm}")
+plt.rc("font", size=14)
+plt.style.use("bmh")
+
 sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz
+
+skip = 100
 
 
 def plot_training(
@@ -20,7 +27,7 @@ def plot_training(
 ):
     ax_passed = True
     if ax is None:
-        fig, ax = plt.subplots(5 if infeasible is None else 6, 1, sharex=True)
+        fig, ax = plt.subplots(3 if infeasible is None else 4, 1, sharex=True)
         ax_passed = False
     if not only_averages:
         ax[0].plot(cost)
@@ -34,35 +41,39 @@ def plot_training(
         for i in range(5):
             ax[i].set_yscale("log")
     ax[0].plot(
-        np.convolve(cost, np.ones(average_interval) / average_interval, mode="valid"),
+        np.convolve(cost, np.ones(average_interval) / average_interval, mode="valid")[
+            ::skip
+        ],
     )
-    ax[0].set_ylabel("RL cost")
-    ax[1].plot(
-        np.convolve(fuel, np.ones(average_interval) / average_interval, mode="valid")
-    )
-    ax[1].set_ylabel("Fuel")
+    ax[0].set_ylabel("L")
     ax[2].plot(
+        np.convolve(fuel, np.ones(average_interval) / average_interval, mode="valid")[
+            ::skip
+        ]
+    )
+    ax[2].set_ylabel("L_f")
+    ax[1].plot(
         np.convolve(
             tracking, np.ones(average_interval) / average_interval, mode="valid"
-        )
+        )[::skip]
     )
-    ax[2].set_ylabel("Tracking")
-    ax[3].plot(
-        np.convolve(penalty, np.ones(average_interval) / average_interval, mode="valid")
-    )
-    ax[3].set_ylabel("Penalty")
-    ax[4].plot(
-        np.convolve(reward, np.ones(average_interval) / average_interval, mode="valid")
-    )
-    ax[4].set_ylabel("L")
+    ax[1].set_ylabel("L_t")
+    # ax[3].plot(
+    #     np.convolve(penalty, np.ones(average_interval) / average_interval, mode="valid")
+    # )
+    # ax[3].set_ylabel("Penalty")
+    # ax[4].plot(
+    #     np.convolve(reward, np.ones(average_interval) / average_interval, mode="valid")
+    # )
+    # ax[4].set_ylabel("L")
     # ax[4].set_ylim([700, 1000])
     if infeasible is not None:
-        ax[5].plot(
+        ax[3].plot(
             np.convolve(
                 infeasible, np.ones(average_interval) / average_interval, mode="valid"
-            )
+            )[::skip]
         )
-        ax[5].set_ylabel("Infeasible")
+        ax[3].set_ylabel("Infeas")
 
     if not ax_passed:
         plt.show()
@@ -78,45 +89,50 @@ def plot_evaluation(
     w_e: np.ndarray,
     mark: np.ndarray = None,
 ):
-    fig, ax = plt.subplots(5 if not mark else 6, 1, sharex=True)
+    fig, ax = plt.subplots(3 if not mark else 4, 1, sharex=True)
     for i in range(X.shape[2]):
         if i == 0:
             ax[0].plot(X[:-1, 0, i] - x_ref[:, 0, 0])
         else:
             ax[0].plot(X[:-1, 0, i] - X[:-1, 0, i - 1])
-    ax[0].hlines(-10, 0, X.shape[0], color="red", linestyle="--")
+    # ax[0].hlines(-10, 0, X.shape[0], color="red", linestyle="--")
     ax[0].set_ylabel("d_e (m)")
-    ax[1].plot(X[:, 0], label="_nolegend_")
-    ax[1].plot(x_ref[:, 0], "--")
+    # ax[1].plot(X[:, 0], label="_nolegend_")
+    # ax[1].plot(x_ref[:, 0], "--")
+    # ax[1].legend(["ref"])
+    ax[1].plot(X[:, 1], label="_nolegend_")
+    ax[1].plot(x_ref[:, 1], "--")
     ax[1].legend(["ref"])
-    ax[2].plot(X[:, 1], label="_nolegend_")
-    ax[2].plot(x_ref[:, 1], "--")
-    ax[2].legend(["ref"])
-    ax[2].set_ylabel("v (m/s)")
-    ax[3].plot(np.cumsum(fuel))
-    ax[3].set_ylabel("Fuel (L)")
-    # ax[4].plot(np.cumsum(R))
-    ax[4].plot(R)
-    ax[4].set_ylabel("Reward")
-    if mark is not None:
-        ax[5].plot(mark)
-
-    fig, ax = plt.subplots(4 if not mark else 5, 1, sharex=True)
-    ax[0].plot(T_e)  # T_e actual
-    ax[0].plot(U[:, 0])  # T_e desired
-    ax[0].legend(["actual", "desired"])
-    ax[0].set_ylabel("T_e (Nm)")
-    ax[1].plot(w_e)
-    ax[1].set_ylabel("w_e (rpm)")
-    ax[2].plot(U[:, 1])
-    ax[2].set_ylabel("F_b (N)")
-    ax[3].plot(U[:, 2])
-    ax[3].set_ylabel("gear")
+    ax[1].set_ylabel("v (m/s)")
+    ax[2].plot(U[:, 2])
+    ax[2].set_ylabel("gear")
     # ax[3].set_xticks([i for i in range(len(U))])
-    ax[3].set_yticks([i for i in range(6)])
-    # ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
+    ax[2].set_yticks([i for i in range(6)])
+    # ax[3].plot(np.cumsum(fuel))
+    # ax[3].set_ylabel("Fuel (L)")
+    # # ax[4].plot(np.cumsum(R))
+    # ax[4].plot(R)
+    # ax[4].set_ylabel("Reward")
     if mark is not None:
-        ax[4].plot(mark)
+        ax[3].plot(mark)
+
+    # fig, ax = plt.subplots(4 if not mark else 5, 1, sharex=True)
+    # ax[0].plot(T_e)  # T_e actual
+    # ax[0].plot(U[:, 0])  # T_e desired
+    # ax[0].legend(["actual", "desired"])
+    # ax[0].set_ylabel("T_e (Nm)")
+    # ax[1].plot(w_e)
+    # ax[1].set_ylabel("w_e (rpm)")
+    # ax[2].plot(U[:, 1])
+    # ax[2].set_ylabel("F_b (N)")
+    # ax[3].plot(U[:, 2])
+    # ax[3].set_ylabel("gear")
+    # # ax[3].set_xticks([i for i in range(len(U))])
+    # ax[3].set_yticks([i for i in range(6)])
+    # # ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
+    # if mark is not None:
+    #     ax[4].plot(mark)
+    save2tikz(plt.gcf())
     plt.show()
 
 

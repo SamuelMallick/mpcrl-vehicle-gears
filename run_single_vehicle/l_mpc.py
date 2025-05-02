@@ -43,7 +43,7 @@ env: VehicleTracking = MonitorEpisodes(
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
-            terminate_on_distance=config.terminate_on_distance,
+            terminate_on_distance=False,
         ),
         max_episode_steps=config.ep_len,
     )
@@ -78,7 +78,7 @@ returns, info = agent.evaluate(
     seed=eval_seed,
     policy_net_state_dict=state_dict,
     normalization=data["normalization"],
-    use_heuristic=True,
+    use_heuristic=False,
     heursitic_gear_priorities=["low", "mid", "high"],
 )
 

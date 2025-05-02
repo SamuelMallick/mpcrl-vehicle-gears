@@ -2,20 +2,26 @@ import pickle
 import sys, os
 from matplotlib import pyplot as plt
 
+
 sys.path.append(os.getcwd())
+# from utils.tikz import save2tikz
 from visualisation.plot import plot_evaluation, plot_training
 
 # file_names = [
-#     "dev/results/1_bf/data_step_2300000.pkl",
-#     "dev/results/25/data_step_4950000.pkl",
+#     "dev/results/1_seeds/1/data_step_5000000.pkl",
 # ]
-# file_names = ["dev/results/2/data_step_50000.pkl", "dev/results/31/data_step_50000.pkl"]
 file_names = [
-    "dev/results/1_seeds/1/data_step_4425000.pkl",
-    "dev/results/1_seeds/2/data_step_3950000.pkl",
-    "dev/results/1_seeds/3/data_step_4100000.pkl",
-]
-fig, ax = plt.subplots(6, 1, sharex=True)
+    "dev/results/2/data_step_50000.pkl"
+]  # , "dev/results/31/data_step_50000.pkl"]
+# file_names = [
+#     "dev/results/1_seeds/1/data_step_5000000.pkl",
+#     "dev/results/1_seeds/2/data_step_5000000.pkl",
+#     "dev/results/1_seeds/3/data_step_5000000.pkl",
+#     "dev/results/1_seeds/4/data_step_1725000.pkl",
+#     "dev/results/1_seeds/5/data_step_1750000.pkl",
+#     "dev/results/3/data_step_5000000.pkl",
+# ]
+fig, ax = plt.subplots(4, 1, sharex=True)
 
 for file_name in file_names:
     # file_name = "dev/results/evaluations/l_mpc_eval_N_15_c_25.pkl"
@@ -37,18 +43,29 @@ for file_name in file_names:
 
     # plt.plot([len(X[i]) for i in range(len(X))])
     # plt.show()
-
-    # for ep in range(0, 100):
-    #     plot_evaluation(
-    #         x_ref[ep],
-    #         X[ep],
-    #         U[ep],
-    #         R[ep],
-    #         fuel[ep],
-    #         engine_torque[ep],
-    #         engine_speed[ep],
-    #         infeasible[ep] if "infeasible" in data else None,
-    #     )
+    # len = 500
+    # ep = 0
+    # plot_evaluation(
+    #     x_ref[ep][:len, :, :],
+    #     X[ep][:len+1, :, :],
+    #     U[ep][:len, :],
+    #     R[ep][:len],
+    #     fuel[ep][:len],
+    #     engine_torque[ep][:len],
+    #     engine_speed[ep][:len],
+    #     infeasible[ep][:len] if "infeasible" in data else None,
+    # )
+    # ep = -1
+    # plot_evaluation(
+    #     x_ref[ep][-len:, :, :],
+    #     X[ep][-len-1:, :, :],
+    #     U[ep][-len:, :],
+    #     R[ep][-len:],
+    #     fuel[ep][-len:],
+    #     engine_torque[ep][-len:],
+    #     engine_speed[ep][-len:],
+    #     infeasible[ep][-len:] if "infeasible" in data else None,
+    # )
 
     plot_training(
         [item for sublist in cost for item in sublist],
@@ -57,13 +74,15 @@ for file_name in file_names:
         [c - r for sub_c, sub_r in zip(cost, R) for c, r in zip(sub_c, sub_r)],
         [r for sub_r in R for r in sub_r],
         infeasible=(
-            [item for sublist in infeasible for item in sublist]
-            if "infeasible" in data
+            [not item for sublist in heuristic for item in sublist]
+            if "heuristic" in data
             else None
         ),
         only_averages=True,
         log_scales=False,
-        average_interval=1000,
+        average_interval=100,
         ax=ax,
     )
+    # ax[0].legend(["1", "2", "3", "4", "5", "no_bi"])
+save2tikz(plt.gcf())
 plt.show()
