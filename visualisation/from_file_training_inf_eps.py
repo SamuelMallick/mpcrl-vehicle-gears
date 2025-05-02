@@ -10,17 +10,17 @@ from visualisation.plot import plot_evaluation, plot_training
 # file_names = [
 #     "dev/results/1_seeds/1/data_step_5000000.pkl",
 # ]
-file_names = [
-    "dev/results/2/data_step_50000.pkl"
-]  # , "dev/results/31/data_step_50000.pkl"]
 # file_names = [
-#     "dev/results/1_seeds/1/data_step_5000000.pkl",
-#     "dev/results/1_seeds/2/data_step_5000000.pkl",
-#     "dev/results/1_seeds/3/data_step_5000000.pkl",
-#     "dev/results/1_seeds/4/data_step_1725000.pkl",
-#     "dev/results/1_seeds/5/data_step_1750000.pkl",
-#     "dev/results/3/data_step_5000000.pkl",
-# ]
+#     "dev/results/2/data_step_50000.pkl"
+# ]  # , "dev/results/31/data_step_50000.pkl"]
+file_names = [
+    # "dev/results/1_seeds/1/data_step_5000000.pkl",
+    # "dev/results/1_seeds/2/data_step_5000000.pkl",
+    # "dev/results/1_seeds/3/data_step_5000000.pkl",
+    # "dev/results/1_seeds/4/data_step_3800000.pkl",
+    # "dev/results/1_seeds/5/data_step_3875000.pkl",
+    "dev/results/4/data_step_3825000.pkl",
+]
 fig, ax = plt.subplots(4, 1, sharex=True)
 
 for file_name in file_names:
@@ -74,15 +74,15 @@ for file_name in file_names:
         [c - r for sub_c, sub_r in zip(cost, R) for c, r in zip(sub_c, sub_r)],
         [r for sub_r in R for r in sub_r],
         infeasible=(
-            [not item for sublist in heuristic for item in sublist]
-            if "heuristic" in data
+            [item for sublist in infeasible for item in sublist]
+            if "infeasible" in data
             else None
         ),
         only_averages=True,
         log_scales=False,
-        average_interval=100,
+        average_interval=10000,
         ax=ax,
     )
     # ax[0].legend(["1", "2", "3", "4", "5", "no_bi"])
-save2tikz(plt.gcf())
+# save2tikz(plt.gcf())
 plt.show()
