@@ -12,11 +12,11 @@ skip = 10000
 average_interval = 10000
 
 file_names = [
-    "dev/results/1_seeds/1/data_step_5000000.pkl",
-    "dev/results/1_seeds/2/data_step_5000000.pkl",
-    "dev/results/1_seeds/3/data_step_5000000.pkl",
-    "dev/results/1_seeds/4/data_step_3800000.pkl",
-    "dev/results/1_seeds/5/data_step_3875000.pkl",
+    "dev/results/3/seeds/1/data_step_5000000.pkl",
+    "dev/results/3/seeds/2/data_step_5000000.pkl",
+    "dev/results/3/seeds/3/data_step_5000000.pkl",
+    # "dev/results/3/seeds/4/data_step_5000000.pkl",
+    "dev/results/3/seeds/5/data_step_5000000.pkl",
 ]
 
 L = []
@@ -39,29 +39,29 @@ for file_name in file_names:
 
     L.append([l for sub_l in cost for l in sub_l])
     L_t.append(tracking)
-    L_f.append(fuel)
-    kappa.append(infeasible)
+    L_f.append([f for sub_f in fuel for f in sub_f])
+    kappa.append([i for sub_i in infeasible for i in sub_i])
     # kappa.append(heuristic)
 
-L_avg = np.array(
+data = [L, L_t, L_f, kappa]
+data_avg = [np.array(
     [
         np.convolve(l, np.ones(average_interval) / average_interval, mode="valid")
-        for l in L
+        for l in d
     ]
-)[:, ::skip]
-L_df = pd.DataFrame(L_avg.T, columns=file_names)
-L_df["x"] = np.arange(len(L_df))
-df_long = L_df.melt(id_vars="x", var_name="seed", value_name="L")
-sns.lineplot(data=df_long, x="x", y="L", errorbar="sd")
+)[:, ::skip] for d in data]
+data_df = [pd.DataFrame(d.T, columns=file_names) for d in data_avg]
+for d in data_df:
+    d["x"] = np.arange(len(d))
+data_df_long = [d.melt(id_vars="x", var_name="seed", value_name="L") for d in data_df]
+
+fig, ax = plt.subplots(4, 1, sharex=True)
+sns.lineplot(data=data_df_long[0], x="x", y="L", errorbar="sd", ax=ax[0])
+ax[0].set_ylabel("L")
+sns.lineplot(data=data_df_long[1], x="x", y="L", errorbar="sd", ax=ax[1])
+ax[1].set_ylabel("L_t")
+sns.lineplot(data=data_df_long[2], x="x", y="L", errorbar="sd", ax=ax[2])
+ax[2].set_ylabel("L_f")
+sns.lineplot(data=data_df_long[3], x="x", y="L", errorbar="sd", ax=ax[3])
+ax[3].set_ylabel("kappa")
 plt.show()
-
-
-# np.random.seed(0)
-# df = pd.DataFrame({
-#     "x": np.tile(np.arange(10), 3),  # 10 x-values repeated 20 times
-#     "y": np.random.randn(30) + np.tile(np.arange(10), 3),
-# })
-
-# # Lineplot with standard deviation as shaded region
-# sns.lineplot(data=df, x="x", y="y", errorbar='sd')  # Use 'sd' for standard deviation shading
-# plt.show()
