@@ -82,9 +82,13 @@ engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
 x_ref = list(env.reference_trajectory)
 
+solve_time = [
+    np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)
+]  # sum for each vehicle in platoon
+
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
-print(f"total mpc solve times = {sum(mpc.solver_time)}")
+print(f"total mpc solve times = {sum(solve_time)}")
 
 if SAVE:
     with open(f"platoon_heuristic_1_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
@@ -97,7 +101,7 @@ if SAVE:
                 "fuel": fuel,
                 "T_e": engine_torque,
                 "w_e": engine_speed,
-                "mpc_solve_time": mpc.solver_time,
+                "mpc_solve_time": solve_time,
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
