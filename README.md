@@ -5,7 +5,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
-This repository contains the source code used to produce the results obtained in [Learning-Based MPC for Fuel Efficient Control of Autonomous Vehicles with Discrete Gear Selection](https://arxiv.org/abs/2503.11359) submitted to [IEEE Control Systems Letters (L-CSS)](https://ieee-cssletters.dei.unipd.it/index.php).
+This repository contains the source code used to produce the results obtained in [Learning-Based MPC for Fuel Efficient Control of Autonomous Vehicles with Discrete Gear Selection](https://arxiv.org/abs/2503.11359) published in [IEEE Control Systems Letters (L-CSS)](https://ieee-cssletters.dei.unipd.it/index.php).
 
 In this work we propose a learning-based model predictive controller for co-optimization of vehicle speed and gear-shift schedule of an autonomous vehicle.
 
