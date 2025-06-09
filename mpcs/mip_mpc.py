@@ -199,3 +199,8 @@ class MIPMPC(HybridMPC):
         if extra_opts is not None:
             opts[solver].update(extra_opts[solver])
         self.init_solver(opts, solver=solver)
+
+    def solve(self, pars, vals0=None):
+        if isinstance(pars, dict):
+            pars = [pars]
+        return super().solve(pars, vals0)

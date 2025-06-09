@@ -54,7 +54,7 @@ mpc = SolverTimeRecorder(
         optimize_fuel=True,
         convexify_fuel=False,
         convexify_dynamics=False,
-        solver="knitro",
+        solver="bonmin",
         multi_starts=config.multi_starts,
         extra_opts=config.extra_opts,
     )

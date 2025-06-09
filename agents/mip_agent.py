@@ -35,7 +35,7 @@ class MIPAgent(SingleVehicleAgent):
 
     def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
         solver = "primary"
-        sol = self.mpc.solve(pars, vals0)
+        sol, info = self.mpc.solve(pars, vals0)
 
         # special check for knitro timeout
         if not sol.success:
