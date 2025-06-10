@@ -15,7 +15,7 @@ file_names = [
     "dev/results/3/seeds/1/data_step_5000000.pkl",
     "dev/results/3/seeds/2/data_step_5000000.pkl",
     "dev/results/3/seeds/3/data_step_5000000.pkl",
-    # "dev/results/3/seeds/4/data_step_5000000.pkl",
+    "dev/results/3/seeds/4/data_step_5000000.pkl",
     "dev/results/3/seeds/5/data_step_5000000.pkl",
 ]
 
