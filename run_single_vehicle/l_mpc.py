@@ -43,7 +43,7 @@ env: VehicleTracking = MonitorEpisodes(
             prediction_horizon=N,
             trajectory_type=config.trajectory_type,
             windy=config.windy,
-            terminate_on_distance=config.terminate_on_distance,
+            terminate_on_distance=False,
         ),
         max_episode_steps=config.ep_len,
     )

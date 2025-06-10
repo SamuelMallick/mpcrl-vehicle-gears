@@ -4,30 +4,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append(os.getcwd())
-# from utils.tikz import save2tikz
+from utils.tikz import save2tikz
 from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 c = "eval_1"
-pre = ""
+pre = "platoon_"
 types = [
-    f"{pre}heuristic_mpc_1_N_{N}_c_{c}",
-    f"{pre}heuristic_mpc_2_['low', 'mid', 'high']_N_{N}_c_{c}",
-    f"{pre}heuristic_mpc_3_N_{N}_c_{c}",
+    f"{pre}heuristic_1_mpc_N_{N}_c_{c}",
+    f"{pre}heuristic_2_['low', 'mid', 'high']_mpc_N_{N}_c_{c}",
+    # f"{pre}l_mpc_N_{N}_c_{c}_nh",
     f"{pre}l_mpc_N_{N}_c_{c}_pre",
     f"{pre}l_mpc_N_{N}_c_{c}",
     f"{pre}miqp_mpc_N_15_c_eval_time_limited_1",
     f"{pre}miqp_mpc_N_{N}_c_{c}",
+    f"{pre}minlp_mpc_N_{N}_c_{c}",
 ]
 baseline_type = f"{pre}minlp_mpc_N_{N}_c_{c}"
 file_names = [f"dev/results/evaluations/{type}.pkl" for type in types]
 baseline_file_name = f"dev/results/evaluations/{baseline_type}.pkl"
 labels = [
-    "H-MPC-1",
-    "H-MPC-2",
-    "H-MPC-3",
-    "L-MPC_pre",
-    "L-MPC",
+    "D-MPC",
+    "HC-MPC",
+    # "LC-MPC",
+    "LHC-MPC-1",
+    "LHC-MPC-2",
     "MIQP-MPC-tl",
     "MIQP-MPC",
     "MINLP-MPC",
@@ -136,27 +137,27 @@ R_rel = [
     ]
     for r in R
 ]
-T.append(baseline_t)
-o = [np.array_split(np.array(t), num_eps) for t in T]
+# T.append(baseline_t)
+# o = [np.array_split(np.array(t), num_eps) for t in T]
 # o.append(
 #     baseline_t
 # )  # handled differently because baseline data is already split into eps
 # T.append(np.concatenate(baseline_t))
-t_ep = [[sum(t) / len(t) for t in ep] for ep in o]
+# t_ep = [[sum(t) / len(t) for t in ep] for ep in o]
 
-fig, ax = plt.subplots(2, 1, sharex=False)
-ax[0].boxplot(R_rel, labels=labels[:-1])
+fig, ax = plt.subplots(2, 1, sharex=True)
+ax[0].plot(R_rel, "*")  # , labels=labels[:-1])
 for i in range(len(types)):
     ax[0].hlines(
         np.median(R_rel[i]),
-        xmin=i + 0.7,
-        xmax=i + 1.3,
+        xmin=i - 1 + 0.7,
+        xmax=i - 1 + 1.3,
         color="gray",
         linestyle="dashed",
         linewidth=0.5,
     )
     ax[0].text(
-        i + 1.3,
+        i + 0.3,
         np.median(R_rel[i]),
         f"{np.median(R_rel[i]):.2f}",
         va="center",
@@ -164,37 +165,38 @@ for i in range(len(types)):
         color="black",
     )
 ax[0].set_ylabel("J")
-ax[0].xaxis.set_ticks_position("top")  # Move ticks to the top
-ax[0].xaxis.set_label_position("top")  # Move labels to the top
+# ax[0].xaxis.set_ticks_position("top")  # Move ticks to the top
+# ax[0].xaxis.set_label_position("top")  # Move labels to the top
 # ax[0].set_yscale("log")
 box = ax[1].boxplot(
-    t_ep,
+    T,
     labels=labels,
+    positions=[i for i in range(len(T))],
 )
-for i in range(len(t_ep)):
+for i in range(len(T)):
     ax[1].hlines(
-        np.median(t_ep[i]),
-        xmin=i + 0.7,
-        xmax=i + 1.3,
+        np.median(T[i]),
+        xmin=i - 1 + 0.7,
+        xmax=i - 1 + 1.3,
         color="gray",
         linestyle="dashed",
         linewidth=0.5,
     )
     ax[1].text(
-        i + 1.3,
-        np.median(t_ep[i]),
-        f"{np.median(t_ep[i]):.2f}",
+        i + 0.3,
+        np.median(T[i]),
+        f"{np.median(T[i]):.2f}",
         va="center",
         ha="left",
         color="black",
     )
-    ax[1].plot(i + 1, max(T[i]), marker="^", color="red")
+    ax[1].plot(i, max(T[i]), marker="o", color="red")
     ax[1].text(
-        i + 1.1, max(T[i]), f"{ max(T[i]):.2f}", va="center", ha="left", color="red"
+        i + 0.1, max(T[i]), f"{ max(T[i]):.2f}", va="center", ha="left", color="red"
     )
 ax[1].set_yscale("log")
 ax[1].set_ylabel("Time (s)")
-# save2tikz(plt.gcf())
+save2tikz(plt.gcf())
 plt.show()
 
 for ep in range(0, len(R[0])):
