@@ -131,10 +131,13 @@ class VehicleMPC(Mpc):
             if s.success and s.f < best_f:
                 best_f = s.f
                 best_idx = i
+
+        # Return best infeasible solution if no feasible solution is found
         if best_idx is None:
-            raise ValueError("No feasible solution found.")
-        else:
-            best_sol = sols[best_idx]
+            best_idx = np.argmin([s.f for s in sols])
+
+        # Extract the best solution
+        best_sol = sols[best_idx]
 
         # extract the best solution time and the longest solution time
         longest_time = max([s.stats["t_wall_total"] for s in sols])
