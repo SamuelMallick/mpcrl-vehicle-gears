@@ -6,7 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Folder for development data and scripts
 dev/
+
+# Folder of generated files and results 
+# (require manually transfer from the server to the local machine)
+results/  
 
 # Distribution / packaging
 .Python
