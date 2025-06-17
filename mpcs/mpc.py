@@ -1,9 +1,11 @@
 from typing import Literal, Optional
+
 import casadi as cs
-from csnlp.wrappers.mpc.mpc import Mpc
+import numpy as np
 from csnlp import Solution
 from csnlp.multistart.multistart_nlp import ParallelMultistartNlp
-import numpy as np
+from csnlp.wrappers.mpc.mpc import Mpc
+
 from utils.solver_options import solver_options
 
 
@@ -119,12 +121,27 @@ class VehicleMPC(Mpc):
         vals0 = vals0 * len(pars) if vals0 is not None else None
         pars = [p for p in pars for _ in range(n)]
 
+        # solve mpc for multiple starts (multiple gear sequences and/or multi-starts)
         sols = self.nlp.solve_multi(pars, vals0, return_all_sols=True)
-        best_indx = np.argmin([s.f for s in sols])
-        best_sol = sols[best_indx]
+
+        # select the best feasible solution
+        best_idx = None
+        best_f = np.inf
+        for i, s in enumerate(sols):
+            if s.success and s.f < best_f:
+                best_f = s.f
+                best_idx = i
+        if best_idx is None:
+            raise ValueError("No feasible solution found.")
+        else:
+            best_sol = sols[best_idx]
+
+        # extract the best solution time and the longest solution time
         longest_time = max([s.stats["t_wall_total"] for s in sols])
         best_sol.stats["t_wall_total"] = longest_time
+
+        # return best solution and additional information on other solutions
         return best_sol, {
-            "best_indx": best_indx,
+            "best_indx": best_idx,
             "infeas": [not s.success for s in sols],
         }
