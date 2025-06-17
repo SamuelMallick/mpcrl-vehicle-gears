@@ -1,10 +1,12 @@
 from typing import Literal
-from csnlp import Solution
-import numpy as np
-from mpcs.mpc import VehicleMPC
-from env import VehicleTracking, PlatoonTracking
-from vehicle import Vehicle
+
 import casadi as cs
+import numpy as np
+from csnlp import Solution
+
+from env import PlatoonTracking, VehicleTracking
+from mpcs.mpc import VehicleMPC
+from vehicle import Vehicle
 
 
 class Agent:
@@ -127,9 +129,15 @@ class Agent:
                 # log episode progress
                 if log_progress:
                     solve_time = self.mpc.solver_time[-1]
+                    action_str = (
+                        action_info["cost"] if "cost" in action_info else np.nan
+                    )
                     with open(log_file, "a") as f:
                         f.write(
-                            f"Episode {episode} \t | Timestep {timestep} \t | Solver time: {solve_time} \t | Cost: {action_info["cost"] if "cost" in action_info else np.nan}\n"
+                            f"Episode {episode} "
+                            f"\t | Timestep {timestep} "
+                            f"\t | Solver time: {solve_time} "
+                            f"\t | Cost: {action_str}\n"
                         )
                         f.flush()
 
