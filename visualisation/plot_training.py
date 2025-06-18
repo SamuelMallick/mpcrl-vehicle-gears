@@ -10,16 +10,18 @@ from matplotlib import pyplot as plt
 sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz
 
-skip = 10000
-average_interval = 10000
-show_individual_lines = False
+skip = 1000
+average_interval = 1000
+show_individual_lines = True
+show_plot = False
+save_plot = True
 
 file_names = [
-    "dev/results/1/seeds/1/data_step_5000000.pkl",
-    "dev/results/1/seeds/2/data_step_5000000.pkl",
-    "dev/results/1/seeds/3/data_step_5000000.pkl",
-    "dev/results/1/seeds/4/data_step_5000000.pkl",
-    "dev/results/1/seeds/5/data_step_5000000.pkl",
+    "results/c2_seed1/data_step_450000.pkl",
+    "results/c2_seed2/data_step_450000.pkl",
+    "results/c2_seed3/data_step_450000.pkl",
+    "results/c2_seed4/data_step_450000.pkl",
+    "results/c2_seed5/data_step_450000.pkl",
 ]
 
 L = []
@@ -63,7 +65,7 @@ data_df_long = [d.melt(id_vars="x", var_name="seed", value_name="L") for d in da
 
 # Plot results
 if show_individual_lines:
-    fig, ax = plt.subplots(4, 1, sharex=True)
+    fig, ax = plt.subplots(4, 1, sharex=True, figsize=(20, 20))
     sns.lineplot(
         data=data_df_long[0], x="x", y="L", errorbar="sd", ax=ax[0], hue="seed"
     )
@@ -80,9 +82,8 @@ if show_individual_lines:
         data=data_df_long[3], x="x", y="L", errorbar="sd", ax=ax[3], hue="seed"
     )
     ax[3].set_ylabel("kappa")
-    plt.show()
 else:
-    fig, ax = plt.subplots(4, 1, sharex=True)
+    fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
     sns.lineplot(data=data_df_long[0], x="x", y="L", errorbar="sd", ax=ax[0])
     ax[0].set_ylabel("L")
     sns.lineplot(data=data_df_long[1], x="x", y="L", errorbar="sd", ax=ax[1])
@@ -91,4 +92,8 @@ else:
     ax[2].set_ylabel("L_f")
     sns.lineplot(data=data_df_long[3], x="x", y="L", errorbar="sd", ax=ax[3])
     ax[3].set_ylabel("kappa")
+
+if save_plot:
+    fig.savefig("results/training.png", dpi=300, bbox_inches="tight")
+if show_plot:
     plt.show()
