@@ -15,11 +15,11 @@ class ConfigC2Base(ConfigDefault):
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.init_state_dict = torch.load(
-            "results/1/seeds/1/policy_net_step_5000000.pth",
+            "results/c1_seed1/policy_net_step_5000000.pth",
             weights_only=True,
             map_location=device,
         )
-        with open("results/1/seeds/1/data_step_5000000.pkl", "rb") as f:
+        with open("results/c1_seed1/data_step_5000000.pkl", "rb") as f:
             data = pickle.load(f)
         self.init_normalization = data["normalization"]
 
