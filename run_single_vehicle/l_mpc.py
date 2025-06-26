@@ -7,13 +7,13 @@ import numpy as np
 import torch
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.learning_agent import LearningAgent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
@@ -70,12 +70,11 @@ agent = LearningAgent(
 )
 
 state_dict = torch.load(
-    # f"dev/results/1_exp_bug_fix_2/policy_net_step_4325000.pth",
-    f"dev/results/2/policy_net_step_25000.pth",
+    "results/c2/c2_seed4/policy_net_step_4000000.pth",
     weights_only=True,
     map_location="cpu",
 )
-with open(f"dev/results/2/data_step_25000.pkl", "rb") as f:
+with open("results/c2/c2_seed4/data_step_4000000.pkl", "rb") as f:
     data = pickle.load(f)
 
 returns, info = agent.evaluate(
