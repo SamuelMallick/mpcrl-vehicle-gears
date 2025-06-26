@@ -322,7 +322,7 @@ class SingleVehicleAgent(Agent):
 
     def clip_action(self, action):
         if np.abs(np.argmax(self.gear_prev) - action[2]) > 1:
-            print("Warning: clipping gear in train")
+            # print("Warning: clipping gear in train")
             action[2] = np.clip(
                 action[2],
                 np.argmax(self.gear_prev) - 1,
