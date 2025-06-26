@@ -10,18 +10,42 @@ from matplotlib import pyplot as plt
 sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz
 
-skip = 1000
-average_interval = 1000
+skip = 10000
+average_interval = 10000
 show_individual_lines = True
 show_plot = False
 save_plot = True
 
 file_names = [
-    "results/c2_seed1/data_step_450000.pkl",
-    "results/c2_seed2/data_step_450000.pkl",
-    "results/c2_seed3/data_step_450000.pkl",
-    "results/c2_seed4/data_step_450000.pkl",
-    "results/c2_seed5/data_step_450000.pkl",
+    # c1
+    # "results/c1/c1_seed1/data_step_5000000.pkl",
+    # "results/c1/c1_seed2/data_step_5000000.pkl",
+    # "results/c1/c1_seed3/data_step_5000000.pkl",
+    # "results/c1/c1_seed4/data_step_5000000.pkl",
+    # "results/c1/c1_seed5/data_step_5000000.pkl",
+    # "results/c1/c1_seed6/data_step_5000000.pkl",
+    # "results/c1/c1_seed7/data_step_5000000.pkl",
+    # "results/c1/c1_seed8/data_step_5000000.pkl",
+    # c2
+    # "results/c2/c2_seed1/data_step_4000000.pkl",
+    # "results/c2/c2_seed2/data_step_4000000.pkl",
+    # "results/c2/c2_seed3/data_step_4000000.pkl",
+    # "results/c2/c2_seed4/data_step_4000000.pkl",
+    # "results/c2/c2_seed5/data_step_4000000.pkl",
+    # "results/c2/c2_seed6/data_step_4000000.pkl",
+    # "results/c2/c2_seed7/data_step_4000000.pkl",
+    # c3
+    # "results/c3/c3_seed1/data_step_5000000.pkl",
+    # "results/c3/c3_seed2/data_step_5000000.pkl",
+    # "results/c3/c3_seed3/data_step_5000000.pkl",
+    # "results/c3/c3_seed4/data_step_5000000.pkl",
+    # "results/c3/c3_seed5/data_step_5000000.pkl",
+    # c4
+    "results/c4_seed1/data_step_2000000.pkl",
+    "results/c4_seed2/data_step_2000000.pkl",
+    "results/c4_seed3/data_step_2000000.pkl",
+    "results/c4_seed4/data_step_2000000.pkl",
+    "results/c4_seed5/data_step_2000000.pkl",
 ]
 
 L = []
