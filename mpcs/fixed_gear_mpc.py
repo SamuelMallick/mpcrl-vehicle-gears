@@ -1,10 +1,10 @@
 from typing import Literal, Optional
 
-from csnlp import Solution
-from mpcs.hybrid_mpc import HybridMPC
-import numpy as np
 import casadi as cs
+import numpy as np
+from csnlp import Solution
 
+from mpcs.hybrid_mpc import HybridMPC
 from utils.solver_options import solver_options
 
 
@@ -103,6 +103,6 @@ class FixedGearMPC(HybridMPC):
             for gp, g in zip(gear_prev, gear)
         ):
             pass
-            print("Warning: Gear-shift schedule skipping gears.")
+            # print("Warning: Gear-shift schedule skipping gears.")
             # raise ValueError("Gear-shift schedule skipping gears.")
         return super().solve(pars, vals0=vals0)
