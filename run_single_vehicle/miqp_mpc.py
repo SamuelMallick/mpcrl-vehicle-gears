@@ -6,13 +6,13 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.mip_agent import MIPAgent
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
@@ -86,7 +86,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"miqp_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"results/miqp_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,

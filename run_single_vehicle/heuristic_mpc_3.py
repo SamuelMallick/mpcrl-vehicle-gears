@@ -6,13 +6,13 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.heuristic_3_agent import Heuristic3Agent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
@@ -80,7 +80,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
-    with open(f"heuristic_mpc_3_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"results/heuristic_mpc_3_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,

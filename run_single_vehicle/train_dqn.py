@@ -1,18 +1,17 @@
 import importlib
 import os
-import pickle
 import sys
 
 import numpy as np
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.dqn_agent import DQNAgent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-
 from vehicle import Vehicle
 
 # if a config file passed on command line, otherwise use default config file

@@ -6,16 +6,15 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.heuristic_2_agent import Heuristic2Agent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
-
 
 # if a config file passed on command line, otherwise use default config file
 if len(sys.argv) > 1:
@@ -86,7 +85,7 @@ print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(
-        f"heuristic_mpc_2_{gear_priority}_N_{N}_c_{config.id}.pkl",
+        f"results/heuristic_mpc_2_{gear_priority}_N_{N}_c_{config.id}.pkl",
         "wb",
     ) as f:
         pickle.dump(
