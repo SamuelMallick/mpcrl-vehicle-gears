@@ -9,7 +9,7 @@ plt.rc("font", size=14)
 plt.style.use("bmh")
 
 sys.path.append(os.getcwd())
-from utils.tikz import save2tikz
+# from utils.tikz import save2tikz
 
 skip = 100
 
@@ -133,7 +133,7 @@ def plot_evaluation(
     # # ax[3].grid(visible=True, which="major", color="gray", linestyle="-", linewidth=0.8)
     # if mark is not None:
     #     ax[4].plot(mark)
-    save2tikz(plt.gcf())
+    # save2tikz(plt.gcf())
     plt.show()
 
 
