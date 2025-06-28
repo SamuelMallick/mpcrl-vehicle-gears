@@ -28,6 +28,8 @@ eval_list = [
     ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5"],
     ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3"],
     ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4"],
+    # ["eval_heuristic_mpc_2", "h_2"],
+    # ["eval_heuristic_mpc_3", "h_3"],
 ]
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
@@ -140,11 +142,6 @@ ax_t.set_yscale("log")
 ax_t.grid(True, which="major", linestyle="-", linewidth=0.6)
 ax_t.grid(True, which="minor", linestyle=":", linewidth=0.4)
 ax_t.set_axisbelow(True)
-ax_r.set_zorder(ax_t.get_zorder() + 1)
-# TODO: Currently, adding a grid for the reward axis would draw it on top of the time
-# distribution. This could probably be fixed by creating 2 more axes objects that only
-# contain the grid lines, and draw them at the bottom of the z-order. Check if this is
-# worth implementing.
 
 # Set labels and limits
 match grouping_r:
@@ -203,6 +200,31 @@ ax_t.set_xticks(list(range(len(xticks_labels))), labels=xticks_labels)
 ax_r.set_xlabel("Policy")
 ax_r.set_title("Policies Evaluation")
 
+# Add grid lines
+ax_grid_r = fig.add_axes(ax_r.get_position(), frameon=False)
+ax_grid_r.set_xticks([])
+ax_grid_r.set_yticks([])
+ax_grid_r.set_facecolor("none")
+ax_grid_r.set_xlim(ax_r.get_xlim())
+ax_grid_r.set_ylim(ax_r.get_ylim())
+ax_grid_r.set_yticks(ax_r.get_yticks(), minor=False)
+ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.7, alpha=1)
+
+# TODO: complete implementation of grid lines for the time axis (currently not working)
+# ax_grid_t = ax_grid_r.twinx()
+# # fig.add_axes(
+# #     ax_t.get_position(), frameon=True, zorder=ax_grid_r.get_zorder() - 1
+# # )
+# ax_grid_t.set_yscale("log")
+# ax_grid_t.set_xticks([])
+# ax_grid_t.set_yticks([])
+# ax_grid_t.set_facecolor("none")
+# ax_grid_t.set_xlim(ax_t.get_xlim())
+# ax_grid_t.set_ylim(ax_t.get_ylim())
+# ax_grid_t.set_yticks(ax_t.get_yticks(), minor=False)
+# ax_grid_t.yaxis.grid(True, which="major", linestyle=":", linewidth=0.7, alpha=1)
+# ax_grid_t.yaxis.grid(True, which="minor", linestyle=":", linewidth=0.7, alpha=0.8)
+
 # Generate the violin plots
 # TODO: The violin plot could be replaced with a kde plot since the current
 # implementation of the violin plot is equivalent to it.
@@ -257,7 +279,7 @@ sns.violinplot(
 # Add max time marker
 if grouping_t == "ts":
     x_ticks = np.arange(len(xticks_labels)) + gap / 2
-    plt.plot(
+    ax_t.plot(
         x_ticks,
         max_time,
         marker=matplotlib.markers.CARETLEFT,
@@ -277,7 +299,6 @@ if grouping_t == "ts":
             va="center",
         )
 
-
 # add legend
 h_reward = mpatches.Patch(color=c_reward, label=f"Reward")
 h_time = mpatches.Patch(color=c_time, label=f"Time")
@@ -290,7 +311,12 @@ ax_r.legend(
     frameon=True,
 )
 
-plt.tight_layout()
+# set zorder of the axes
+ax_grid_r.set_zorder(1)
+# ax_grid_t.set_zorder(2)
+ax_t.set_zorder(2)
+ax_r.set_zorder(3)  # ax_r.set_zorder(ax_t.get_zorder() + 1) due to grid lines
 
+# Save figure
 print("Saving figure...")
 fig.savefig(f"results/violin_plot.png", dpi=300, bbox_inches="tight")
