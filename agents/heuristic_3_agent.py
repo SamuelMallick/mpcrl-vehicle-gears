@@ -38,8 +38,6 @@ class Heuristic3Agent(SingleVehicleAgent):
         sol = self.mpc.solve(pars, vals0)[0]
         if not sol.success:
             raise ValueError("MPC failed to solve")
-        # if not sol.success:
-        #     raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(pars["gear"], 0)[0]
