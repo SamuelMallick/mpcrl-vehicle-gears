@@ -265,6 +265,18 @@ if grouping_t == "ts":
         linestyle="None",
     )
 
+    for i, t in enumerate(max_time):
+        ax_t.annotate(
+            f"{t:.2f}",
+            xy=(x_ticks[i], t),
+            xytext=(6, 0),  # offset text
+            textcoords="offset points",
+            color=c_time_dark,
+            fontsize=8,
+            ha="left",
+            va="center",
+        )
+
 
 # add legend
 h_reward = mpatches.Patch(color=c_reward, label=f"Reward")
