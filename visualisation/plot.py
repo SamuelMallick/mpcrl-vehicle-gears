@@ -1,5 +1,6 @@
+import os
+import sys
 import numpy as np
-import sys, os
 import matplotlib.pyplot as plt
 
 plt.rc("text", usetex=True)
@@ -8,7 +9,7 @@ plt.rc("font", size=14)
 plt.style.use("bmh")
 
 sys.path.append(os.getcwd())
-# from utils.tikz import save2tikz
+from utils.tikz import save2tikz
 
 skip = 100
 
