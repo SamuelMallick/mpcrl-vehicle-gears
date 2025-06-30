@@ -42,12 +42,14 @@ class MIPAgent(SingleVehicleAgent):
             if sol.status == "TIME_LIMIT":  # timeout for gurobi
                 if sol.stats["pool_sol_nr"] == 0:
                     raise ValueError("MPC failed to find feasible solution in time")
-            elif (
-                sol.status == "KN_RC_TIME_LIMIT_INFEAS"
-                or sol.status == "KN_RC_TIME_LIMIT_FEAS"
-            ):
-                if sol.status == "KN_RC_TIME_LIMIT_INFEAS":
-                    raise ValueError("MPC failed to find feasible solution in time")
+            elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
+                sol, _ = self.backup_mpc.solve(pars, vals0)
+                if not sol.success:
+                    raise ValueError(
+                        "Backup MPC failed to solve after primary MPC timeout"
+                    )
+            elif sol.status == "KN_RC_TIME_LIMIT_FEAS":
+                pass  # Use the current feasible solution
             elif self.backup_mpc:
                 solver = "backup"
                 sol = self.backup_mpc.solve(pars, vals0)

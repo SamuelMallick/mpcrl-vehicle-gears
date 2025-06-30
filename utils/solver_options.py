@@ -56,7 +56,7 @@ solver_options = {
             "ms_enable": 1,
             "numthreads": 16,
             "ms_numthreads": 16,
-            # "ms_maxsolves": 2,
+            "ms_maxsolves": 4,
             "mip_numthreads": 16,
             "mip_multistart": 1,
         },

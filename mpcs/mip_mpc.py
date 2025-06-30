@@ -2,6 +2,7 @@ from mpcs.hybrid_mpc import HybridMPC
 from typing import Literal, Optional
 import casadi as cs
 import numpy as np
+import copy
 
 from utils.solver_options import solver_options
 
@@ -195,7 +196,7 @@ class MIPMPC(HybridMPC):
                 lambda x, u: self.nonlinear_hybrid_model(x, u, self.dt, 0)
             )
 
-        opts = solver_options[solver]
+        opts = copy.deepcopy(solver_options[solver])  # deepcopy to modify dict locally
         if extra_opts is not None:
             opts[solver].update(extra_opts[solver])
         self.init_solver(opts, solver=solver)

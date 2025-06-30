@@ -22,7 +22,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config()
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.eval_seeds.eval_seed1 import Config  # type: ignore
 
     config = Config()
 
@@ -59,11 +59,31 @@ mpc = SolverTimeRecorder(
         extra_opts=config.extra_opts,
     )
 )
+
+# Add backup MPC
+extra_opts_backup = {
+    "knitro": {
+        "mip_terminate": 1,  # terminate the solver after the first feasible solution
+    }
+}
+backup_mpc = SolverTimeRecorder(
+    MIPMPC(
+        N,
+        optimize_fuel=True,
+        convexify_fuel=False,
+        convexify_dynamics=False,
+        solver="knitro",
+        multi_starts=config.multi_starts,
+        extra_opts=extra_opts_backup,
+    )
+)
+
+# Initialize the MIPAgent with the MPC and backup MPC
 agent = MIPAgent(
     mpc,
     np_random=np_random,
     multi_starts=config.multi_starts,
-    backup_mpc=None,
+    backup_mpc=backup_mpc,
 )
 returns, info = agent.evaluate(
     env,
