@@ -40,12 +40,15 @@ file_names = [
     # "results/c3/c3_seed3/data_step_5000000.pkl",
     # "results/c3/c3_seed4/data_step_5000000.pkl",
     # "results/c3/c3_seed5/data_step_5000000.pkl",
+    # "results/c3/c3_seed6/data_step_5000000.pkl",
+    # "results/c3/c3_seed7/data_step_5000000.pkl",
+    # "results/c3/c3_seed8/data_step_5000000.pkl",
     # c4
-    "results/c4_seed1/data_step_2000000.pkl",
-    "results/c4_seed2/data_step_2000000.pkl",
-    "results/c4_seed3/data_step_2000000.pkl",
-    "results/c4_seed4/data_step_2000000.pkl",
-    "results/c4_seed5/data_step_2000000.pkl",
+    "results/c4 [c3_seed1]/c4_seed1/data_step_4000000.pkl",
+    "results/c4 [c3_seed1]/c4_seed2/data_step_4000000.pkl",
+    "results/c4 [c3_seed1]/c4_seed3/data_step_4000000.pkl",
+    "results/c4 [c3_seed1]/c4_seed4/data_step_4000000.pkl",
+    "results/c4 [c3_seed1]/c4_seed5/data_step_4000000.pkl",
 ]
 
 L = []
