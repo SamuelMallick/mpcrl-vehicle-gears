@@ -111,6 +111,8 @@ class VehicleMPC(Mpc):
         pars: dict | list[dict],
         vals0: Optional[dict] = None,
     ) -> tuple[Solution, dict]:
+        if isinstance(pars, dict):
+            pars = [pars]
         for p in pars:
             if "p_a" not in p:
                 p["p_a"] = np.full((1, self.prediction_horizon + 1), p["x_0"][0] + 1e6)

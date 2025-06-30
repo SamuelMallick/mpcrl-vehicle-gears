@@ -72,7 +72,7 @@ class Heuristic1Agent(SingleVehicleAgent):
         return valid_indices[len(valid_indices) // 2]
 
     def solve_mpc(self, pars, vals0, T_e_prev) -> tuple[float, float, int, dict]:
-        sol = self.mpc.solve(pars, vals0)
+        sol, _ = self.mpc.solve(pars, vals0)
         if not sol.success:
             raise ValueError("MPC failed to solve")
         F_trac = sol.vals["F_trac"].full()[0, 0]

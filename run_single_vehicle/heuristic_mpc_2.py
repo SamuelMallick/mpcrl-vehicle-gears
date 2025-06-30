@@ -22,7 +22,7 @@ if len(sys.argv) > 1:
     mod = importlib.import_module(f"config_files.{config_file}")
     config = mod.Config()
 else:
-    from config_files.c1 import Config  # type: ignore
+    from config_files.eval_seeds.eval_seed1 import Config  # type: ignore
 
     config = Config()
 

@@ -35,7 +35,7 @@ class Heuristic3Agent(SingleVehicleAgent):
         super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
 
     def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
-        sol = self.mpc.solve(pars, vals0)[0]
+        sol, _ = self.mpc.solve(pars, vals0)
         if not sol.success:
             raise ValueError("MPC failed to solve")
         T_e = sol.vals["T_e"].full()[0, 0]
