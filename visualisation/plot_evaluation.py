@@ -23,14 +23,16 @@ sys.path.append(os.getcwd())
 # specified collectively in the variable `experiment_folder`.
 experiment_folder = "eval_single_agent"
 eval_list = [
-    ["eval_l_mpc/eval_c1_s1_t5000000", "c1_s1"],
-    ["eval_l_mpc/eval_c2_s3_t4000000", "c2_s3"],
-    ["eval_l_mpc/eval_c2_s4_t4000000", "c2_s4"],
-    ["eval_l_mpc/eval_c3_s3_t5000000", "c3_s3"],
-    ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5"],
-    ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3"],
-    ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4"],
+    # ["eval_l_mpc/eval_c1_s1_t5000000", "c1_s1"],
+    # ["eval_l_mpc/eval_c2_s3_t4000000", "c2_s3"],
+    # ["eval_l_mpc/eval_c2_s4_t4000000", "c2_s4"],
+    ["eval_l_mpc/eval_c3_s1_t5000000", "c3_s1 5M"],
+    ["eval_l_mpc/eval_c3_s3_t5000000", "c3_s3 5M"],
+    ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5 5M"],
+    ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3 2.9M [c3_s1]"],
+    ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4 2.9M [c3_s1]"],
     ["eval_miqp", "miqp"],
+    ["eval_heuristic_mpc_1", "h_1"],
     ["eval_heuristic_mpc_2", "h_2"],
     ["eval_heuristic_mpc_3", "h_3"],
 ]
@@ -213,7 +215,11 @@ ax_grid_r.set_ylim(ax_r.get_ylim())
 ax_grid_r.set_yticks(ax_r.get_yticks(), minor=False)
 ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.7, alpha=1)
 
-# TODO: complete implementation of grid lines for the time axis (currently not working)
+# add vertical line for 1st violin plot
+for i in range(len(xticks_labels)):
+    ax_t.axvline(i, color="k", linestyle="-", linewidth=0.5)
+
+# TODO: complete moving all grid lines to separate axis (currently not working)
 # ax_grid_t = ax_grid_r.twinx()
 # # fig.add_axes(
 # #     ax_t.get_position(), frameon=True, zorder=ax_grid_r.get_zorder() - 1
@@ -235,7 +241,7 @@ ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.7, alpha=1)
 # - https://github.com/mwaskom/seaborn/issues/3619.
 
 # Violin plot parameters
-gap = 0.05
+gap = 0.1
 inner = "quartile"  # {"quartile", None}
 linewidth = 1.5
 
