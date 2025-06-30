@@ -19,7 +19,9 @@ sys.path.append(os.getcwd())
 
 # Select experiments to plot
 # List must be formatted as ["folder name", eval_name] where eval_name is the label
-# used for the plot.
+# used for the plot. The experiment folder name (first layer under results/) can be
+# specified collectively in the variable `experiment_folder`.
+experiment_folder = "eval_single_agent"
 eval_list = [
     ["eval_l_mpc/eval_c1_s1_t5000000", "c1_s1"],
     ["eval_l_mpc/eval_c2_s3_t4000000", "c2_s3"],
@@ -28,8 +30,9 @@ eval_list = [
     ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5"],
     ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3"],
     ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4"],
-    # ["eval_heuristic_mpc_2", "h_2"],
-    # ["eval_heuristic_mpc_3", "h_3"],
+    ["eval_miqp", "miqp"],
+    ["eval_heuristic_mpc_2", "h_2"],
+    ["eval_heuristic_mpc_3", "h_3"],
 ]
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
@@ -48,13 +51,13 @@ for eval_name, eval_label in eval_list:
     time: list[list] = []
 
     # Locate data files for current evaluation
-    pkl_files = os.listdir(f"results/{eval_name}")
-    print(f"Found {len(pkl_files)} files in results/{eval_name}")
+    pkl_files = os.listdir(f"results/{experiment_folder}/{eval_name}")
+    print(f"Found {len(pkl_files)} files in results/{experiment_folder}/{eval_name}")
 
     # Extract all data from .pkl files
     for file in pkl_files:
         if file.endswith(".pkl"):
-            with open(f"results/{eval_name}/{file}", "rb") as f:
+            with open(f"results/{experiment_folder}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
                 reward.append(data["R"][0])
                 time.append(data["mpc_solve_time"])
@@ -152,7 +155,7 @@ match grouping_r:
             "Average timestep reward over episode",
             color=c_reward_dark,
         )
-        cut_r = 2
+        cut_r = 0
 
     case "ep_sum":
         ax_r.set_ylim(5_000, 11_000)
@@ -160,7 +163,7 @@ match grouping_r:
             "Episode cumulative reward",
             color=c_reward_dark,
         )
-        cut_r = 2
+        cut_r = 0
 
     case "ts":
         ax_r.set_ylim(0, 40)
@@ -178,7 +181,7 @@ match grouping_t:
             "Average timestep time over episode (Log Scale) [s]",
             color=c_time_dark,
         )
-        cut_t = 2
+        cut_t = 0
 
     case "ep_sum":
         ax_t.set_ylim(10, 1000)
@@ -186,10 +189,10 @@ match grouping_t:
             "Episode cumulative time (Log Scale) [s]",
             color=c_time_dark,
         )
-        cut_t = 2
+        cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.01, 10)
+        ax_t.set_ylim(0.01, 2000)
         ax_t.set_ylabel(
             "Timestep time (Log Scale) [s]",
             color=c_time_dark,
