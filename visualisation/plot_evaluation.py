@@ -68,7 +68,7 @@ for eval_name, eval_label in eval_list:
     match grouping_r:
 
         case "ep_sum":
-            reward = np.array([np.sum(r) for r in reward])
+            reward = np.array([np.sum(r) / 1000 for r in reward])
 
         case "ep_mean":
             reward = np.array([np.mean(r) for r in reward])
@@ -152,15 +152,15 @@ match grouping_r:
     case "ep_mean":
         ax_r.set_ylim(0, 10)
         ax_r.set_ylabel(
-            "Average timestep reward over episode",
+            "Average timestep cost over episode",
             color=c_reward_dark,
         )
         cut_r = 0
 
     case "ep_sum":
-        ax_r.set_ylim(5_000, 11_000)
+        ax_r.set_ylim(5, 11)
         ax_r.set_ylabel(
-            "Episode cumulative reward",
+            "Episode cumulative cost (x 1000)",
             color=c_reward_dark,
         )
         cut_r = 0
@@ -168,7 +168,7 @@ match grouping_r:
     case "ts":
         ax_r.set_ylim(0, 40)
         ax_r.set_ylabel(
-            "Timestep reward",
+            "Timestep cost",
             color=c_reward_dark,
         )
         cut_r = 0
