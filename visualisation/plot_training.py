@@ -43,12 +43,19 @@ file_names = [
     # "results/c3/c3_seed6/data_step_5000000.pkl",
     # "results/c3/c3_seed7/data_step_5000000.pkl",
     # "results/c3/c3_seed8/data_step_5000000.pkl",
+    # "results/c3/c3_seed9/data_step_5000000.pkl",
+    # "results/c3/c3_seed10/data_step_5000000.pkl",
     # c4
-    "results/c4 [c3_seed1]/c4_seed1/data_step_4000000.pkl",
-    "results/c4 [c3_seed1]/c4_seed2/data_step_4000000.pkl",
-    "results/c4 [c3_seed1]/c4_seed3/data_step_4000000.pkl",
-    "results/c4 [c3_seed1]/c4_seed4/data_step_4000000.pkl",
-    "results/c4 [c3_seed1]/c4_seed5/data_step_4000000.pkl",
+    "results/c4/c4_seed1/data_step_4000000.pkl",
+    "results/c4/c4_seed2/data_step_4000000.pkl",
+    "results/c4/c4_seed3/data_step_4000000.pkl",
+    "results/c4/c4_seed4/data_step_4000000.pkl",
+    "results/c4/c4_seed5/data_step_4000000.pkl",
+    "results/c4/c4_seed6/data_step_4000000.pkl",
+    "results/c4/c4_seed7/data_step_4000000.pkl",
+    "results/c4/c4_seed8/data_step_4000000.pkl",
+    "results/c4/c4_seed9/data_step_4000000.pkl",
+    "results/c4/c4_seed10/data_step_4000000.pkl",
 ]
 
 L = []
@@ -94,30 +101,85 @@ data_df_long = [d.melt(id_vars="x", var_name="seed", value_name="L") for d in da
 if show_individual_lines:
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=(20, 20))
     sns.lineplot(
-        data=data_df_long[0], x="x", y="L", errorbar="sd", ax=ax[0], hue="seed"
+        data=data_df_long[0],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[0],
+        hue="seed",
     )
     ax[0].set_ylabel("L")
+    ax[0].get_legend().remove()
+
     sns.lineplot(
-        data=data_df_long[1], x="x", y="L", errorbar="sd", ax=ax[1], hue="seed"
+        data=data_df_long[1],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[1],
+        hue="seed",
     )
     ax[1].set_ylabel("L_t")
+    ax[1].get_legend().remove()
+
     sns.lineplot(
-        data=data_df_long[2], x="x", y="L", errorbar="sd", ax=ax[2], hue="seed"
+        data=data_df_long[2],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[2],
+        hue="seed",
     )
     ax[2].set_ylabel("L_f")
+    ax[2].get_legend().remove()
+
     sns.lineplot(
-        data=data_df_long[3], x="x", y="L", errorbar="sd", ax=ax[3], hue="seed"
+        data=data_df_long[3],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[3],
+        hue="seed",
     )
     ax[3].set_ylabel("kappa")
+    ax[3].get_legend().remove()
+
 else:
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
-    sns.lineplot(data=data_df_long[0], x="x", y="L", errorbar="sd", ax=ax[0])
+    sns.lineplot(
+        data=data_df_long[0],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[0],
+    )
     ax[0].set_ylabel("L")
-    sns.lineplot(data=data_df_long[1], x="x", y="L", errorbar="sd", ax=ax[1])
+
+    sns.lineplot(
+        data=data_df_long[1],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[1],
+    )
     ax[1].set_ylabel("L_t")
-    sns.lineplot(data=data_df_long[2], x="x", y="L", errorbar="sd", ax=ax[2])
+
+    sns.lineplot(
+        data=data_df_long[2],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[2],
+    )
     ax[2].set_ylabel("L_f")
-    sns.lineplot(data=data_df_long[3], x="x", y="L", errorbar="sd", ax=ax[3])
+
+    sns.lineplot(
+        data=data_df_long[3],
+        x="x",
+        y="L",
+        errorbar="sd",
+        ax=ax[3],
+    )
     ax[3].set_ylabel("kappa")
 
 if save_plot:
