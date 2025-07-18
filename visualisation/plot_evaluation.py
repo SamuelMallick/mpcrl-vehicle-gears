@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
+from scipy.integrate import simpson
+from scipy.stats import gaussian_kde
 
 sys.path.append(os.getcwd())
 
@@ -26,11 +28,11 @@ eval_list = [
     # ["eval_l_mpc/eval_c1_s1_t5000000", "c1_s1"],
     # ["eval_l_mpc/eval_c2_s3_t4000000", "c2_s3"],
     # ["eval_l_mpc/eval_c2_s4_t4000000", "c2_s4"],
-    ["eval_l_mpc/eval_c3_s1_t5000000", "c3_s1 5M"],
-    ["eval_l_mpc/eval_c3_s3_t5000000", "c3_s3 5M"],
-    ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5 5M"],
-    ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3 2.9M [c3_s1]"],
-    ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4 2.9M [c3_s1]"],
+    # ["eval_l_mpc/eval_c3_s1_t5000000", "c3_s1"],
+    # ["eval_l_mpc/eval_c3_s3_t5000000", "c3_s3"],
+    ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5"],
+    ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3"],
+    ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4"],
     ["eval_miqp", "miqp"],
     ["eval_heuristic_mpc_1", "h_1"],
     ["eval_heuristic_mpc_2", "h_2"],
@@ -70,6 +72,7 @@ for eval_name, eval_label in eval_list:
     match grouping_r:
 
         case "ep_sum":
+            # Divide by 1000 for ease of plot (e.g., 1000 instead of 1000000)
             reward = np.array([np.sum(r) / 1000 for r in reward])
 
         case "ep_mean":
@@ -144,9 +147,9 @@ fig, ax_r = plt.subplots(figsize=(10, 6))
 ax_r.patch.set_visible(False)
 ax_t = ax_r.twinx()  # time axis on the right side
 ax_t.set_yscale("log")
-ax_t.grid(True, which="major", linestyle="-", linewidth=0.6)
-ax_t.grid(True, which="minor", linestyle=":", linewidth=0.4)
-ax_t.set_axisbelow(True)
+# ax_t.grid(True, which="major", linestyle="-", linewidth=0.6)
+# ax_t.grid(True, which="minor", linestyle=":", linewidth=0.4)
+# ax_t.set_axisbelow(True)
 
 # Set labels and limits
 match grouping_r:
@@ -205,7 +208,7 @@ ax_t.set_xticks(list(range(len(xticks_labels))), labels=xticks_labels)
 ax_r.set_xlabel("Policy")
 ax_r.set_title("Policies Evaluation")
 
-# Add grid lines
+# Reward grid lines
 ax_grid_r = fig.add_axes(ax_r.get_position(), frameon=False)
 ax_grid_r.set_xticks([])
 ax_grid_r.set_yticks([])
@@ -213,29 +216,27 @@ ax_grid_r.set_facecolor("none")
 ax_grid_r.set_xlim(ax_r.get_xlim())
 ax_grid_r.set_ylim(ax_r.get_ylim())
 ax_grid_r.set_yticks(ax_r.get_yticks(), minor=False)
-ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.7, alpha=1)
+ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
+
+# Time grid lines
+ax_grid_t = ax_grid_r.twinx()
+ax_grid_t.set_yscale("log")
+ax_grid_t.set_xticks([])
+ax_grid_t.set_yticks([])
+ax_grid_t.set_facecolor("none")
+ax_grid_t.set_xlim(ax_t.get_xlim())
+ax_grid_t.set_ylim(ax_t.get_ylim())
+ax_grid_t.set_yticks(ax_t.get_yticks()[1:-2], minor=False)  # hacky but it works
+ax_grid_t.yaxis.grid(True, which="major", linestyle=":", linewidth=0.6, alpha=1)
+ax_grid_t.yaxis.grid(True, which="minor", linestyle=":", linewidth=0.4, alpha=0.8)
+ax_t.set_axisbelow(True)
 
 # add vertical line for 1st violin plot
 for i in range(len(xticks_labels)):
-    ax_t.axvline(i, color="k", linestyle="-", linewidth=0.5)
-
-# TODO: complete moving all grid lines to separate axis (currently not working)
-# ax_grid_t = ax_grid_r.twinx()
-# # fig.add_axes(
-# #     ax_t.get_position(), frameon=True, zorder=ax_grid_r.get_zorder() - 1
-# # )
-# ax_grid_t.set_yscale("log")
-# ax_grid_t.set_xticks([])
-# ax_grid_t.set_yticks([])
-# ax_grid_t.set_facecolor("none")
-# ax_grid_t.set_xlim(ax_t.get_xlim())
-# ax_grid_t.set_ylim(ax_t.get_ylim())
-# ax_grid_t.set_yticks(ax_t.get_yticks(), minor=False)
-# ax_grid_t.yaxis.grid(True, which="major", linestyle=":", linewidth=0.7, alpha=1)
-# ax_grid_t.yaxis.grid(True, which="minor", linestyle=":", linewidth=0.7, alpha=0.8)
+    ax_t.axvline(i, color="gray", linestyle="-", linewidth=0.6, alpha=1)
 
 # Generate the violin plots
-# TODO: The violin plot could be replaced with a kde plot since the current
+# NOTE: The violin plot could be replaced with a kde plot since the current
 # implementation of the violin plot is equivalent to it.
 # - https://seaborn.pydata.org/generated/seaborn.kdeplot.html
 # - https://github.com/mwaskom/seaborn/issues/3619.
@@ -243,8 +244,9 @@ for i in range(len(xticks_labels)):
 # Violin plot parameters
 gap = 0.1
 inner = "quartile"  # {"quartile", None}
-linewidth = 1.5
+linewidth = 1.2
 
+# Reward violin plot
 sns.violinplot(
     data=df_reward,
     x="Group",
@@ -265,6 +267,7 @@ sns.violinplot(
     cut=cut_r,
 )
 
+# Time violin plot
 sns.violinplot(
     data=df_time,
     x="Group",
@@ -285,11 +288,39 @@ sns.violinplot(
     cut=cut_t,
 )
 
+# Add mean reward marker
+if grouping_r == "ep_sum":
+    avg_reward = []
+    df = df_reward[df_reward["Type"] == "reward"]
+    for _, eval_label in eval_list:
+        data = df[df["Group"] == eval_label]["Value"]
+        avg_reward.append(np.mean(data))
+    x_marker_avg_reward = np.arange(len(xticks_labels)) - gap / 2
+    ax_r.plot(
+        x_marker_avg_reward,
+        avg_reward,
+        marker=matplotlib.markers.CARETRIGHT,
+        color=c_reward_dark,
+        linestyle="None",
+    )
+
+    for i, r in enumerate(avg_reward):
+        ax_r.annotate(
+            f"{r:.2f}",
+            xy=(x_marker_avg_reward[i], r),
+            xytext=(-6, 0),  # offset text
+            textcoords="offset points",
+            color=c_reward_dark,
+            fontsize=8,
+            ha="right",
+            va="center",
+        )
+
 # Add max time marker
 if grouping_t == "ts":
-    x_ticks = np.arange(len(xticks_labels)) + gap / 2
+    x_marker_max_time = np.arange(len(xticks_labels)) + gap / 2
     ax_t.plot(
-        x_ticks,
+        x_marker_max_time,
         max_time,
         marker=matplotlib.markers.CARETLEFT,
         color=c_time_dark,
@@ -299,7 +330,7 @@ if grouping_t == "ts":
     for i, t in enumerate(max_time):
         ax_t.annotate(
             f"{t:.2f}",
-            xy=(x_ticks[i], t),
+            xy=(x_marker_max_time[i], t),
             xytext=(6, 0),  # offset text
             textcoords="offset points",
             color=c_time_dark,
@@ -322,9 +353,9 @@ ax_r.legend(
 
 # set zorder of the axes
 ax_grid_r.set_zorder(1)
-# ax_grid_t.set_zorder(2)
-ax_t.set_zorder(2)
-ax_r.set_zorder(3)  # ax_r.set_zorder(ax_t.get_zorder() + 1) due to grid lines
+ax_grid_t.set_zorder(2)
+ax_t.set_zorder(3)
+ax_r.set_zorder(4)
 
 # Save figure
 print("Saving figure...")
