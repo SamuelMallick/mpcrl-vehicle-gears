@@ -25,11 +25,6 @@ sys.path.append(os.getcwd())
 # specified collectively in the variable `experiment_folder`.
 experiment_folder = "eval_single_agent"
 eval_list = [
-    # ["eval_l_mpc/eval_c1_s1_t5000000", "c1_s1"],
-    # ["eval_l_mpc/eval_c2_s3_t4000000", "c2_s3"],
-    # ["eval_l_mpc/eval_c2_s4_t4000000", "c2_s4"],
-    # ["eval_l_mpc/eval_c3_s1_t5000000", "c3_s1"],
-    # ["eval_l_mpc/eval_c3_s3_t5000000", "c3_s3"],
     ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5"],
     ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3"],
     ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4"],
@@ -38,6 +33,8 @@ eval_list = [
     ["eval_heuristic_mpc_2", "h_2"],
     ["eval_heuristic_mpc_3", "h_3"],
 ]
+plot_type = "violin"  # {"box", "violin"} default is "violin"
+show_mean_marker = True  # Show the mean reward marker on the plot
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
 
@@ -129,7 +126,7 @@ for eval_name, eval_label in eval_list:
     # Store the label for the x-axis
     xticks_labels.append(eval_label)
 
-##### Plot results #####
+##### Plot results #####################################################################
 
 # Set plot colors
 c_reward = "lightblue"
@@ -147,9 +144,6 @@ fig, ax_r = plt.subplots(figsize=(10, 6))
 ax_r.patch.set_visible(False)
 ax_t = ax_r.twinx()  # time axis on the right side
 ax_t.set_yscale("log")
-# ax_t.grid(True, which="major", linestyle="-", linewidth=0.6)
-# ax_t.grid(True, which="minor", linestyle=":", linewidth=0.4)
-# ax_t.set_axisbelow(True)
 
 # Set labels and limits
 match grouping_r:
@@ -163,10 +157,19 @@ match grouping_r:
         cut_r = 0
 
     case "ep_sum":
-        ax_r.set_ylim(5, 11)
+        ax_r.set_ylim(5, 10)
         ax_r.set_ylabel(
-            "Episode cumulative cost (x 1000)",
+            "Episode cumulative cost",
             color=c_reward_dark,
+        )
+        ax_r.text(
+            -0.02,
+            1.02,
+            r"$\times 1000$",
+            transform=ax_r.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=9,
         )
         cut_r = 0
 
@@ -197,16 +200,33 @@ match grouping_t:
         cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.01, 2000)
+        ax_t.set_ylim(0.008, 2000)
         ax_t.set_ylabel(
             "Timestep time (Log Scale) [s]",
             color=c_time_dark,
         )
         cut_t = 0
 
-ax_t.set_xticks(list(range(len(xticks_labels))), labels=xticks_labels)
+# Reward axis settings
+custom_xticks_labels = [
+    "L-MPC-1",
+    "L-MPC-2 s3",
+    "L-MPC-2 s4",
+    "MIQP",
+    "Heuristic 1",
+    "Heuristic 2",
+    "Heuristic 3",
+]
+if len(custom_xticks_labels) == len(xticks_labels) and custom_xticks_labels is not None:
+    xticks_labels = custom_xticks_labels  # Use custom labels if provided
+ax_r.set_xticks(list(range(len(xticks_labels))))
+ax_r.set_xticklabels(xticks_labels)
 ax_r.set_xlabel("Policy")
 ax_r.set_title("Policies Evaluation")
+
+# Vertical grid lines
+for i in range(len(xticks_labels)):
+    ax_r.axvline(i, color="gray", linestyle="-", linewidth=0.6, alpha=1)
 
 # Reward grid lines
 ax_grid_r = fig.add_axes(ax_r.get_position(), frameon=False)
@@ -226,76 +246,135 @@ ax_grid_t.set_yticks([])
 ax_grid_t.set_facecolor("none")
 ax_grid_t.set_xlim(ax_t.get_xlim())
 ax_grid_t.set_ylim(ax_t.get_ylim())
-ax_grid_t.set_yticks(ax_t.get_yticks()[1:-2], minor=False)  # hacky but it works
+ax_grid_t.set_yticks(ax_t.get_yticks()[2:-2], minor=False)  # a bit hacky but it works
 ax_grid_t.yaxis.grid(True, which="major", linestyle=":", linewidth=0.6, alpha=1)
 ax_grid_t.yaxis.grid(True, which="minor", linestyle=":", linewidth=0.4, alpha=0.8)
-ax_t.set_axisbelow(True)
+ax_grid_t.set_axisbelow(True)
 
-# add vertical line for 1st violin plot
-for i in range(len(xticks_labels)):
-    ax_t.axvline(i, color="gray", linestyle="-", linewidth=0.6, alpha=1)
-
-# Generate the violin plots
-# NOTE: The violin plot could be replaced with a kde plot since the current
-# implementation of the violin plot is equivalent to it.
-# - https://seaborn.pydata.org/generated/seaborn.kdeplot.html
-# - https://github.com/mwaskom/seaborn/issues/3619.
-
-# Violin plot parameters
-gap = 0.1
-inner = "quartile"  # {"quartile", None}
+# Plot parameters
 linewidth = 1.2
+gap = 0.1
+inner = "quartile"  # {"quartile", None} -- only for violin plots
 
-# Reward violin plot
-sns.violinplot(
-    data=df_reward,
-    x="Group",
-    y="Value",
-    hue="Type",
-    ax=ax_r,
-    color=c_reward,
-    palette=[c_reward, c_time],
-    fill=True,
-    linewidth=linewidth,
-    linecolor=c_reward_dark,
-    orient="v",
-    split=True,
-    gap=gap,
-    inner=inner,
-    log_scale=False,
-    legend=False,
-    cut=cut_r,
-)
+# Set the plot type
+if plot_type == "violin":
 
-# Time violin plot
-sns.violinplot(
-    data=df_time,
-    x="Group",
-    y="Value",
-    hue="Type",
-    ax=ax_t,
-    color=c_time,
-    fill=True,
-    linewidth=linewidth,
-    linecolor=c_time_dark,
-    palette=[c_reward, c_time],
-    orient="v",
-    split=True,
-    gap=gap,
-    inner=inner,
-    log_scale=True,
-    legend=False,
-    cut=cut_t,
-)
+    # NOTE: The violin plot could be replaced with a kde plot since the current
+    # implementation of the violin plot is equivalent to it.
+    # - https://seaborn.pydata.org/generated/seaborn.kdeplot.html
+    # - https://github.com/mwaskom/seaborn/issues/3619.
 
-# Add mean reward marker
-if grouping_r == "ep_sum":
+    # Reward violin plot
+    sns.violinplot(
+        data=df_reward,
+        x="Group",
+        y="Value",
+        hue="Type",
+        ax=ax_r,
+        color=c_reward,
+        palette=[c_reward, c_time],
+        fill=True,
+        linewidth=linewidth,
+        linecolor=c_reward_dark,
+        orient="v",
+        split=True,
+        gap=gap,
+        inner=inner,
+        log_scale=False,
+        legend=False,
+        cut=cut_r,
+    )
+
+    # Time violin plot
+    sns.violinplot(
+        data=df_time,
+        x="Group",
+        y="Value",
+        hue="Type",
+        ax=ax_t,
+        color=c_time,
+        fill=True,
+        linewidth=linewidth,
+        linecolor=c_time_dark,
+        palette=[c_reward, c_time],
+        orient="v",
+        split=True,
+        gap=gap,
+        inner=inner,
+        log_scale=True,
+        legend=False,
+        cut=cut_t,
+    )
+
+elif plot_type == "box":
+
+    # Reward box plot
+    sns.boxplot(
+        data=df_reward,
+        x="Group",
+        y="Value",
+        hue="Type",
+        ax=ax_r,
+        color=c_reward,
+        palette=[c_reward, c_time],
+        fill=True,
+        linewidth=linewidth,
+        linecolor=c_reward_dark,
+        orient="v",
+        gap=gap,
+        log_scale=False,
+        legend=False,
+    )
+
+    # Time box plot
+    sns.boxplot(
+        data=df_time,
+        x="Group",
+        y="Value",
+        hue="Type",
+        ax=ax_t,
+        color=c_time,
+        fill=True,
+        linewidth=linewidth,
+        linecolor=c_time_dark,
+        palette=[c_reward, c_time],
+        orient="v",
+        gap=gap,
+        log_scale=True,
+        legend=False,
+    )
+
+else:
+    raise ValueError(f"Unknown plot type: {plot_type}")
+
+# Mean reward marker
+if show_mean_marker is True:
+
+    # Calculate the average reward for each evaluation
     avg_reward = []
-    df = df_reward[df_reward["Type"] == "reward"]
+    df = df_reward[df_reward["Type"] == "reward"]  # Remove dummy data
     for _, eval_label in eval_list:
-        data = df[df["Group"] == eval_label]["Value"]
-        avg_reward.append(np.mean(data))
-    x_marker_avg_reward = np.arange(len(xticks_labels)) - gap / 2
+        avg_reward.append(np.mean(df[df["Group"] == eval_label]["Value"]))
+
+    # Manually set offset for the mean marker (to avoid overlap with the plot)
+    x_marker_offset = np.array(
+        [
+            0.28,
+            0.30,
+            0.29,
+            0.35,
+            0.22,
+            0.30,
+            0.30,
+        ]
+    )
+    if len(avg_reward) != len(x_marker_offset):
+        x_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
+
+    # Define x marker positions
+    x_marker_avg_reward = np.arange(len(xticks_labels)) - gap / 2 - x_marker_offset
+
+    # Plot the mean reward markers
     ax_r.plot(
         x_marker_avg_reward,
         avg_reward,
@@ -304,6 +383,7 @@ if grouping_r == "ep_sum":
         linestyle="None",
     )
 
+    # Annotate the mean reward markers
     for i, r in enumerate(avg_reward):
         ax_r.annotate(
             f"{r:.2f}",
@@ -316,7 +396,7 @@ if grouping_r == "ep_sum":
             va="center",
         )
 
-# Add max time marker
+# Max time marker
 if grouping_t == "ts":
     x_marker_max_time = np.arange(len(xticks_labels)) + gap / 2
     ax_t.plot(
@@ -339,7 +419,7 @@ if grouping_t == "ts":
             va="center",
         )
 
-# add legend
+# Add legend
 h_reward = mpatches.Patch(color=c_reward, label=f"Reward")
 h_time = mpatches.Patch(color=c_time, label=f"Time")
 handles = [h_reward, h_time]
@@ -347,11 +427,11 @@ labels = ["Reward", "Time"]
 ax_r.legend(
     handles,
     labels,
-    loc="upper right",
+    loc="upper left",
     frameon=True,
 )
 
-# set zorder of the axes
+# Set zorder of the axes
 ax_grid_r.set_zorder(1)
 ax_grid_t.set_zorder(2)
 ax_t.set_zorder(3)
