@@ -2,11 +2,10 @@
 Generate the box plot or violin plot from the evaluation results of a single controller.
 """
 
-# TODO: add 2 new axis objects to manage grid lines separately from the data plots
-
 import os
 import pickle
 import sys
+from packaging import version
 
 import seaborn as sns
 import matplotlib
@@ -14,27 +13,32 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
-from scipy.integrate import simpson
-from scipy.stats import gaussian_kde
+
 
 sys.path.append(os.getcwd())
 
+if version.parse(matplotlib.__version__) <= version.parse("3.7"):
+    save_tikz = True
+    from utils.tikz import save2tikz  # import tikzplotlib only if supported
+else:
+    save_tikz = False
+
 # Select experiments to plot
-# List must be formatted as ["folder name", eval_name] where eval_name is the label
-# used for the plot. The experiment folder name (first layer under results/) can be
+# List must be formatted as ["folder name", "label"] where the label is the one used
+# for the plot. The experiment folder name (first folder layer under results/) can be
 # specified collectively in the variable `experiment_folder`.
 experiment_folder = "eval_single_agent"
 eval_list = [
-    ["eval_l_mpc/eval_c3_s5_t5000000", "c3_s5"],
-    ["eval_l_mpc/eval_c4_s3_t2900000", "c4_s3"],
-    ["eval_l_mpc/eval_c4_s4_t2900000", "c4_s4"],
-    ["eval_miqp", "miqp"],
-    ["eval_heuristic_mpc_1", "h_1"],
-    ["eval_heuristic_mpc_2", "h_2"],
-    ["eval_heuristic_mpc_3", "h_3"],
+    ["eval_l_mpc/eval_c3_s5_t5000000", "RL-1"],
+    ["eval_l_mpc/eval_c4_s4_t4000000", "RL-2 s4"],
+    ["eval_l_mpc/eval_c4_s9_t4000000", "RL-2 s9"],
+    ["eval_miqp", "MIQP"],
+    ["eval_heuristic_mpc_1", "H-1"],
+    ["eval_heuristic_mpc_2", "H-2"],
+    ["eval_heuristic_mpc_3", "H-3"],
 ]
 plot_type = "violin"  # {"box", "violin"} default is "violin"
-show_mean_marker = True  # Show the mean reward marker on the plot
+show_mean_marker = True  # Show the mean reward marker on the reward plot
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
 
@@ -56,7 +60,7 @@ for eval_name, eval_label in eval_list:
     print(f"Found {len(pkl_files)} files in results/{experiment_folder}/{eval_name}")
 
     # Extract all data from .pkl files
-    for file in pkl_files:
+    for _, file in enumerate(pkl_files):
         if file.endswith(".pkl"):
             with open(f"results/{experiment_folder}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
@@ -200,7 +204,7 @@ match grouping_t:
         cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.008, 2000)
+        ax_t.set_ylim(0.008, 5000)
         ax_t.set_ylabel(
             "Timestep time (Log Scale) [s]",
             color=c_time_dark,
@@ -208,17 +212,6 @@ match grouping_t:
         cut_t = 0
 
 # Reward axis settings
-custom_xticks_labels = [
-    "L-MPC-1",
-    "L-MPC-2 s3",
-    "L-MPC-2 s4",
-    "MIQP",
-    "Heuristic 1",
-    "Heuristic 2",
-    "Heuristic 3",
-]
-if len(custom_xticks_labels) == len(xticks_labels) and custom_xticks_labels is not None:
-    xticks_labels = custom_xticks_labels  # Use custom labels if provided
 ax_r.set_xticks(list(range(len(xticks_labels))))
 ax_r.set_xticklabels(xticks_labels)
 ax_r.set_xlabel("Policy")
@@ -359,13 +352,13 @@ if show_mean_marker is True:
     # Manually set offset for the mean marker (to avoid overlap with the plot)
     x_marker_offset = np.array(
         [
-            0.28,
-            0.30,
-            0.29,
-            0.35,
-            0.22,
-            0.30,
-            0.30,
+            0.31,
+            0.32,
+            0.31,
+            0.34,
+            0.24,
+            0.33,
+            0.33,
         ]
     )
     if len(avg_reward) != len(x_marker_offset):
@@ -436,6 +429,10 @@ ax_grid_r.set_zorder(1)
 ax_grid_t.set_zorder(2)
 ax_t.set_zorder(3)
 ax_r.set_zorder(4)
+
+
+if save_tikz:
+    save2tikz(plt.gcf())
 
 # Save figure
 print("Saving figure...")
