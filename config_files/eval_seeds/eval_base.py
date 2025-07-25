@@ -1,7 +1,7 @@
 from config_files.base import ConfigDefault
 
 
-class EvalBase(ConfigDefault):
+class Config(ConfigDefault):
 
     def __init__(self):
         super().__init__()
@@ -13,10 +13,10 @@ class EvalBase(ConfigDefault):
         self.bidirectional = False
 
         # Number of multi-starts for the optimization
-        self.multi_starts = 1
+        self.multi_starts = 4
 
         # Time limits for the solvers
-        # self.extra_opts["gurobi"]["TimeLimit"] = 3600
+        self.extra_opts["gurobi"]["TimeLimit"] = 3600
         self.extra_opts["knitro"]["maxtime"] = 3600
         # self.extra_opts["bonmin"]["time_limit"] = max_time
         # self.extra_opts["ipopt"]["max_wall_time"] = max_time
