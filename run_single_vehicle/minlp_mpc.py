@@ -64,6 +64,7 @@ mpc = SolverTimeRecorder(
 extra_opts_backup = {
     "knitro": {
         "mip_terminate": 1,  # terminate the solver after the first feasible solution
+        "maxtime": 60,  # 60 seconds for the backup MPC
     }
 }
 backup_mpc = SolverTimeRecorder(

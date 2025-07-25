@@ -43,16 +43,22 @@ class MIPAgent(SingleVehicleAgent):
                 if sol.stats["pool_sol_nr"] == 0:
                     raise ValueError("MPC failed to find feasible solution in time")
             elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
+                gear = self.gear_from_velocity(self.prev_sol.vals["x"].full()[1, 1])
+                vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
+                vals0[0]["gear"][gear] = 1
                 sol, _ = self.backup_mpc.solve(pars, vals0)
-                if not sol.success:
+                if not sol or sol.status != "KN_RC_MIP_TERM_FEAS":
                     raise ValueError(
                         "Backup MPC failed to solve after primary MPC timeout"
                     )
-            elif sol.status == "KN_RC_TIME_LIMIT_FEAS":
+            elif (
+                sol.status == "KN_RC_TIME_LIMIT_FEAS"
+                or sol.status == "KN_RC_MIP_TERM_FEAS"
+            ):
                 pass  # Use the current feasible solution
             elif self.backup_mpc:
                 solver = "backup"
-                sol = self.backup_mpc.solve(pars, vals0)
+                sol, _ = self.backup_mpc.solve(pars, vals0)
                 if not sol.success:
                     raise ValueError("MPC failed to solve")
             else:

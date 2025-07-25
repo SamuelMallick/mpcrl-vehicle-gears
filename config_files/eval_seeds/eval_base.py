@@ -16,7 +16,7 @@ class EvalBase(ConfigDefault):
         self.multi_starts = 1
 
         # Time limits for the solvers
-        # self.extra_opts["gurobi"]["TimeLimit"] = max_time
-        self.extra_opts["knitro"]["maxtime"] = 60
+        # self.extra_opts["gurobi"]["TimeLimit"] = 3600
+        self.extra_opts["knitro"]["maxtime"] = 3600
         # self.extra_opts["bonmin"]["time_limit"] = max_time
         # self.extra_opts["ipopt"]["max_wall_time"] = max_time
