@@ -7,10 +7,10 @@ import os, sys
 import torch
 
 sys.path.append(os.getcwd())
-from config_files.base import ConfigDefault
+from config_files.base import Config
 
 
-class Config(ConfigDefault):
+class Config(Config):
     id = "30"  # 29 but beginning from 25 policy
 
     # -----------general parameters----------------

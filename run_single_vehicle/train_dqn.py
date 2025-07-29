@@ -12,17 +12,12 @@ from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+from utils.parse_config import parse_config
 from vehicle import Vehicle
 
-# if a config file passed on command line, otherwise use default config file
-if len(sys.argv) > 1:
-    config_file = sys.argv[1]
-    mod = importlib.import_module(f"config_files.{config_file}")
-    config = mod.Config()
-else:
-    from config_files.c2 import Config  # type: ignore
-
-    config = Config()
+# Generate config object
+# TODO: Implement functionality to generate config for training (both 1st and 2nd stage)
+config = parse_config(sys.argv)
 
 N = config.N
 seed = 0  # seed 0 used for generator

@@ -2,16 +2,16 @@ import pickle
 
 import torch
 
-from config_files.base import ConfigDefault
+from config_files.base import Config
 
 
-class ConfigC2Base(ConfigDefault):
+class Config(Config):
 
     def __init__(self):
         super().__init__()
         self.id = "c2_base"
-        self.train_seed = 1
-        self.cuda_seed = 1
+        self.train_seed = 0
+        self.cuda_seed = 0
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.init_state_dict = torch.load(

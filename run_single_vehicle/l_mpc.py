@@ -1,8 +1,6 @@
-import importlib
 import os
 import pickle
 import sys
-import warnings
 
 import numpy as np
 import torch
@@ -15,60 +13,16 @@ from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+from utils.parse_config import parse_config
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
-from config_files.evaluations.c1 import Config  # type: ignore
 
-# if a config file passed on command line, otherwise use default config file
-if len(sys.argv) > 1:
-    config_file = sys.argv[1]
-    mod = importlib.import_module(f"config_files.{config_file}")
-    config = mod.Config()
-else:
-    warnings.warn("No config file passed on command line, using default config file.")
-    config = Config()
-
-# if additional arguments are passed, assign them
-config_number = 0
-config_seed = 0
-config_step = 0
-if len(sys.argv) > 2:
-    try:
-        config_number = int(sys.argv[2])
-        config_seed = int(sys.argv[3])
-        config_step = int(sys.argv[4])
-    except IndexError:
-        raise ValueError(
-            "Not enough arguments provided. Check the bash script run_eval_single.sh."
-            "Expected: <config_number> <config_seed> <config_step>"
-        )
-
-# Default parameters values (c2_seed4_step4000000)
-if config_number == 0:
-    config_number = 2
-if config_seed == 0:
-    config_seed = 4
-if config_step == 0:
-    config_step = 4000000
-
-# Compose filenames for policy, normalization data, and results folder
-policy_filename = (
-    f"c{config_number}/c{config_number}_seed{config_seed}/"
-    f"policy_net_step_{config_step}.pth"
-)
-normalization_data_filename = (
-    f"c{config_number}/c{config_number}_seed{config_seed}/data_step_{config_step}.pkl"
-)
-results_folder_name = f"eval_l_mpc/eval_c{config_number}_s{config_seed}_t{config_step}"
-
-# Override everything with manual names if needed (uncomment and set values)
-# policy_filename = ""
-# normalization_data_filename = ""
-# results_folder_name = ""
+# Generate config object
+config = parse_config(sys.argv)
 
 # Create results folder if it does not exist
-if not os.path.exists(f"results/{results_folder_name}"):
-    os.makedirs(f"results/{results_folder_name}")
+if not os.path.exists(f"results/{config.results_folder_name}"):
+    os.makedirs(f"results/{config.results_folder_name}")
 
 # Other configuration parameters
 SAVE = config.SAVE
@@ -114,11 +68,11 @@ agent = LearningAgent(
 )
 
 state_dict = torch.load(
-    f"results/{policy_filename}",
+    f"results/{config.policy_filename}",
     weights_only=True,
     map_location="cpu",
 )
-with open(f"results/{normalization_data_filename}", "rb") as f:
+with open(f"results/{config.normalization_data_filename}", "rb") as f:
     data = pickle.load(f)
 
 returns, info = agent.evaluate(
@@ -145,7 +99,7 @@ print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
 if SAVE:
     with open(
-        f"results/{results_folder_name}/l_mpc_N_{N}_c_{config.id}.pkl", "wb"
+        f"results/{config.results_folder_name}/l_mpc_N_{N}_c_{config.id}.pkl", "wb"
     ) as f:
         pickle.dump(
             {

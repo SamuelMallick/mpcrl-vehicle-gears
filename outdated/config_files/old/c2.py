@@ -5,10 +5,10 @@ from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 import os, sys
 
 sys.path.append(os.getcwd())
-from config_files.base import ConfigDefault
+from config_files.base import Config
 
 
-class Config(ConfigDefault):
+class Config(Config):
     id = "2"  # 1 but with shift actions
 
     # -----------general parameters----------------

@@ -1,4 +1,3 @@
-import importlib
 import os
 import pickle
 import sys
@@ -13,18 +12,12 @@ from env import VehicleTracking
 from mpcs.nonlinear_mpc import NonlinearMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+from utils.parse_config import parse_config
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-# if a config file passed on command line, otherwise use default config file
-if len(sys.argv) > 1:
-    config_file = sys.argv[1]
-    mod = importlib.import_module(f"config_files.{config_file}")
-    config = mod.Config()
-else:
-    from config_files.eval_seeds.eval_seed1 import Config  # type: ignore
-
-    config = Config()
+# Generate config object
+config = parse_config(sys.argv)
 
 SAVE = config.SAVE
 PLOT = config.PLOT

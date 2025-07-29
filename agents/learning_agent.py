@@ -3,7 +3,7 @@ from csnlp import Solution
 import numpy as np
 import torch
 from agents.agent import PlatoonAgent, SingleVehicleAgent
-from config_files.base import ConfigDefault
+from config_files.base import Config
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
 from network import DRQN
@@ -34,7 +34,7 @@ class LearningAgent(SingleVehicleAgent):
         self,
         mpc: FixedGearMPC,
         np_random: np.random.Generator,
-        config: ConfigDefault,
+        config: Config,
         multi_starts: int = 1,
     ):
         super().__init__(mpc, np_random, multi_starts)
@@ -524,7 +524,7 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
         mpc: FixedGearMPC,
         np_random: np.random.Generator,
         num_vehicles: int,
-        config: ConfigDefault,
+        config: Config,
         multi_starts: int = 1,
     ):
         LearningAgent.__init__(

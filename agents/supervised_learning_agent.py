@@ -1,7 +1,7 @@
 from copy import deepcopy
 import torch
 from agents.learning_agent import LearningAgent
-from config_files.base import ConfigDefault
+from config_files.base import Config
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
 import numpy as np
@@ -28,7 +28,7 @@ class SupervisedLearningAgent(LearningAgent):
         multi_starts: int = 1,
     ):
         # default config used as it is irrelevant for data generation
-        super().__init__(mpc, np_random, ConfigDefault(), multi_starts)
+        super().__init__(mpc, np_random, Config(), multi_starts)
         self.normalize = False  # never normalize the data during data gathering
 
     def get_action(self, state: np.ndarray) -> tuple[float, float, int, dict]:

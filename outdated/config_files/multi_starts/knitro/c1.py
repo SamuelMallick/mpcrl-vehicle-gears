@@ -1,7 +1,7 @@
-from config_files.base import ConfigDefault
+from config_files.base import Config
 
 
-class Config(ConfigDefault):
+class Config(Config):
 
     def __init__(self):
         super().__init__()

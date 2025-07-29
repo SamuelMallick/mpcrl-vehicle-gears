@@ -1,7 +1,7 @@
-from config_files.c4_seeds.c4_base import ConfigC4Base
+from config_files.train_c4_seeds.c4_base import Config
 
 
-class Config(ConfigC4Base):
+class Config(Config):
 
     def __init__(self):
         super().__init__()

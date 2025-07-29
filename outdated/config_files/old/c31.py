@@ -7,10 +7,10 @@ import os, sys
 import torch
 
 sys.path.append(os.getcwd())
-from config_files.base import ConfigDefault
+from config_files.base import Config
 
 
-class Config(ConfigDefault):
+class Config(Config):
     id = "31"  # 30 but no exp
 
     # -----------general parameters----------------

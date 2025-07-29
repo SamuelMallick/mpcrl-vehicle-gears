@@ -5,5 +5,6 @@ class Config(Config):
 
     def __init__(self):
         super().__init__()
-        self.id = "eval_1"
-        self.eval_seed = 10
+        self.id = "c1_base"
+        self.train_seed = 0
+        self.cuda_seed = 0

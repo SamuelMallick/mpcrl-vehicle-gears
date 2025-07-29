@@ -1,4 +1,3 @@
-import importlib
 import os
 import pickle
 import sys
@@ -13,19 +12,14 @@ from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
+from utils.parse_config import parse_config
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-# if a config file passed on command line, otherwise use default config file
-if len(sys.argv) > 1:
-    config_file = sys.argv[1]
-    mod = importlib.import_module(f"config_files.{config_file}")
-    config = mod.Config()
-else:
-    from config_files.eval_seeds.eval_seed1 import Config  # type: ignore
+# Generate config object
+config = parse_config(sys.argv)
 
-    config = Config()
-
+# Script parameters
 SAVE = config.SAVE
 PLOT = config.PLOT
 N = config.N
@@ -63,8 +57,8 @@ mpc = SolverTimeRecorder(
 # Add backup MPC
 extra_opts_backup = {
     "knitro": {
-        "mip_terminate": 1,  # terminate the solver after the first feasible solution
-        "maxtime": 60,  # 60 seconds for the backup MPC
+        "mip_terminate": config.backup_minlp_mip_terminate,
+        "maxtime": config.backup_minlp_maxtime,
     }
 }
 backup_mpc = SolverTimeRecorder(

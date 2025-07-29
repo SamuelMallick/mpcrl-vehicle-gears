@@ -2,7 +2,7 @@ from typing import Literal
 
 from csnlp import Solution
 import torch
-from config_files.base import ConfigDefault
+from config_files.base import Config
 from env import VehicleTracking
 import numpy as np
 from csnlp.wrappers.mpc.mpc import Mpc
@@ -629,7 +629,7 @@ class LearningAgent(Agent):
         self,
         mpc: HybridMPC,
         np_random: np.random.Generator,
-        config: ConfigDefault,
+        config: Config,
         multi_starts: int = 1,
     ):
         super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
@@ -1630,7 +1630,7 @@ class DistributedLearningAgent(DistributedAgent, LearningAgent):
         mpc: HybridMPC,
         num_vehicles: int,
         np_random: np.random.Generator,
-        config: ConfigDefault,
+        config: Config,
         multi_starts: int = 1,
     ):
         self.eps_start = 0

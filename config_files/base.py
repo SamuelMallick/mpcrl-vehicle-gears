@@ -1,4 +1,4 @@
-class ConfigDefault:
+class Config:
     id = "base"
 
     SAVE = True
@@ -68,3 +68,12 @@ class ConfigDefault:
     batch_size = 128
 
     max_grad = 100
+
+    # policy parameters (for 2nd stage training and evaluation)
+    policy_filename = ""
+    normalization_data_filename = ""
+    results_folder_name = ""
+
+    # backup MPC parameters
+    backup_minlp_mip_terminate = 0
+    backup_minlp_maxtime = 60

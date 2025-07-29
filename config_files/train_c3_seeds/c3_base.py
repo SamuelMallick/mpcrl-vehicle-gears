@@ -5,7 +5,7 @@ class Config(Config):
 
     def __init__(self):
         super().__init__()
-        self.id = "c3_seed5"
-        self.train_seed = 5
-        self.cuda_seed = 5
+        self.id = "c3_base"
+        self.train_seed = 0
+        self.cuda_seed = 0
         self.bidirectional = False

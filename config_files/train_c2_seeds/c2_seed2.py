@@ -1,7 +1,7 @@
-from config_files.c2_seeds.c2_base import ConfigC2Base
+from config_files.train_c2_seeds.c2_base import Config
 
 
-class Config(ConfigC2Base):
+class Config(Config):
 
     def __init__(self):
         super().__init__()
