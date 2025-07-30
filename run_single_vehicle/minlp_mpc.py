@@ -102,6 +102,15 @@ print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(mpc.solver_time)}")
 
+# Compute MPC total solve time
+t_primary_mpc = mpc.solver_time
+if backup_mpc is not None and hasattr(backup_mpc, "solver_time"):
+    t_backup_mpc = backup_mpc.solver_time
+else:
+    t_backup_mpc = np.zeros(len(t_primary_mpc))
+t_total_mpc = t_primary_mpc + t_backup_mpc
+
+# Save results to  pickle file
 if SAVE:
     with open(f"results/minlp_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
@@ -113,7 +122,9 @@ if SAVE:
                 "fuel": fuel,
                 "T_e": engine_torque,
                 "w_e": engine_speed,
-                "mpc_solve_time": mpc.solver_time,
+                "mpc_solve_time": t_total_mpc,
+                "t_primary_mpc": t_primary_mpc,
+                "t_backup_mpc": t_backup_mpc,
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),

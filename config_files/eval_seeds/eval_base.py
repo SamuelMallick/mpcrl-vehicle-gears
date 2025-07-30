@@ -24,5 +24,5 @@ class Config(Config):
         # self.extra_opts["ipopt"]["max_wall_time"] = max_time
 
         # Backup MINLP MPC parameters
-        self.backup_minlp_mip_terminate = 0  # terminate solver after first feasible sol
+        self.backup_minlp_mip_terminate = 1  # terminate solver after first feasible sol
         self.backup_minlp_maxtime = 60  # maximum time for the backup MPC

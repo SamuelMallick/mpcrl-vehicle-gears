@@ -37,32 +37,44 @@ class MIPAgent(SingleVehicleAgent):
         solver = "primary"
         sol, info = self.mpc.solve(pars, vals0)
 
-        # special check for knitro timeout
-        if not sol.success:
+        # error handling
+        accepted_knitro_statuses = [
+            "KN_RC_MIP_TERM_FEAS",
+            "KN_RC_TIME_LIMIT_FEAS",
+        ]
+        if sol.success or sol.status in accepted_knitro_statuses:
+
+            # Append a zero time to the backup MPC since it is not used at this timestep
+            if self.backup_mpc is not None and hasattr(self.backup_mpc, "solver_time"):
+                self.backup_mpc.solver_time.append(0.0)
+
+            pass  # Accept the current solution and continue
+
+        # Handle other failure cases
+        else:
             if sol.status == "TIME_LIMIT":  # timeout for gurobi
                 if sol.stats["pool_sol_nr"] == 0:
                     raise ValueError("MPC failed to find feasible solution in time")
             elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
+                # Special case: use heuristic 2 to generate a warm start solution
+                # for the backup MPC
                 gear = self.gear_from_velocity(self.prev_sol.vals["x"].full()[1, 1])
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
                 vals0[0]["gear"][gear] = 1
                 sol, _ = self.backup_mpc.solve(pars, vals0)
-                if not sol or sol.status != "KN_RC_MIP_TERM_FEAS":
+                if not sol or sol.status not in accepted_knitro_statuses:
                     raise ValueError(
                         "Backup MPC failed to solve after primary MPC timeout"
                     )
-            elif (
-                sol.status == "KN_RC_TIME_LIMIT_FEAS"
-                or sol.status == "KN_RC_MIP_TERM_FEAS"
-            ):
-                pass  # Use the current feasible solution
             elif self.backup_mpc:
+                # Other failure cases: try the backup MPC
                 solver = "backup"
                 sol, _ = self.backup_mpc.solve(pars, vals0)
                 if not sol.success:
                     raise ValueError("MPC failed to solve")
             else:
                 raise ValueError("MPC failed to solve")
+
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
         gear = np.argmax(sol.vals["gear"].full(), 0)[0]
