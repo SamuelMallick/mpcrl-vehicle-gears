@@ -256,8 +256,8 @@ p3.set_zorder(10)
 
 # Set y-axis labels and ticks
 ax[0].set_ylabel("$L$")
-ax[1].set_ylabel("$L_t$")
-ax[2].set_ylabel("$L_f$")
+ax[1].set_ylabel("$J_\mathrm{t}$")
+ax[2].set_ylabel("$J_\mathrm{f}$")
 ax[3].set_ylabel("$\\kappa$")
 fig.align_ylabels(ax)
 
