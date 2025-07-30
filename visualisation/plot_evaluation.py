@@ -8,7 +8,7 @@ import sys
 from packaging import version
 
 import seaborn as sns
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
@@ -16,31 +16,42 @@ import pandas as pd
 
 
 sys.path.append(os.getcwd())
+from utils.plot_fcns import cm2inch
 
-if version.parse(matplotlib.__version__) <= version.parse("3.7"):
-    save_tikz = True
-    from utils.tikz import save2tikz  # import tikzplotlib only if supported
-else:
-    save_tikz = False
+##### Plot settings ####################################################################
+
+save_png = True
+save_pgf = True
+save_tikz = False
+
+show_legend = False
+show_title = False
 
 # Select experiments to plot
 # List must be formatted as ["folder name", "label"] where the label is the one used
 # for the plot. The experiment folder name (first folder layer under results/) can be
-# specified collectively in the variable `experiment_folder`.
-experiment_folder = "eval_single_agent"
+# specified collectively in the variable `eval_type`.
+eval_type = "eval_single"
 eval_list = [
     ["eval_l_mpc/eval_c3_s5_t5000000", "RL-1"],
     ["eval_l_mpc/eval_c4_s4_t4000000", "RL-2 s4"],
     ["eval_l_mpc/eval_c4_s9_t4000000", "RL-2 s9"],
     ["eval_miqp", "MIQP"],
+    ["eval_minlp", "MINLP"],
     ["eval_heuristic_mpc_1", "H-1"],
     ["eval_heuristic_mpc_2", "H-2"],
     ["eval_heuristic_mpc_3", "H-3"],
 ]
+
+# Select the plot parameters
 plot_type = "violin"  # {"box", "violin"} default is "violin"
 show_mean_marker = True  # Show the mean reward marker on the reward plot
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
+
+
+##### Preprocess data ##################################################################
+
 
 # Initialize data containers
 df_reward = pd.DataFrame(columns=["Policy", "Variable", "Value"])
@@ -56,13 +67,13 @@ for eval_name, eval_label in eval_list:
     time: list[list] = []
 
     # Locate data files for current evaluation
-    pkl_files = os.listdir(f"results/{experiment_folder}/{eval_name}")
-    print(f"Found {len(pkl_files)} files in results/{experiment_folder}/{eval_name}")
+    pkl_files = os.listdir(f"results/{eval_type}/{eval_name}")
+    print(f"Found {len(pkl_files)} files in results/{eval_type}/{eval_name}")
 
     # Extract all data from .pkl files
     for _, file in enumerate(pkl_files):
         if file.endswith(".pkl"):
-            with open(f"results/{experiment_folder}/{eval_name}/{file}", "rb") as f:
+            with open(f"results/{eval_type}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
                 reward.append(data["R"][0])
                 time.append(data["mpc_solve_time"])
@@ -130,7 +141,22 @@ for eval_name, eval_label in eval_list:
     # Store the label for the x-axis
     xticks_labels.append(eval_label)
 
+
 ##### Plot results #####################################################################
+
+if version.parse(mpl.__version__) <= version.parse("3.7"):
+    if save_pgf is True:
+        save_pgf = True
+    if save_tikz is True:
+        save_tikz = True
+        from utils.tikz import save2tikz  # import tikzplotlib only if supported
+else:
+    if save_pgf is True:
+        save_pgf = False
+        print("PGF export is not supported in this version of matplotlib.")
+    if save_tikz is True:
+        save_tikz = False
+        print("TikZ export is not supported in this version of matplotlib.")
 
 # Set plot colors
 c_reward = "lightblue"
@@ -142,9 +168,36 @@ c_time_dark2 = "darkred"
 # c_time_dark = "goldenrod"
 # c_time_dark2 = "darkgoldenrod"
 
+# Plot parameters
+linewidth = 1.2
+gap = 0.1
+inner = "quartile"  # {"quartile", None} -- only for violin plots
+labels_font_size = 10
+tick_labels_font_size = 8
+markers_font_size = 7
+
+# Set matplotlib parameters
+mpl.rcParams.update(
+    {
+        "pgf.texsystem": "xelatex",  # or any other engine you want to use
+        "text.usetex": True,  # use TeX for all texts
+        "font.family": "serif",
+        "font.size": labels_font_size,
+        "axes.labelsize": labels_font_size,
+        "legend.fontsize": labels_font_size,
+        "xtick.labelsize": labels_font_size,
+        "ytick.labelsize": tick_labels_font_size,
+        "pgf.rcfonts": False,
+        "pgf.preamble": "\\usepackage[T1]{fontenc}",  # extra preamble for LaTeX
+    }
+)
+
 # Initialize figure
 print("Generating figure...")
-fig, ax_r = plt.subplots(figsize=(10, 6))
+fig_size_x = cm2inch(14)
+fig_size_y = cm2inch(8)
+fig, ax_r = plt.subplots(figsize=(fig_size_x, fig_size_y))
+fig.tight_layout()  # Avoid plt.tight_layout() as it messes with the multiple axes
 ax_r.patch.set_visible(False)
 ax_t = ax_r.twinx()  # time axis on the right side
 ax_t.set_yscale("log")
@@ -167,13 +220,13 @@ match grouping_r:
             color=c_reward_dark,
         )
         ax_r.text(
-            -0.02,
-            1.02,
-            r"$\times 1000$",
+            -0.01,
+            1.03,
+            r"$\times 10^3$",
             transform=ax_r.transAxes,
             ha="right",
             va="bottom",
-            fontsize=9,
+            fontsize=tick_labels_font_size + 1,
         )
         cut_r = 0
 
@@ -190,7 +243,7 @@ match grouping_t:
     case "ep_mean":
         ax_t.set_ylim(0.01, 1)
         ax_t.set_ylabel(
-            "Average timestep time over episode (Log Scale) [s]",
+            "Average timestep time over episode [s]",
             color=c_time_dark,
         )
         cut_t = 0
@@ -198,7 +251,7 @@ match grouping_t:
     case "ep_sum":
         ax_t.set_ylim(10, 1000)
         ax_t.set_ylabel(
-            "Episode cumulative time (Log Scale) [s]",
+            "Episode cumulative time [s]",
             color=c_time_dark,
         )
         cut_t = 0
@@ -206,7 +259,7 @@ match grouping_t:
     case "ts":
         ax_t.set_ylim(0.008, 5000)
         ax_t.set_ylabel(
-            "Timestep time (Log Scale) [s]",
+            "Timestep time [s]",
             color=c_time_dark,
         )
         cut_t = 0
@@ -214,8 +267,10 @@ match grouping_t:
 # Reward axis settings
 ax_r.set_xticks(list(range(len(xticks_labels))))
 ax_r.set_xticklabels(xticks_labels)
-ax_r.set_xlabel("Policy")
-ax_r.set_title("Policies Evaluation")
+ax_r.set_xlabel(" ")
+if show_title is True:
+    ax_r.set_xlabel("Policy")
+    ax_r.set_title("Policies Evaluation")
 
 # Vertical grid lines
 for i in range(len(xticks_labels)):
@@ -243,11 +298,6 @@ ax_grid_t.set_yticks(ax_t.get_yticks()[2:-2], minor=False)  # a bit hacky but it
 ax_grid_t.yaxis.grid(True, which="major", linestyle=":", linewidth=0.6, alpha=1)
 ax_grid_t.yaxis.grid(True, which="minor", linestyle=":", linewidth=0.4, alpha=0.8)
 ax_grid_t.set_axisbelow(True)
-
-# Plot parameters
-linewidth = 1.2
-gap = 0.1
-inner = "quartile"  # {"quartile", None} -- only for violin plots
 
 # Set the plot type
 if plot_type == "violin":
@@ -356,6 +406,7 @@ if show_mean_marker is True:
             0.32,
             0.31,
             0.34,
+            0.36,
             0.24,
             0.33,
             0.33,
@@ -371,7 +422,8 @@ if show_mean_marker is True:
     ax_r.plot(
         x_marker_avg_reward,
         avg_reward,
-        marker=matplotlib.markers.CARETRIGHT,
+        marker=mpl.markers.CARETRIGHT,
+        markersize=5,
         color=c_reward_dark,
         linestyle="None",
     )
@@ -381,10 +433,10 @@ if show_mean_marker is True:
         ax_r.annotate(
             f"{r:.2f}",
             xy=(x_marker_avg_reward[i], r),
-            xytext=(-6, 0),  # offset text
+            xytext=(-5, 0),  # offset text
             textcoords="offset points",
             color=c_reward_dark,
-            fontsize=8,
+            fontsize=markers_font_size,
             ha="right",
             va="center",
         )
@@ -395,7 +447,8 @@ if grouping_t == "ts":
     ax_t.plot(
         x_marker_max_time,
         max_time,
-        marker=matplotlib.markers.CARETLEFT,
+        marker=mpl.markers.CARETLEFT,
+        markersize=5,
         color=c_time_dark,
         linestyle="None",
     )
@@ -404,25 +457,26 @@ if grouping_t == "ts":
         ax_t.annotate(
             f"{t:.2f}",
             xy=(x_marker_max_time[i], t),
-            xytext=(6, 0),  # offset text
+            xytext=(5, 0),  # offset text
             textcoords="offset points",
             color=c_time_dark,
-            fontsize=8,
+            fontsize=markers_font_size,
             ha="left",
             va="center",
         )
 
 # Add legend
-h_reward = mpatches.Patch(color=c_reward, label=f"Reward")
-h_time = mpatches.Patch(color=c_time, label=f"Time")
-handles = [h_reward, h_time]
-labels = ["Reward", "Time"]
-ax_r.legend(
-    handles,
-    labels,
-    loc="upper left",
-    frameon=True,
-)
+if show_legend is True:
+    h_reward = mpatches.Patch(color=c_reward, label=f"Reward")
+    h_time = mpatches.Patch(color=c_time, label=f"Time")
+    handles = [h_reward, h_time]
+    labels = ["Reward", "Time"]
+    ax_r.legend(
+        handles,
+        labels,
+        loc="upper left",
+        frameon=True,
+    )
 
 # Set zorder of the axes
 ax_grid_r.set_zorder(1)
@@ -430,10 +484,16 @@ ax_grid_t.set_zorder(2)
 ax_t.set_zorder(3)
 ax_r.set_zorder(4)
 
+# Save figures
+if save_png:
+    print("Saving png...")
+    fig.savefig(f"results/plots/{eval_type}.png", dpi=300, bbox_inches="tight")
 
 if save_tikz:
-    save2tikz(plt.gcf())
+    print("Saving tikz...")
+    save2tikz(plt.gcf(), name=f"results/plots/{eval_type}.tex")
 
-# Save figure
-print("Saving figure...")
-fig.savefig(f"results/violin_plot.png", dpi=300, bbox_inches="tight")
+if save_pgf:
+    mpl.use("pgf")  # This line must be after the execution of save2tikz (?)
+    print("Saving pgf...")
+    fig.savefig(f"results/plots/{eval_type}.pgf")

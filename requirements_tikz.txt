@@ -1,6 +1,6 @@
 matplotlib<=3.7
 numpy<2
-webcolors<=1.13
-tikzplotlib
+webcolors
+tikzplotlib-patched
 seaborn
 pandas
