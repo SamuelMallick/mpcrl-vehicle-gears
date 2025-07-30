@@ -20,10 +20,14 @@ from utils.plot_fcns import cm2inch
 
 ##### Plot settings ####################################################################
 
+# Save settings
 save_png = True
 save_pgf = True
 save_tikz = False
 
+# Plot settings
+fig_size_x = 14.0  # cm
+fig_size_y = 7.0  # cm
 show_legend = False
 show_title = False
 
@@ -32,10 +36,11 @@ show_title = False
 # for the plot. The experiment folder name (first folder layer under results/) can be
 # specified collectively in the variable `eval_type`.
 eval_type = "eval_single"
+# eval_type = "eval_seed_10"
 eval_list = [
-    ["eval_l_mpc/eval_c3_s5_t5000000", "RL-1"],
-    ["eval_l_mpc/eval_c4_s4_t4000000", "RL-2 s4"],
-    ["eval_l_mpc/eval_c4_s9_t4000000", "RL-2 s9"],
+    ["eval_l_mpc/c3_seed5", "RL-1"],
+    ["eval_l_mpc/c4_seed4", "RL-2 s4"],
+    ["eval_l_mpc/c4_seed9", "RL-2 s9"],
     ["eval_miqp", "MIQP"],
     ["eval_minlp", "MINLP"],
     ["eval_heuristic_mpc_1", "H-1"],
@@ -194,8 +199,8 @@ mpl.rcParams.update(
 
 # Initialize figure
 print("Generating figure...")
-fig_size_x = cm2inch(14)
-fig_size_y = cm2inch(8)
+fig_size_x = cm2inch(fig_size_x)
+fig_size_y = cm2inch(fig_size_y)
 fig, ax_r = plt.subplots(figsize=(fig_size_x, fig_size_y))
 fig.tight_layout()  # Avoid plt.tight_layout() as it messes with the multiple axes
 ax_r.patch.set_visible(False)
@@ -226,7 +231,7 @@ match grouping_r:
             transform=ax_r.transAxes,
             ha="right",
             va="bottom",
-            fontsize=tick_labels_font_size + 1,
+            fontsize=tick_labels_font_size,
         )
         cut_r = 0
 
@@ -496,4 +501,4 @@ if save_tikz:
 if save_pgf:
     mpl.use("pgf")  # This line must be after the execution of save2tikz (?)
     print("Saving pgf...")
-    fig.savefig(f"results/plots/{eval_type}.pgf")
+    fig.savefig(f"results/plots/{eval_type}.pgf", bbox_inches="tight")

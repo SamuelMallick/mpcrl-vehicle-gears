@@ -4,3 +4,4 @@ webcolors
 tikzplotlib-patched
 seaborn
 pandas
+scipy
