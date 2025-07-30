@@ -3,25 +3,31 @@ import pickle
 import sys
 import re
 from packaging import version
+from itertools import chain
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib as mpl
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
+from scipy.ndimage import uniform_filter1d
 
 sys.path.append(os.getcwd())
 from utils.plot_fcns import cm2inch
 
 # Save settings
+final_version = False  # Set to True for final version, False for faster version
 save_png = True
 save_pgf = True
 save_tikz = False
 
 # Plot settings
 train_stage = "c3"  # {c1, c2, c3, c4}
-skip = 10000
-average_interval = 10000
+fig_size_x = 9.0  # cm
+fig_size_y = 6.0  # cm
+avg_skip = 10000
+avg_window = 10000
 show_individual_lines = False
 show_legend = False
 
@@ -43,7 +49,7 @@ print(f"Searching for files in {root_folder}...")
 
 # Get all subfolders in the root folder
 list_subfolders = os.listdir(root_folder)
-print(f"Found {len(list_subfolders)} subfolders in {root_folder}")
+print(f"Found {len(list_subfolders)} files/folders in {root_folder}")
 
 # Search for .pkl files in each subfolder
 for name in list_subfolders:
@@ -66,36 +72,54 @@ kappa = []
 # Load data from files
 print("Loading data from files...")
 for file_name in file_names:
+    print(f"\tLoading {file_name}...")
     with open(file_name, "rb") as f:
         data = pickle.load(f)
 
-    cost = data["cost"]
-    fuel = data["fuel"]
-    R = data["R"]
-    tracking = [r - f for sub_r, sub_f in zip(R, fuel) for r, f in zip(sub_r, sub_f)]
-    if "infeasible" in data:
-        infeasible = data["infeasible"]
-    if "heuristic" in data:
-        heuristic = data["heuristic"]
+    # Flatten the data and compute the necessary arrays
+    cost = np.array(list(chain.from_iterable(data["cost"])))
+    fuel = np.array(list(chain.from_iterable(data["fuel"])))
+    R = np.array(list(chain.from_iterable(data["R"])))
+    tracking = R - fuel  # Tracking error (not saved directly but easy to recover)
+    k = np.array(list(chain.from_iterable(data["infeasible"]))).astype(float)
 
-    L.append([l for sub_l in cost for l in sub_l])
+    # Append the data to the lists
+    L.append(cost)
     L_t.append(tracking)
-    L_f.append([f for sub_f in fuel for f in sub_f])
-    kappa.append([i for sub_i in infeasible for i in sub_i])
-    # kappa.append(heuristic)
+    L_f.append(fuel)
+    kappa.append(k)
 
-# Compute average
-print("Computing average...")
+# Assemble data into a list
 data = [L, L_t, L_f, kappa]
-data_avg = [
-    np.array(
-        [
-            np.convolve(l, np.ones(average_interval) / average_interval, mode="valid")
-            for l in d
-        ]
-    )[:, ::skip]
-    for d in data
-]
+
+# Compute moving average
+print("Computing moving average...")
+if final_version is True:
+    data_avg = [
+        np.array(
+            [
+                np.convolve(seq, np.ones(avg_window) / avg_window, mode="valid")
+                for seq in d
+            ]
+        )[:, ::avg_skip]
+        for d in data
+    ]
+else:
+    # Use scipy for faster computation of the moving average
+    data_avg = [
+        np.array(
+            [
+                uniform_filter1d(seq, size=avg_window, mode="nearest")[
+                    avg_window - 1 : -avg_window + 1
+                ]
+                for seq in d
+            ]
+        )[:, ::avg_skip]
+        for d in data
+    ]
+
+# Create DataFrames for plotting
+print("Creating DataFrames for plotting...")
 data_df = [pd.DataFrame(d.T, columns=file_names) for d in data_avg]
 for d in data_df:
     d["x"] = np.arange(len(d))
@@ -127,20 +151,20 @@ mpl.rcParams.update(
         "font.family": "serif",
         "font.size": 10,
         "axes.labelsize": 10,
-        "legend.fontsize": 10,
-        "xtick.labelsize": 10,
+        "xtick.labelsize": 8,
         "ytick.labelsize": 8,
         "pgf.rcfonts": False,
         "pgf.preamble": "\\usepackage[T1]{fontenc}",  # extra preamble for LaTeX
     }
 )
 
-fig_size_x = cm2inch(8)
-fig_size_y = cm2inch(10)
+fig_size_x = cm2inch(fig_size_x)
+fig_size_y = cm2inch(fig_size_y)
 fig, ax = plt.subplots(4, 1, sharex=True, figsize=(fig_size_x, fig_size_y))
+ax = ax.flatten()
 
 if show_individual_lines:
-    sns.lineplot(
+    p0 = sns.lineplot(
         data=data_df_long[0],
         x="x",
         y="L",
@@ -149,7 +173,7 @@ if show_individual_lines:
         hue="seed",
     )
 
-    sns.lineplot(
+    p1 = sns.lineplot(
         data=data_df_long[1],
         x="x",
         y="L",
@@ -158,7 +182,7 @@ if show_individual_lines:
         hue="seed",
     )
 
-    sns.lineplot(
+    p2 = sns.lineplot(
         data=data_df_long[2],
         x="x",
         y="L",
@@ -167,7 +191,7 @@ if show_individual_lines:
         hue="seed",
     )
 
-    sns.lineplot(
+    p3 = sns.lineplot(
         data=data_df_long[3],
         x="x",
         y="L",
@@ -184,7 +208,7 @@ if show_individual_lines:
 
 
 else:
-    sns.lineplot(
+    p0 = sns.lineplot(
         data=data_df_long[0],
         x="x",
         y="L",
@@ -192,7 +216,7 @@ else:
         ax=ax[0],
     )
 
-    sns.lineplot(
+    p1 = sns.lineplot(
         data=data_df_long[1],
         x="x",
         y="L",
@@ -200,7 +224,7 @@ else:
         ax=ax[1],
     )
 
-    sns.lineplot(
+    p2 = sns.lineplot(
         data=data_df_long[2],
         x="x",
         y="L",
@@ -208,7 +232,7 @@ else:
         ax=ax[2],
     )
 
-    sns.lineplot(
+    p3 = sns.lineplot(
         data=data_df_long[3],
         x="x",
         y="L",
@@ -216,11 +240,44 @@ else:
         ax=ax[3],
     )
 
-# Set axis labels
-ax[0].set_ylabel("L")
-ax[1].set_ylabel("L_t")
-ax[2].set_ylabel("L_f")
+# Set grid
+for i in ax:
+    i.set_axisbelow(True)  # Set grid below the plot elements
+    i.grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
+    i.grid(True, which="minor", linestyle=":", linewidth=0.5, alpha=0.7)
+    i.minorticks_on()
+    i.set_zorder(1)
+
+# Raise plots zorder
+p0.set_zorder(10)
+p1.set_zorder(10)
+p2.set_zorder(10)
+p3.set_zorder(10)
+
+# Set y-axis labels and ticks
+ax[0].set_ylabel("$L$")
+ax[1].set_ylabel("$L_t$")
+ax[2].set_ylabel("$L_f$")
 ax[3].set_ylabel("$\\kappa$")
+fig.align_ylabels(ax)
+
+# Set x-axis label and ticks
+if train_stage in ["c1", "c3"]:
+    ax[3].set_xticks(np.array([0, 100, 200, 300, 400, 500]))
+elif train_stage in ["c2", "c4"]:
+    ax[3].set_xticks(np.array([0, 100, 200, 300, 400]))
+formatter = FuncFormatter(lambda x_val, _: f"{int(x_val * 10)}")
+ax[3].xaxis.set_major_formatter(formatter)
+ax[3].set_xlabel("Training step $k$")
+ax[3].text(
+    1.01,
+    -0.75,
+    r"$\times 10^3$",
+    transform=ax[3].transAxes,
+    ha="right",
+    va="bottom",
+    fontsize=8,
+)
 
 # Save figures
 if save_png:
@@ -234,4 +291,4 @@ if save_tikz:
 if save_pgf:
     mpl.use("pgf")
     print("Saving pgf...")
-    fig.savefig(f"results/plots/{train_stage}.pgf")
+    fig.savefig(f"results/plots/{train_stage}.pgf", bbox_inches="tight")
