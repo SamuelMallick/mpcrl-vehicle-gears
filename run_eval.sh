@@ -4,6 +4,7 @@ DEBUG=false  # Set to true to enable debug mode
 
 # Help message
 print_help() {
+  echo
   echo "Bash script to run a batch of evaluations experiments."
   echo "Usage: $0 <type> <script_name> [options]"
   echo
@@ -23,6 +24,7 @@ print_help() {
   echo
   echo "Example:"
   echo " $0 single l_mpc.py --policy c4_seed5 --seed 101 --n-evals 25 "
+  echo
 }
 
 # Check if the mandatory arguments are provided
