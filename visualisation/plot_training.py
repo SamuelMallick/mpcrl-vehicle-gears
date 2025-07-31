@@ -1,16 +1,16 @@
 import os
 import pickle
-import sys
 import re
-from packaging import version
+import sys
 from itertools import chain
 
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
+from packaging import version
 from scipy.ndimage import uniform_filter1d
 
 sys.path.append(os.getcwd())
@@ -134,7 +134,6 @@ if version.parse(mpl.__version__) <= version.parse("3.7"):
         save_pgf = True
     if save_tikz is True:
         save_tikz = True
-        from utils.tikz import save2tikz  # import tikzplotlib only if supported
 else:
     if save_pgf is True:
         save_pgf = False
@@ -282,13 +281,15 @@ ax[3].text(
 # Save figures
 if save_png:
     print("Saving png...")
-    fig.savefig(f"results/plots/{train_stage}.png", dpi=300, bbox_inches="tight")
+    fig.savefig(f"plots/{train_stage}.png", dpi=300, bbox_inches="tight")
 
 if save_tikz:
+    from utils.tikz import save2tikz  # import tikzplotlib only if supported
+
     print("Saving tikz...")
-    save2tikz(plt.gcf(), name=f"results/plots/{train_stage}.tex")
+    save2tikz(plt.gcf(), name=f"plots/{train_stage}.tex")
 
 if save_pgf:
     mpl.use("pgf")
     print("Saving pgf...")
-    fig.savefig(f"results/plots/{train_stage}.pgf", bbox_inches="tight")
+    fig.savefig(f"plots/{train_stage}.pgf", bbox_inches="tight")
