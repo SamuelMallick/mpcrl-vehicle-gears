@@ -5,15 +5,14 @@ Generate the box plot or violin plot from the evaluation results of a single con
 import os
 import pickle
 import sys
-from packaging import version
 
-import seaborn as sns
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
+import seaborn as sns
+from packaging import version
 
 sys.path.append(os.getcwd())
 from utils.plot_fcns import cm2inch
@@ -26,8 +25,8 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 14.0  # cm
-fig_size_y = 7.0  # cm
+fig_size_x = 20.0  # cm
+fig_size_y = 10.0  # cm
 show_legend = False
 show_title = False
 
@@ -35,13 +34,15 @@ show_title = False
 # List must be formatted as ["folder name", "label"] where the label is the one used
 # for the plot. The experiment folder name (first folder layer under results/) can be
 # specified collectively in the variable `eval_type`.
-eval_type = "eval_single"
-# eval_type = "eval_seed_10"
+# eval_type = "eval_single"
+eval_type = "eval_single_seed_10"
 eval_list = [
-    ["eval_l_mpc/c3_seed5", "RL-1"],
+    ["eval_l_mpc/c3_seed1", "RL-1 s1"],
+    ["eval_l_mpc/c3_seed3", "RL-1 s3"],
     ["eval_l_mpc/c4_seed4", "RL-2 s4"],
     ["eval_l_mpc/c4_seed9", "RL-2 s9"],
     ["eval_miqp", "MIQP"],
+    ["eval_miqp_1s", "MIQP 1s"],
     ["eval_minlp", "MINLP"],
     ["eval_heuristic_mpc_1", "H-1"],
     ["eval_heuristic_mpc_2", "H-2"],
@@ -53,7 +54,8 @@ plot_type = "violin"  # {"box", "violin"} default is "violin"
 show_mean_marker = True  # Show the mean reward marker on the reward plot
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
-
+use_relative_performance = True  # Show the relative performance of the policies
+baseline_solution = "MINLP"
 
 ##### Preprocess data ##################################################################
 
@@ -81,7 +83,8 @@ for eval_name, eval_label in eval_list:
             with open(f"results/{eval_type}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
                 reward.append(data["R"][0])
-                time.append(data["mpc_solve_time"])
+                time.append(data["mpc_solve_time"][0:1000])  # TEMP fix for seed 10
+
         else:
             print(f"Skipping {file}, not a .pkl file")
 
@@ -117,14 +120,14 @@ for eval_name, eval_label in eval_list:
             raise ValueError(f"Unknown evaluation metric: {grouping_t}")
 
     # Build temporary dataframes
-    # NOTE: dummy np.empty(1) are used to ensure that violin hue split works properly
+    # NOTE: dummy 10e-10 * np.ones(1) ensures that violin hue split works properly
     n_r = len(reward)
     n_t = len(time)
     df_reward_temp = pd.DataFrame(
         {
             "Group": [eval_label] * (n_r + 1),
             "Type": ["reward"] * n_r + ["dummy"] * 1,
-            "Value": np.concatenate([reward, 10e-10 * np.ones(1)]),
+            "Value": np.concatenate([reward, -10e10 * np.ones(1)]),
         }
     )
     df_time_temp = pd.DataFrame(
@@ -146,6 +149,18 @@ for eval_name, eval_label in eval_list:
     # Store the label for the x-axis
     xticks_labels.append(eval_label)
 
+# Compute relative performance if required
+if use_relative_performance is True:
+    J_baseline = df_reward[
+        (df_reward["Group"] == baseline_solution) & (df_reward["Type"] == "reward")
+    ]["Value"].values
+
+    # Update dataframe with relative performance
+    for eval_name, eval_label in eval_list:
+        mask = (df_reward["Group"] == eval_label) & (df_reward["Type"] == "reward")
+        J_policy = df_reward[mask]["Value"].values
+        relative_J = (J_policy - J_baseline) / J_baseline * 100
+        df_reward.loc[mask, "Value"] = (J_policy - J_baseline) / J_baseline * 100
 
 ##### Plot results #####################################################################
 
@@ -154,7 +169,6 @@ if version.parse(mpl.__version__) <= version.parse("3.7"):
         save_pgf = True
     if save_tikz is True:
         save_tikz = True
-        from utils.tikz import save2tikz  # import tikzplotlib only if supported
 else:
     if save_pgf is True:
         save_pgf = False
@@ -207,42 +221,54 @@ ax_r.patch.set_visible(False)
 ax_t = ax_r.twinx()  # time axis on the right side
 ax_t.set_yscale("log")
 
-# Set labels and limits
-match grouping_r:
+# Set reward labels and limits
+cut_r = 0
+if use_relative_performance is True:
+    ax_r.set_ylim(-5, 25)
+    ax_r.set_ylabel(
+        "$\\Delta J$ [\\%]",  # Relative performance drop
+        color=c_reward_dark,
+    )
+    cut_r = 0
 
-    case "ep_mean":
-        ax_r.set_ylim(0, 10)
-        ax_r.set_ylabel(
-            "Average timestep cost over episode",
-            color=c_reward_dark,
-        )
-        cut_r = 0
+else:
+    match grouping_r:
 
-    case "ep_sum":
-        ax_r.set_ylim(5, 10)
-        ax_r.set_ylabel(
-            "Episode cumulative cost",
-            color=c_reward_dark,
-        )
-        ax_r.text(
-            -0.01,
-            1.03,
-            r"$\times 10^3$",
-            transform=ax_r.transAxes,
-            ha="right",
-            va="bottom",
-            fontsize=tick_labels_font_size,
-        )
-        cut_r = 0
+        case "ep_mean":
+            ax_r.set_ylim(0, 10)
+            ax_r.set_ylabel(
+                "Average timestep cost over episode",
+                color=c_reward_dark,
+            )
+            cut_r = 0
 
-    case "ts":
-        ax_r.set_ylim(0, 40)
-        ax_r.set_ylabel(
-            "Timestep cost",
-            color=c_reward_dark,
-        )
-        cut_r = 0
+        case "ep_sum":
+            ax_r.set_ylim(5, 10)
+            ax_r.set_ylabel(
+                "Episode cumulative cost",
+                color=c_reward_dark,
+            )
+            ax_r.text(
+                -0.01,
+                1.03,
+                r"$\times 10^3$",
+                transform=ax_r.transAxes,
+                ha="right",
+                va="bottom",
+                fontsize=tick_labels_font_size,
+            )
+            cut_r = 0
 
+        case "ts":
+            ax_r.set_ylim(0, 40)
+            ax_r.set_ylabel(
+                "Timestep cost",
+                color=c_reward_dark,
+            )
+            cut_r = 0
+
+# Set time labels and limits
+cut_t = 0
 match grouping_t:
 
     case "ep_mean":
@@ -472,8 +498,8 @@ if grouping_t == "ts":
 
 # Add legend
 if show_legend is True:
-    h_reward = mpatches.Patch(color=c_reward, label=f"Reward")
-    h_time = mpatches.Patch(color=c_time, label=f"Time")
+    h_reward = mpatches.Patch(color=c_reward, label="Reward")
+    h_time = mpatches.Patch(color=c_time, label="Time")
     handles = [h_reward, h_time]
     labels = ["Reward", "Time"]
     ax_r.legend(
@@ -492,13 +518,15 @@ ax_r.set_zorder(4)
 # Save figures
 if save_png:
     print("Saving png...")
-    fig.savefig(f"results/plots/{eval_type}.png", dpi=300, bbox_inches="tight")
+    fig.savefig(f"plots/{eval_type}.png", dpi=300, bbox_inches="tight")
 
 if save_tikz:
+    from utils.tikz import save2tikz  # import tikzplotlib only if supported
+
     print("Saving tikz...")
-    save2tikz(plt.gcf(), name=f"results/plots/{eval_type}.tex")
+    save2tikz(plt.gcf(), name=f"plots/{eval_type}.tex")
 
 if save_pgf:
     mpl.use("pgf")  # This line must be after the execution of save2tikz (?)
     print("Saving pgf...")
-    fig.savefig(f"results/plots/{eval_type}.pgf", bbox_inches="tight")
+    fig.savefig(f"plots/{eval_type}.pgf", bbox_inches="tight")
