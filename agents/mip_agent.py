@@ -58,7 +58,9 @@ class MIPAgent(SingleVehicleAgent):
             elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
                 # Special case: use heuristic 2 to generate a warm start solution
                 # for the backup MPC
-                gear = self.gear_from_velocity(self.prev_sol.vals["x"].full()[1, 1])
+                gear = self.gear_from_velocity(
+                    self.prev_sol.vals["x"].full()[1, 0], gear_priority="mid"
+                )
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
                 vals0[0]["gear"][gear] = 1
                 sol, _ = self.backup_mpc.solve(pars, vals0)
