@@ -16,4 +16,4 @@ class Config(Config):
 
         # Backup MINLP MPC parameters
         self.backup_minlp_mip_terminate = 1  # stop at 1st feas sol
-        self.backup_minlp_maxtime = 1  # 1s
+        self.backup_minlp_maxtime = 60  # [s]
