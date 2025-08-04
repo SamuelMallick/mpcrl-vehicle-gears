@@ -28,6 +28,7 @@ np_random = np.random.default_rng(seed)
 eval_seed = config.eval_seed
 num_eval_eps = 1
 
+# Create vehicle and environment
 vehicle = Vehicle()
 env: VehicleTracking = MonitorEpisodes(
     TimeLimit(
@@ -42,6 +43,7 @@ env: VehicleTracking = MonitorEpisodes(
     )
 )
 
+# Initialize the MIPMPC
 mpc = SolverTimeRecorder(
     MIPMPC(
         N,
@@ -80,6 +82,8 @@ agent = MIPAgent(
     multi_starts=config.multi_starts,
     backup_mpc=backup_mpc,
 )
+
+# Run the agent evaluation
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
@@ -89,7 +93,7 @@ returns, info = agent.evaluate(
     log_progress=False,
 )
 
-
+# Extract relevant data from the env object
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
@@ -98,10 +102,6 @@ engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
 x_ref = list(env.reference_trajectory)
 
-print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
-print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
-print(f"total mpc solve times = {sum(mpc.solver_time)}")
-
 # Compute MPC total solve time
 t_primary_mpc = np.array(mpc.solver_time)
 if backup_mpc is not None and hasattr(backup_mpc, "solver_time"):
@@ -109,6 +109,10 @@ if backup_mpc is not None and hasattr(backup_mpc, "solver_time"):
 else:
     t_backup_mpc = np.zeros(len(t_primary_mpc))
 t_total_mpc = t_primary_mpc + t_backup_mpc
+
+print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
+print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
+print(f"total mpc solve times = {sum(t_total_mpc)}")
 
 # Save results to  pickle file
 if SAVE:
@@ -132,6 +136,7 @@ if SAVE:
             f,
         )
 
+# Plot results
 if PLOT:
     ep = 0
     plot_evaluation(
