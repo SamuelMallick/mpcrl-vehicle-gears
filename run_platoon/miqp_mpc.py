@@ -12,19 +12,12 @@ from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 from gymnasium.wrappers import TimeLimit
-
+from utils.parse_config import parse_config
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-# if a config file passed on command line, otherwise use default config file
-if len(sys.argv) > 1:
-    config_file = sys.argv[1]
-    mod = importlib.import_module(f"config_files.{config_file}")
-    config = mod.Config()
-else:
-    from config_files.c1 import Config  # type: ignore
-
-    config = Config()
+# Generate config object
+config = parse_config(sys.argv)
 
 SAVE = config.SAVE
 PLOT = config.PLOT
