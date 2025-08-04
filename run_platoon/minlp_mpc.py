@@ -12,20 +12,14 @@ from mpcs.mip_mpc import MIPMPC
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
 from gymnasium.wrappers import TimeLimit
-
+from utils.parse_config import parse_config
 from vehicle import Vehicle
 from visualisation.plot import plot_evaluation
 
-# if a config file passed on command line, otherwise use default config file
-if len(sys.argv) > 1:
-    config_file = sys.argv[1]
-    mod = importlib.import_module(f"config_files.{config_file}")
-    config = mod.Config()
-else:
-    from config_files.c1 import Config  # type: ignore
+# Generate config object
+config = parse_config(sys.argv)
 
-    config = Config()
-
+# Script parameters
 SAVE = config.SAVE
 PLOT = config.PLOT
 N = config.N
@@ -35,6 +29,7 @@ eval_seed = config.eval_seed
 num_eval_eps = 1
 num_vehicles = config.num_vehicles
 
+# Create vehicles and environment
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
     TimeLimit(
@@ -50,6 +45,7 @@ env: PlatoonTracking = MonitorEpisodes(
     )
 )
 
+# Initialize the MIPMPC
 mpc = SolverTimeRecorder(
     MIPMPC(
         N,
@@ -61,14 +57,37 @@ mpc = SolverTimeRecorder(
         extra_opts=config.extra_opts,
     )
 )
+
+# Add backup MPC with specific options
+extra_opts_backup = {
+    "knitro": {
+        "mip_terminate": config.backup_minlp_mip_terminate,
+        "maxtime": config.backup_minlp_maxtime,
+    }
+}
+backup_mpc = SolverTimeRecorder(
+    MIPMPC(
+        N,
+        optimize_fuel=True,
+        convexify_fuel=False,
+        convexify_dynamics=False,
+        solver="knitro",
+        multi_starts=config.multi_starts,
+        extra_opts=extra_opts_backup,
+    )
+)
+
+# Initialize the MIPAgent with the MPC and backup MPC
 agent = DistributedMIPAgent(
     mpc,
     np_random=np_random,
     num_vehicles=num_vehicles,
     multi_starts=config.multi_starts,
-    backup_mpc=None,
+    backup_mpc=backup_mpc,
     inter_vehicle_distance=config.inter_vehicle_distance,
 )
+
+# Run the agent evaluation
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
@@ -78,7 +97,7 @@ returns, info = agent.evaluate(
     log_progress=False,
 )
 
-
+# Extract relevant data from the env object
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
@@ -88,14 +107,23 @@ engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
 x_ref = list(env.reference_trajectory)
 
+# Compute MPC total solve time (including backup MPC if used)
+t_primary_mpc = np.array(mpc.solver_time)
+if backup_mpc is not None and hasattr(backup_mpc, "solver_time"):
+    t_backup_mpc = np.array(backup_mpc.solver_time)
+else:
+    t_backup_mpc = np.zeros(len(t_primary_mpc))
+t_total_mpc = t_primary_mpc + t_backup_mpc
+
 solve_time = [
-    np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)
-]  # sum for each vehicle in platoon
+    np.sum(o) for o in np.split(t_total_mpc, config.ep_len)  # split in N=ep_len chunks
+]  # sum the solve time of each vehicle in platoon to get total platoon solve time
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(solve_time)}")
 
+# Save results to  pickle file
 if SAVE:
     with open(f"platoon_minlp_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
@@ -107,7 +135,9 @@ if SAVE:
                 "fuel": fuel,
                 "T_e": engine_torque,
                 "w_e": engine_speed,
-                "mpc_solve_time": solve_time,
+                "mpc_solve_time": t_total_mpc,
+                "t_primary_mpc": t_primary_mpc,
+                "t_backup_mpc": t_backup_mpc,
                 "valid_episodes": (
                     info["valid_episodes"] if "valid_episodes" in info else None
                 ),
@@ -115,6 +145,7 @@ if SAVE:
             f,
         )
 
+# Plot results
 if PLOT:
     ep = 0
     plot_evaluation(
