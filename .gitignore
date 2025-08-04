@@ -8,6 +8,7 @@ __pycache__/
 
 # Folder for development data and scripts
 dev/
+.env
 
 # Folder of generated files and results 
 # (require manually transfer from the server to the local machine)
