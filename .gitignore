@@ -8,10 +8,11 @@ __pycache__/
 
 # Folder for development data and scripts
 dev/
+TODO.md
 .env
 
 # Folder of generated files and results 
-# (require manually transfer from the server to the local machine)
+# (ignoring it requires to manually transfer results from the server to the local machine)
 results/  
 
 # Distribution / packaging
