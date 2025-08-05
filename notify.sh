@@ -45,7 +45,7 @@ fi
 # Send notification using ntfy.sh
 if [ -z "$TOKEN" ]; then
   echo "Warning: TOKEN is not set in the .env file. Notifications will be sent without authentication."
-  curl -H "Update from server" -d "$MESSAGE" https://ntfy.sh/$TOPIC
+  curl -H "Title: Update from server" -d "$MESSAGE" https://ntfy.sh/$TOPIC
 else
-  curl -u ":$TOKEN" -H "Update from server" -d "$MESSAGE" https://ntfy.sh/$TOPIC
+  curl -u ":$TOKEN" -H "Title: Update from server" -d "$MESSAGE" https://ntfy.sh/$TOPIC
 fi
