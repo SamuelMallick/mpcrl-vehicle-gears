@@ -20,6 +20,7 @@ from visualisation.plot import plot_evaluation
 # Generate config object
 config = parse_config(sys.argv)
 
+# Script parameters
 SAVE = config.SAVE
 PLOT = config.PLOT
 N = config.N
@@ -29,6 +30,7 @@ eval_seed = config.eval_seed
 num_eval_eps = 1
 num_vehicles = config.num_vehicles
 
+# Create vehicles and environment
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
     TimeLimit(
@@ -44,6 +46,7 @@ env: PlatoonTracking = MonitorEpisodes(
     )
 )
 
+# Initialize the MPC and agent objects
 mpc = SolverTimeRecorder(
     FixedGearMPC(
         N,
@@ -62,16 +65,17 @@ agent = DistributedLearningAgent(
     config=config,
 )
 
+# Load policy and normalization data
 state_dict = torch.load(
-    # f"dev/results/2/policy_net_step_25000.pth",
-    f"dev/results/1_exp_bug_fix_2/policy_net_step_4325000.pth",
+    f"results/{config.policy_filename}",
     weights_only=True,
     map_location="cpu",
 )
-# with open(f"dev/results/2/data_step_25000.pkl", "rb") as f:
-with open(f"dev/results/1_exp_bug_fix_2/data_step_4325000.pkl", "rb") as f:
+with open(f"results/{config.normalization_data_filename}", "rb") as f:
     data = pickle.load(f)
 
+
+# Run the evaluation
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
@@ -82,7 +86,7 @@ returns, info = agent.evaluate(
     heursitic_gear_priorities=["low", "mid", "high"],
 )
 
-
+# Collect the results
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
@@ -94,14 +98,15 @@ x_ref = list(env.reference_trajectory)
 
 solve_time = [
     np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)
-]  # sum for each vehicle in platoon
+]  # sum vehicles solve time to get total platoon solve time
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(solve_time)}")
 
+# Save results to pkl file
 if SAVE:
-    with open(f"platoon_l_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"results/platoon_l_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
@@ -120,6 +125,7 @@ if SAVE:
             f,
         )
 
+# Plot results
 if PLOT:
     ep = 0
     plot_evaluation(

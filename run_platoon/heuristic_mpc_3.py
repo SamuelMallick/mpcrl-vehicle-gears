@@ -19,6 +19,7 @@ from visualisation.plot import plot_evaluation
 # Generate config object
 config = parse_config(sys.argv)
 
+# Script parameters
 SAVE = config.SAVE
 PLOT = config.PLOT
 N = config.N
@@ -28,6 +29,7 @@ eval_seed = config.eval_seed
 num_eval_eps = 1
 num_vehicles = config.num_vehicles
 
+# Create vehicles and environment
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
     TimeLimit(
@@ -43,6 +45,7 @@ env: PlatoonTracking = MonitorEpisodes(
     )
 )
 
+# Initialize the MPC and agent objects
 mpc = SolverTimeRecorder(
     FixedGearMPC(
         N,
@@ -61,13 +64,15 @@ agent = DistributedHeuristic3Agent(
     gear_priority="low",
     inter_vehicle_distance=config.inter_vehicle_distance,
 )
+
+# Run the evaluation
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
     seed=eval_seed,
 )
 
-
+# Collect the results
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
@@ -79,14 +84,15 @@ x_ref = list(env.reference_trajectory)
 
 solve_time = [
     np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)
-]  # sum for each vehicle in platoon
+]  # sum vehicles solve time to get total platoon solve time
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(solve_time)}")
 
+# Save results to pkl file
 if SAVE:
-    with open(f"platoon_heuristic_3_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"results/platoon_heuristic_3_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
@@ -104,6 +110,7 @@ if SAVE:
             f,
         )
 
+# Plot results
 if PLOT:
     ep = 0
     plot_evaluation(

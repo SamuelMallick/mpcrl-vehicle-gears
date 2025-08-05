@@ -19,6 +19,7 @@ from visualisation.plot import plot_evaluation
 # Generate config object
 config = parse_config(sys.argv)
 
+# Simulation parameters
 SAVE = config.SAVE
 PLOT = config.PLOT
 N = config.N
@@ -28,6 +29,7 @@ eval_seed = config.eval_seed
 num_eval_eps = 1
 num_vehicles = config.num_vehicles
 
+# Create the vehicles and environment
 vehicles = [Vehicle() for _ in range(num_vehicles)]
 env: PlatoonTracking = MonitorEpisodes(
     TimeLimit(
@@ -43,6 +45,7 @@ env: PlatoonTracking = MonitorEpisodes(
     )
 )
 
+# Initialize the MPC and agent objects
 mpc = SolverTimeRecorder(
     MIPMPC(
         N,
@@ -62,16 +65,18 @@ agent = DistributedMIPAgent(
     backup_mpc=None,
     inter_vehicle_distance=config.inter_vehicle_distance,
 )
+
+# Run the evaluation
 returns, info = agent.evaluate(
     env,
     episodes=num_eval_eps,
     seed=eval_seed,
     allow_failure=False,
     save_every_episode=config.save_every_episode,
-    log_progress=True,
+    log_progress=False,
 )
 
-
+# Collect the results
 X = list(env.observations)
 U = list(env.actions)
 R = list(env.rewards)
@@ -80,16 +85,20 @@ engine_torque = list(env.engine_torque)
 engine_speed = list(env.engine_speed)
 x_ref = list(env.reference_trajectory)
 
-solve_time = [
-    np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)
-]  # sum for each vehicle in platoon
+solve_time = [np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)]
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(solve_time)}")
 
+# Save results to pkl file
+if config.max_time == 1:
+    results_name = f"results/platoon_miqp_N_{N}_c_{config.id}_maxtime_1.pkl"
+else:
+    results_name = f"results/platoon_miqp_N_{N}_c_{config.id}.pkl"
+
 if SAVE:
-    with open(f"platoon_miqp_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(results_name, "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
@@ -107,6 +116,7 @@ if SAVE:
             f,
         )
 
+# Plot results
 if PLOT:
     ep = 0
     plot_evaluation(

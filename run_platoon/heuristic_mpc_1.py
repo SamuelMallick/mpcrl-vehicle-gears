@@ -77,14 +77,15 @@ x_ref = list(env.reference_trajectory)
 
 solve_time = [
     np.sum(o) for o in np.split(np.array(mpc.solver_time), config.ep_len)
-]  # sum for each vehicle in platoon
+]  # sum vehicles solve time to get total platoon solve time
 
 print(f"average cost = {sum([sum(R[i]) for i in range(len(R))]) / len(R)}")
 print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel)}")
 print(f"total mpc solve times = {sum(solve_time)}")
 
+# Save results to pkl file
 if SAVE:
-    with open(f"platoon_heuristic_1_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(f"results/platoon_heuristic_1_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
