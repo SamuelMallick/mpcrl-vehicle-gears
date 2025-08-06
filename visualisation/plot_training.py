@@ -253,18 +253,17 @@ p1.set_zorder(10)
 p2.set_zorder(10)
 p3.set_zorder(10)
 
-# Set y-axis labels and ticks
-ax[0].set_ylabel("$L$")
-ax[1].set_ylabel("$J_\mathrm{t}$")
-ax[2].set_ylabel("$J_\mathrm{f}$")
-ax[3].set_ylabel("$\\kappa$")
-fig.align_ylabels(ax)
-
-# Set x-axis label and ticks
+# Set labels and ticks
+label_L = "$L$"
+label_kappa = r"$\\kappa$"
 if train_stage in ["c1", "c3"]:
     ax[3].set_xticks(np.array([0, 100, 200, 300, 400, 500]))
+    label_L = "$L_1$"
+    label_kappa = r"$\\kappa_1$"
 elif train_stage in ["c2", "c4"]:
     ax[3].set_xticks(np.array([0, 100, 200, 300, 400]))
+    label_kappa = r"$\\kappa_1$"
+    label_L = "$L_2$"
 formatter = FuncFormatter(lambda x_val, _: f"{int(x_val * 10)}")
 ax[3].xaxis.set_major_formatter(formatter)
 ax[3].set_xlabel("Training step $k$")
@@ -277,6 +276,11 @@ ax[3].text(
     va="bottom",
     fontsize=8,
 )
+ax[0].set_ylabel(label_L)
+ax[1].set_ylabel("$J_\\mathrm{t}$")
+ax[2].set_ylabel("$J_\\mathrm{f}$")
+ax[3].set_ylabel(label_kappa)
+fig.align_ylabels(ax)
 
 # Save figures
 if save_png:

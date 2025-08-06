@@ -38,7 +38,7 @@ show_title = False
 eval_type = "eval_single_seed_10"
 eval_list = [
     ["eval_l_mpc/c3_seed1", "RL-1 s1"],
-    ["eval_l_mpc/c3_seed3", "RL-1 s3"],
+    ["eval_l_mpc/c2_seed0", "RL-2 c2 s0"],
     ["eval_l_mpc/c4_seed4", "RL-2 s4"],
     ["eval_l_mpc/c4_seed9", "RL-2 s9"],
     ["eval_miqp", "MIQP"],
