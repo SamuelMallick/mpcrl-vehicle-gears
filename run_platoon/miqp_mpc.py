@@ -92,7 +92,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(solve_time)}")
 
 # Save results to pkl file
-if config.max_time == 1:
+if config.extra_opts["gurobi"]["TimeLimit"] == 1:
     results_name = f"results/platoon_miqp_N_{N}_c_{config.id}_maxtime_1.pkl"
 else:
     results_name = f"results/platoon_miqp_N_{N}_c_{config.id}.pkl"
