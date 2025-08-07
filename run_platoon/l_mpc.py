@@ -19,6 +19,10 @@ from vehicle import Vehicle
 # Generate config object
 config = parse_config(sys.argv)
 
+# Create results folder if it does not exist
+if not os.path.exists(f"results/{config.results_folder_name}"):
+    os.makedirs(f"results/{config.results_folder_name}")
+
 # Script parameters
 SAVE = config.SAVE
 PLOT = config.PLOT
@@ -108,7 +112,10 @@ print(f"total mpc solve times = {sum(solve_time)}")
 
 # Save results to pkl file
 if SAVE:
-    with open(f"results/platoon_l_mpc_N_{N}_c_{config.id}.pkl", "wb") as f:
+    with open(
+        f"results/{config.results_folder_name}/platoon_l_mpc_N_{N}_c_{config.id}.pkl",
+        "wb",
+    ) as f:
         pickle.dump(
             {
                 "x_ref": x_ref,
