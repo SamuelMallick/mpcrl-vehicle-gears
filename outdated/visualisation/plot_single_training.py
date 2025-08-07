@@ -1,8 +1,9 @@
+import os
 import pickle
-import sys, os
+import sys
 
 sys.path.append(os.getcwd())
-from visualisation.plot import plot_evaluation, plot_training
+from outdated.visualisation.plot import plot_evaluation, plot_training
 
 file_name = "results/no_track/23/data_ep_44000.pkl"
 with open(file_name, "rb") as f:

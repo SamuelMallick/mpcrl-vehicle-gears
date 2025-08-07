@@ -1,8 +1,9 @@
+import os
 import pickle
-import sys, os
+import sys
 
 sys.path.append(os.getcwd())
-from visualisation.plot import plot_evaluation
+from outdated.visualisation.plot import plot_evaluation
 
 with open("miqp_mpc_N_15_c_1.pkl", "rb") as f:
     # with open("dev/results/evaluations/platoon_minlp_mpc_N_15_c_1_s_1_ms_2_t_50.pkl", "rb") as f:

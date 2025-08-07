@@ -1,11 +1,13 @@
+import os
 import pickle
-import sys, os
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.append(os.getcwd())
+from outdated.visualisation.plot import plot_comparison, plot_evaluation, plot_training
 from utils.tikz import save2tikz
-from visualisation.plot import plot_comparison, plot_evaluation, plot_training
 
 N = 15
 c = "eval_1"
