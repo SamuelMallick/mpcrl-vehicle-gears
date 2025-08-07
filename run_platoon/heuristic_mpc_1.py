@@ -1,4 +1,3 @@
-import importlib
 import os
 import pickle
 import sys
@@ -6,21 +5,20 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.heuristic_1_agent import DistributedHeuristic1Agent
 from env import PlatoonTracking
 from mpcs.nonlinear_mpc import NonlinearMPC
+from utils.parse_config import parse_config
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from utils.parse_config import parse_config
-from gymnasium.wrappers import TimeLimit
 from vehicle import Vehicle
-from visualisation.plot import plot_evaluation
 
 # Generate config object
 config = parse_config(sys.argv)
 
 SAVE = config.SAVE
-PLOT = config.PLOT
 N = config.N
 seed = 0  # seed 0 used for generator
 np_random = np.random.default_rng(seed)
@@ -102,15 +100,3 @@ if SAVE:
             },
             f,
         )
-
-if PLOT:
-    ep = 0
-    plot_evaluation(
-        x_ref[ep],
-        X[ep],
-        U[ep],
-        R[ep],
-        fuel[ep],
-        engine_torque[ep],
-        engine_speed[ep],
-    )

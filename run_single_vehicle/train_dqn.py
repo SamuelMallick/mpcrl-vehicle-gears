@@ -1,4 +1,3 @@
-import importlib
 import os
 import sys
 
@@ -10,13 +9,13 @@ from gymnasium.wrappers import TimeLimit
 from agents.dqn_agent import DQNAgent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
+from utils.parse_config import parse_config
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from utils.parse_config import parse_config
 from vehicle import Vehicle
 
 # Generate config object
-# TODO: Implement functionality to generate config for training (both 1st and 2nd stage)
+# TODO: Check functionality to generate config for training (both 1st and 2nd stage)
 config = parse_config(sys.argv)
 
 N = config.N

@@ -1,9 +1,8 @@
-import os
-import sys
 import argparse
 import importlib.util
+import os
+import sys
 from typing import TYPE_CHECKING
-
 
 if TYPE_CHECKING:
     from config_files.base import Config
@@ -61,7 +60,7 @@ def parse_config(cmd_args: list[str]) -> "Config":
     )
 
     args = parser.parse_args()
-    script_name = cmd_args[0].split("/")[-1]
+    script_name = cmd_args[0].split(os.sep)[-1]
 
     # Load the configuration based on the provided config file
     config = load_config_from_file(args.config, args.mode)
@@ -147,4 +146,4 @@ def load_config_from_file(filename: str, mode: str) -> "Config":
     if cls is None:
         raise AttributeError(f"Class 'Config' not found in {module_path}")
 
-    return cls()
+    return cls()  # pylint: disable=not-callable

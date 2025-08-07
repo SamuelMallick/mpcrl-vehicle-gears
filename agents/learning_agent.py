@@ -1,7 +1,11 @@
 from typing import Literal
-from csnlp import Solution
+
 import numpy as np
 import torch
+import torch.nn as nn
+from csnlp import Solution
+from torch.utils.data import DataLoader, TensorDataset
+
 from agents.agent import PlatoonAgent, SingleVehicleAgent
 from config_files.base import Config
 from env import VehicleTracking
@@ -9,8 +13,6 @@ from mpcs.fixed_gear_mpc import FixedGearMPC
 from network import DRQN
 from utils.running_mean_std import RunningMeanStd
 from vehicle import Vehicle
-from torch.utils.data import DataLoader, TensorDataset
-import torch.nn as nn
 
 
 class LearningAgent(SingleVehicleAgent):
@@ -85,7 +87,7 @@ class LearningAgent(SingleVehicleAgent):
         episodes,
         policy_net_state_dict: dict,
         use_heuristic: bool,
-        heursitic_gear_priorities: list[Literal["low", "high", "mid"]],
+        heuristic_gear_priorities: list[Literal["low", "high", "mid"]],
         seed=0,
         normalization: tuple = (),
         allow_failure: bool = False,
@@ -141,7 +143,7 @@ class LearningAgent(SingleVehicleAgent):
         self.policy_net.eval()
 
         self.use_heuristic = use_heuristic
-        self.heursitic_gear_priorities = heursitic_gear_priorities
+        self.heuristic_gear_priorities = heuristic_gear_priorities
         returns, info = super().evaluate(
             env,
             episodes,
@@ -267,7 +269,7 @@ class LearningAgent(SingleVehicleAgent):
             )
         else:
             gears = []
-            for gear_priority in self.heursitic_gear_priorities:
+            for gear_priority in self.heuristic_gear_priorities:
                 heuristic_gear = self.gear_from_velocity(state[1].item(), gear_priority)
                 if heuristic_gear not in gears:
                     gears.append(heuristic_gear)
@@ -588,7 +590,7 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
                 heuristic_pars.append({**pars, "gear": heurisitic_gear_choice_binary})
             else:
                 gears = []
-                for gear_priority in self.heursitic_gear_priorities:
+                for gear_priority in self.heuristic_gear_priorities:
                     heuristic_gear = self.gear_from_velocity(x[1].item(), gear_priority)
                     if heuristic_gear not in gears:
                         gears.append(heuristic_gear)
@@ -634,7 +636,7 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
                 self.running_mean_std.update(
                     diff.T
                 )  # transpose needed as the mean is taken over axis 0
-        if self.heursitic_gear_priorities:
+        if self.heuristic_gear_priorities:
             if "heuristic" in info:
                 self.heuristic_flags[-1].append(info["heuristic"])
         return PlatoonAgent.on_env_step(self, env, episode, timestep, info)

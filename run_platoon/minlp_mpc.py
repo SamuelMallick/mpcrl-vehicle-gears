@@ -1,4 +1,3 @@
-import importlib
 import os
 import pickle
 import sys
@@ -6,15 +5,15 @@ import sys
 import numpy as np
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.mip_agent import DistributedMIPAgent
 from env import PlatoonTracking
 from mpcs.mip_mpc import MIPMPC
+from utils.parse_config import parse_config
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-from utils.parse_config import parse_config
 from vehicle import Vehicle
-from visualisation.plot import plot_evaluation
 
 # Generate config object
 config = parse_config(sys.argv)
@@ -144,16 +143,3 @@ if SAVE:
             },
             f,
         )
-
-# Plot results
-if PLOT:
-    ep = 0
-    plot_evaluation(
-        x_ref[ep],
-        X[ep],
-        U[ep],
-        R[ep],
-        fuel[ep],
-        engine_torque[ep],
-        engine_speed[ep],
-    )

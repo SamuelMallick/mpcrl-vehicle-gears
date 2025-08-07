@@ -1,4 +1,3 @@
-import importlib
 import os
 import pickle
 import sys
@@ -11,11 +10,10 @@ from gymnasium.wrappers import TimeLimit
 from agents.heuristic_3_agent import Heuristic3Agent
 from env import VehicleTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
+from utils.parse_config import parse_config
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from utils.parse_config import parse_config
 from vehicle import Vehicle
-from visualisation.plot import plot_evaluation
 
 # Generate config object
 config = parse_config(sys.argv)
@@ -91,15 +89,3 @@ if SAVE:
             },
             f,
         )
-
-if PLOT:
-    ep = 0
-    plot_evaluation(
-        x_ref[ep],
-        X[ep],
-        U[ep],
-        R[ep],
-        fuel[ep],
-        engine_torque[ep],
-        engine_speed[ep],
-    )

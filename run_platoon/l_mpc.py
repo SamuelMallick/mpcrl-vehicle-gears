@@ -1,4 +1,3 @@
-import importlib
 import os
 import pickle
 import sys
@@ -7,15 +6,15 @@ import numpy as np
 import torch
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.learning_agent import DistributedLearningAgent
 from env import PlatoonTracking
 from mpcs.fixed_gear_mpc import FixedGearMPC
+from utils.parse_config import parse_config
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from gymnasium.wrappers import TimeLimit
-from utils.parse_config import parse_config
 from vehicle import Vehicle
-from visualisation.plot import plot_evaluation
 
 # Generate config object
 config = parse_config(sys.argv)
@@ -74,16 +73,19 @@ state_dict = torch.load(
 with open(f"results/{config.normalization_data_filename}", "rb") as f:
     data = pickle.load(f)
 
-
 # Run the evaluation
-returns, info = agent.evaluate(
+returns, info = agent.evaluate(  # pylint: disable=unexpected-keyword-arg
     env,
     episodes=num_eval_eps,
     seed=eval_seed,
     policy_net_state_dict=state_dict,
     normalization=data["normalization"],
     use_heuristic=True,
-    heursitic_gear_priorities=["low", "mid", "high"],
+    heuristic_gear_priorities=[
+        "low",
+        "mid",
+        "high",
+    ],
 )
 
 # Collect the results
@@ -124,16 +126,3 @@ if SAVE:
             },
             f,
         )
-
-# Plot results
-if PLOT:
-    ep = 0
-    plot_evaluation(
-        x_ref[ep],
-        X[ep],
-        U[ep],
-        R[ep],
-        fuel[ep],
-        engine_torque[ep],
-        engine_speed[ep],
-    )
