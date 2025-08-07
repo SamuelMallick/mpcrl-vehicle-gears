@@ -25,7 +25,7 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 40.0  # cm
+fig_size_x = 20.0  # cm
 fig_size_y = 10.0  # cm
 show_legend = False
 show_title = False
@@ -38,23 +38,12 @@ show_title = False
 eval_type = "eval_single_seed_10"
 eval_list = [
     ["eval_l_mpc/c3_seed1", "RL-1 s1"],
-    # ["eval_l_mpc/c2_seed0", "RL-2 c2 s0"],
+    ["eval_l_mpc/c2_seed0", "RL-2 c2 s0"],
     ["eval_l_mpc/c4_seed4", "RL-2 s4"],
     ["eval_l_mpc/c4_seed9", "RL-2 s9"],
-    ["eval_l_mpc/c4_seed1_laptop", "RL-2 s1 l "],
-    ["eval_l_mpc/c4_seed2_laptop", "RL-2 s2 l "],
-    ["eval_l_mpc/c4_seed3_laptop", "RL-2 s3 l "],
-    ["eval_l_mpc/c4_seed4_laptop", "RL-2 s4 l "],
-    ["eval_l_mpc/c4_seed5_laptop", "RL-2 s5 l "],
-    ["eval_l_mpc/c4_seed6_laptop", "RL-2 s6 l "],
-    ["eval_l_mpc/c4_seed7_laptop", "RL-2 s7 l "],
-    ["eval_l_mpc/c4_seed8_laptop", "RL-2 s8 l "],
-    ["eval_l_mpc/c4_seed9_laptop", "RL-2 s9 l "],
-    ["eval_l_mpc/c4_seed10_laptop", "RL-2 s10 l "],
     ["eval_miqp", "MIQP"],
     ["eval_miqp_1s", "MIQP 1s"],
     ["eval_minlp", "MINLP"],
-    ["eval_minlp_1s", "MINLP 1s"],
     ["eval_heuristic_mpc_1", "H-1"],
     ["eval_heuristic_mpc_2", "H-2"],
     ["eval_heuristic_mpc_3", "H-3"],
