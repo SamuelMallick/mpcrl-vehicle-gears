@@ -25,29 +25,18 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 20.0  # cm
-fig_size_y = 10.0  # cm
+fig_size_x = 9.0  # cm
+fig_size_y = 6.0  # cm
 show_legend = False
 show_title = False
 
 # Select experiments to plot
-# List must be formatted as ["folder name", "label"] where the label is the one used
-# for the plot. The experiment folder name (first folder layer under results/) can be
-# specified collectively in the variable `eval_type`.
-# eval_type = "eval_single"
-eval_type = "eval_single_seed_10"
-eval_list = [
-    ["eval_l_mpc/c3_seed1", "RL-1 s1"],
-    ["eval_l_mpc/c2_seed0", "RL-2 c2 s0"],
-    ["eval_l_mpc/c4_seed4", "RL-2 s4"],
-    ["eval_l_mpc/c4_seed9", "RL-2 s9"],
-    ["eval_miqp", "MIQP"],
-    ["eval_miqp_1s", "MIQP 1s"],
-    ["eval_minlp", "MINLP"],
-    ["eval_heuristic_mpc_1", "H-1"],
-    ["eval_heuristic_mpc_2", "H-2"],
-    ["eval_heuristic_mpc_3", "H-3"],
-]
+eval_type = "eval_platoon_seed_10"
+# AVAILABLE OPTIONS:
+# - eval_single
+# - eval_single_seed_10
+# - eval_platoon
+# - eval_platoon_seed_10
 
 # Select the plot parameters
 plot_type = "violin"  # {"box", "violin"} default is "violin"
@@ -56,6 +45,70 @@ grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
 use_relative_performance = True  # Show the relative performance of the policies
 baseline_solution = "MINLP"
+
+# Match eval_type
+# List must be formatted as ["folder name", "label"] where the label is the one used
+# for the plot. The experiment folder name (first folder layer under results/) has to
+# match the variable `eval_type`.
+match eval_type:
+    case "eval_single_seed_10":
+        eval_list = [
+            # ["eval_l_mpc/c2_seed0", "RL-2 bi"],
+            ["eval_l_mpc/c3_seed1", "RL-1"],
+            ["eval_l_mpc/c4_seed4", "RL-2"],
+            # ["eval_l_mpc_laptop/c4_seed1", "RL-2 c4 s1 l "],
+            # ["eval_l_mpc_laptop/c4_seed2", "RL-2 c4 s2 l "],
+            # ["eval_l_mpc_laptop/c4_seed3", "RL-2 c4 s3 l "],
+            # ["eval_l_mpc_laptop/c4_seed4", "RL-2 c4 s4 l "],
+            # ["eval_l_mpc_laptop/c4_seed5", "RL-2 c4 s5 l "],
+            # ["eval_l_mpc_laptop/c4_seed6", "RL-2 c4 s6 l "],
+            # ["eval_l_mpc_laptop/c4_seed7", "RL-2 c4 s7 l "],
+            # ["eval_l_mpc_laptop/c4_seed8", "RL-2 c4 s8 l "],
+            # ["eval_l_mpc_laptop/c4_seed9", "RL-2 c4 s9 l "],
+            # ["eval_l_mpc_laptop/c4_seed10", "RL-2 c4 s10 l "],
+            ["eval_miqp", "MIQP"],
+            # ["eval_miqp_1s", "MIQP 1s"],
+            ["eval_minlp", "MINLP"],
+            # ["eval_minlp_1s", "MINLP 1s"],
+            ["eval_heuristic_mpc_1", "H-1"],
+            ["eval_heuristic_mpc_2", "H-2"],
+            ["eval_heuristic_mpc_3", "H-3"],
+        ]
+
+    case "eval_single":
+        pass
+        # TODO
+
+    case "eval_platoon_seed_10":
+        eval_list = [
+            # ["eval_l_mpc/c2_seed0", "RL-2 bi"],
+            ["eval_l_mpc/c3_seed1", "RL-1"],
+            ["eval_l_mpc/c4_seed4", "RL-2"],
+            # ["eval_l_mpc_laptop/c4_seed1", "RL-2 c4 s1 l "],
+            # ["eval_l_mpc_laptop/c4_seed2", "RL-2 c4 s2 l "],
+            # ["eval_l_mpc_laptop/c4_seed3", "RL-2 c4 s3 l "],
+            # ["eval_l_mpc_laptop/c4_seed4", "RL-2 c4 s4 l "],
+            # ["eval_l_mpc_laptop/c4_seed5", "RL-2 c4 s5 l "],
+            # ["eval_l_mpc_laptop/c4_seed6", "RL-2 c4 s6 l "],
+            # ["eval_l_mpc_laptop/c4_seed7", "RL-2 c4 s7 l "],
+            # ["eval_l_mpc_laptop/c4_seed8", "RL-2 c4 s8 l "],
+            # ["eval_l_mpc_laptop/c4_seed9", "RL-2 c4 s9 l "],
+            # ["eval_l_mpc_laptop/c4_seed10", "RL-2 c4 s10 l "],
+            ["eval_miqp", "MIQP"],
+            # ["eval_miqp_1s", "MIQP 1s"],
+            ["eval_minlp", "MINLP"],
+            ["eval_heuristic_mpc_1", "H-1"],
+            ["eval_heuristic_mpc_2", "H-2"],
+            ["eval_heuristic_mpc_3", "H-3"],
+        ]
+
+    case "eval_platoon":
+        pass
+        # TODO
+
+    case _:
+        print("Unknown evaluation type")
+        sys.exit()
 
 ##### Preprocess data ##################################################################
 
@@ -224,7 +277,7 @@ ax_t.set_yscale("log")
 # Set reward labels and limits
 cut_r = 0
 if use_relative_performance is True:
-    ax_r.set_ylim(-5, 25)
+    ax_r.set_ylim(-1, 28)
     ax_r.set_ylabel(
         "$\\Delta J$ [\\%]",  # Relative performance drop
         color=c_reward_dark,
@@ -298,6 +351,7 @@ match grouping_t:
 # Reward axis settings
 ax_r.set_xticks(list(range(len(xticks_labels))))
 ax_r.set_xticklabels(xticks_labels)
+ax_r.tick_params(axis="x", labelrotation=90)
 ax_r.set_xlabel(" ")
 if show_title is True:
     ax_r.set_xlabel("Policy")
@@ -312,9 +366,9 @@ ax_grid_r = fig.add_axes(ax_r.get_position(), frameon=False)
 ax_grid_r.set_xticks([])
 ax_grid_r.set_yticks([])
 ax_grid_r.set_facecolor("none")
+ax_grid_r.set_yticks(ax_r.get_yticks(), minor=False)
 ax_grid_r.set_xlim(ax_r.get_xlim())
 ax_grid_r.set_ylim(ax_r.get_ylim())
-ax_grid_r.set_yticks(ax_r.get_yticks(), minor=False)
 ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
 
 # Time grid lines
@@ -431,18 +485,9 @@ if show_mean_marker is True:
         avg_reward.append(np.mean(df[df["Group"] == eval_label]["Value"]))
 
     # Manually set offset for the mean marker (to avoid overlap with the plot)
-    x_marker_offset = np.array(
-        [
-            0.31,
-            0.32,
-            0.31,
-            0.34,
-            0.36,
-            0.24,
-            0.33,
-            0.33,
-        ]
-    )
+    # This vector can be modified with manually selected values to avoid overlappings
+    x_marker_offset = np.zeros(len(avg_reward))
+
     if len(avg_reward) != len(x_marker_offset):
         x_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
 
@@ -451,7 +496,7 @@ if show_mean_marker is True:
 
     # Plot the mean reward markers
     ax_r.plot(
-        x_marker_avg_reward,
+        x_marker_avg_reward + 0.04,
         avg_reward,
         marker=mpl.markers.CARETRIGHT,
         markersize=5,
@@ -460,11 +505,12 @@ if show_mean_marker is True:
     )
 
     # Annotate the mean reward markers
+    offset_y_text = 1
     for i, r in enumerate(avg_reward):
         ax_r.annotate(
             f"{r:.2f}",
-            xy=(x_marker_avg_reward[i], r),
-            xytext=(-5, 0),  # offset text
+            xy=(x_marker_avg_reward[i], r + offset_y_text),
+            xytext=(0, 0),  # offset text
             textcoords="offset points",
             color=c_reward_dark,
             fontsize=markers_font_size,
