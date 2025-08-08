@@ -25,7 +25,7 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 9.0  # cm
+fig_size_x = 15.0  # cm
 fig_size_y = 6.0  # cm
 show_legend = False
 show_title = False
@@ -257,7 +257,7 @@ mpl.rcParams.update(
         "font.size": labels_font_size,
         "axes.labelsize": labels_font_size,
         "legend.fontsize": labels_font_size,
-        "xtick.labelsize": labels_font_size,
+        "xtick.labelsize": tick_labels_font_size,
         "ytick.labelsize": tick_labels_font_size,
         "pgf.rcfonts": False,
         "pgf.preamble": "\\usepackage[T1]{fontenc}",  # extra preamble for LaTeX
@@ -277,7 +277,14 @@ ax_t.set_yscale("log")
 # Set reward labels and limits
 cut_r = 0
 if use_relative_performance is True:
-    ax_r.set_ylim(-1, 28)
+    if eval_type == "eval_single":
+        ax_r.set_ylim(-1, 25)  # TODO: update values
+    elif eval_type == "eval_single_seed_10":
+        ax_r.set_ylim(-1, 21)
+    elif eval_type == "eval_platoon":
+        ax_r.set_ylim(-1, 25)  # TODO: update values
+    elif eval_type == "eval_platoon_seed_10":
+        ax_r.set_ylim(-1, 28)
     ax_r.set_ylabel(
         "$\\Delta J$ [\\%]",  # Relative performance drop
         color=c_reward_dark,
@@ -351,11 +358,14 @@ match grouping_t:
 # Reward axis settings
 ax_r.set_xticks(list(range(len(xticks_labels))))
 ax_r.set_xticklabels(xticks_labels)
-ax_r.tick_params(axis="x", labelrotation=90)
-ax_r.set_xlabel(" ")
+ax_r.tick_params(axis="x", labelrotation=0)  # 90
 if show_title is True:
     ax_r.set_xlabel("Policy")
     ax_r.set_title("Policies Evaluation")
+elif eval_type in ["eval_single", "eval_single_seed_10"]:
+    ax_r.set_xlabel("(a) $M=1$")
+elif eval_type in ["eval_platoon", "eval_platoon_seed_10"]:
+    ax_r.set_xlabel("(b) $M=5$")
 
 # Vertical grid lines
 for i in range(len(xticks_labels)):
