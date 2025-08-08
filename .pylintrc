@@ -6,6 +6,8 @@ disable=
     missing-function-docstring, # C0116
     wrong-import-position, # C0413
     wrong-import-order, # C0411
+
+    function-redefined, # E0102
     
     too-many-instance-attributes, # R0902
     too-few-public-methods, # R0903
