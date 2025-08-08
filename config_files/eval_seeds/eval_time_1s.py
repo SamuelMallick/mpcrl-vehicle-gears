@@ -9,7 +9,7 @@ class Config(Config):
         self.eval_seed = 10
 
         # Set time limit for the solvers to 1 second
-        self.extra_opts["gurobi"]["TimeLimit"] = 1
+        self.extra_opts["gurobi"]["TimeLimit"] = 0.2  # 0.2 for platooning, 1 for single
         self.extra_opts["knitro"]["maxtime"] = 1
         # self.extra_opts["bonmin"]["time_limit"] = 1
         # self.extra_opts["ipopt"]["max_wall_time"] = 1
