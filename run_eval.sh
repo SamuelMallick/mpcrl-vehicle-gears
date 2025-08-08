@@ -18,7 +18,7 @@ print_help() {
   echo "  -s, --seed <int>        Start seed value"
   echo "  -n, --n-evals <int>     Number of evaluations to run"
   echo "  -e, --seed-end <int>    End seed value (alternative to --n-evals)"
-  echo "  -t, --max-time <int>    Maximum time for knitro and gurobi"
+  echo "  -t, --max-time <float>  Maximum time for knitro and gurobi"
   echo "  -h, --help              Show this help message"
   echo "Note: the default values are declared in parse_config.py."
   echo
@@ -182,9 +182,9 @@ while [[ $# -gt 0 ]]; do
       max_time_set=true
       shift 2
 
-      # Check if the max time is a positive integer
-      if ! [[ "$max_time" =~ ^[0-9]+$ ]]; then
-        echo "Error: Max time must be a positive integer."
+      # Check if the max time is a positive float
+      if ! [[ "$max_time" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        echo "Error: Max time must be a positive float."
         return 1
       fi
       ;;
