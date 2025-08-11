@@ -1,5 +1,11 @@
 """
 Generate the box plot or violin plot from the evaluation results of a single controller.
+
+Note: some parts of the script have been tailored to the results of the experiments
+obtained during the evaluation experiment used in the paper, for example when defining
+the offset of the markers from the y line to avoid overlapping with the distribution.
+These values may need to be updated when plotting the results of different experiments
+in order to obtain a clean plot.
 """
 
 import os
@@ -25,7 +31,7 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 15.0  # cm
+fig_size_x = 18.0  # cm
 fig_size_y = 6.0  # cm
 show_legend = False
 show_title = False
@@ -37,6 +43,10 @@ eval_type = "eval_platoon_seed_10"
 # - eval_single_seed_10
 # - eval_platoon
 # - eval_platoon_seed_10
+
+# Select seeds to plot
+# seeds_to_plot: list[int] = [1001, 1002, 1003, 1004, 1005]  # TEMP [TODO: remove]
+seeds_to_plot = []
 
 # Select the plot parameters
 plot_type = "violin"  # {"box", "violin"} default is "violin"
@@ -53,49 +63,35 @@ baseline_solution = "MINLP"
 match eval_type:
     case "eval_single_seed_10":
         eval_list = [
-            # ["eval_l_mpc/c2_seed0", "RL-2 bi"],
             ["eval_l_mpc/c3_seed1", "RL-1"],
             ["eval_l_mpc/c4_seed4", "RL-2"],
-            # ["eval_l_mpc_laptop/c4_seed1", "RL-2 c4 s1 l "],
-            # ["eval_l_mpc_laptop/c4_seed2", "RL-2 c4 s2 l "],
-            # ["eval_l_mpc_laptop/c4_seed3", "RL-2 c4 s3 l "],
-            # ["eval_l_mpc_laptop/c4_seed4", "RL-2 c4 s4 l "],
-            # ["eval_l_mpc_laptop/c4_seed5", "RL-2 c4 s5 l "],
-            # ["eval_l_mpc_laptop/c4_seed6", "RL-2 c4 s6 l "],
-            # ["eval_l_mpc_laptop/c4_seed7", "RL-2 c4 s7 l "],
-            # ["eval_l_mpc_laptop/c4_seed8", "RL-2 c4 s8 l "],
-            # ["eval_l_mpc_laptop/c4_seed9", "RL-2 c4 s9 l "],
-            # ["eval_l_mpc_laptop/c4_seed10", "RL-2 c4 s10 l "],
             ["eval_miqp", "MIQP"],
-            # ["eval_miqp_1s", "MIQP 1s"],
+            ["eval_miqp_1s", "MIQP 1s"],
             ["eval_minlp", "MINLP"],
-            # ["eval_minlp_1s", "MINLP 1s"],
+            ["eval_minlp_1s", "MINLP 1s"],
             ["eval_heuristic_mpc_1", "H-1"],
             ["eval_heuristic_mpc_2", "H-2"],
             ["eval_heuristic_mpc_3", "H-3"],
         ]
 
     case "eval_single":
-        pass
-        # TODO
+        eval_list = [
+            ["eval_l_mpc/c3_seed1", "RL-1"],
+            ["eval_l_mpc/c4_seed4", "RL-2"],
+            ["eval_miqp", "MIQP"],
+            ["eval_miqp_1s", "MIQP 1s"],
+            ["eval_minlp", "MINLP"],
+            ["eval_heuristic_mpc_1", "H-1"],
+            ["eval_heuristic_mpc_2", "H-2"],
+            ["eval_heuristic_mpc_3", "H-3"],
+        ]
 
     case "eval_platoon_seed_10":
         eval_list = [
-            # ["eval_l_mpc/c2_seed0", "RL-2 bi"],
             ["eval_l_mpc/c3_seed1", "RL-1"],
             ["eval_l_mpc/c4_seed4", "RL-2"],
-            # ["eval_l_mpc_laptop/c4_seed1", "RL-2 c4 s1 l "],
-            # ["eval_l_mpc_laptop/c4_seed2", "RL-2 c4 s2 l "],
-            # ["eval_l_mpc_laptop/c4_seed3", "RL-2 c4 s3 l "],
-            # ["eval_l_mpc_laptop/c4_seed4", "RL-2 c4 s4 l "],
-            # ["eval_l_mpc_laptop/c4_seed5", "RL-2 c4 s5 l "],
-            # ["eval_l_mpc_laptop/c4_seed6", "RL-2 c4 s6 l "],
-            # ["eval_l_mpc_laptop/c4_seed7", "RL-2 c4 s7 l "],
-            # ["eval_l_mpc_laptop/c4_seed8", "RL-2 c4 s8 l "],
-            # ["eval_l_mpc_laptop/c4_seed9", "RL-2 c4 s9 l "],
-            # ["eval_l_mpc_laptop/c4_seed10", "RL-2 c4 s10 l "],
             ["eval_miqp", "MIQP"],
-            # ["eval_miqp_1s", "MIQP 1s"],
+            # ["eval_miqp_1s", "MIQP 1s"],  # TODO: rerun experiment and add back
             ["eval_minlp", "MINLP"],
             ["eval_heuristic_mpc_1", "H-1"],
             ["eval_heuristic_mpc_2", "H-2"],
@@ -133,6 +129,14 @@ for eval_name, eval_label in eval_list:
     # Extract all data from .pkl files
     for _, file in enumerate(pkl_files):
         if file.endswith(".pkl"):
+
+            # Check if current file is in the seeds_to_plot list
+            # TEMP: remove once all the experiments are done [TODO]
+            if seeds_to_plot:
+                seed = int(file.split("_")[-1].split(".")[0])
+                if seed not in seeds_to_plot:
+                    continue
+
             with open(f"results/{eval_type}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
                 reward.append(data["R"][0])
@@ -278,9 +282,9 @@ ax_t.set_yscale("log")
 cut_r = 0
 if use_relative_performance is True:
     if eval_type == "eval_single":
-        ax_r.set_ylim(-1, 25)  # TODO: update values
+        ax_r.set_ylim(-1, 28)
     elif eval_type == "eval_single_seed_10":
-        ax_r.set_ylim(-1, 21)
+        ax_r.set_ylim(-1, 31)
     elif eval_type == "eval_platoon":
         ax_r.set_ylim(-1, 25)  # TODO: update values
     elif eval_type == "eval_platoon_seed_10":
@@ -494,9 +498,30 @@ if show_mean_marker is True:
     for _, eval_label in eval_list:
         avg_reward.append(np.mean(df[df["Group"] == eval_label]["Value"]))
 
-    # Manually set offset for the mean marker (to avoid overlap with the plot)
-    # This vector can be modified with manually selected values to avoid overlappings
-    x_marker_offset = np.zeros(len(avg_reward))
+    # Set offset for the mean marker (to avoid overlap with the plot)
+    # The current values have been manually determined for each evaluation type.
+    match eval_type:
+        case "eval_single_seed_10":
+            x_marker_offset = -np.ones(9) * 0.05
+        case "eval_single":
+            x_marker_offset = np.array(
+                [
+                    0.13,  # RL1
+                    0.34,  # RL2
+                    0.11,  # MIQP
+                    0.12,  # MIQP 1s
+                    -0.04,  # MINLP
+                    0.019,  # H1
+                    0.12,  # H2
+                    0.14,  # H3
+                ]
+            )
+        case "eval_platoon_seed_10":
+            x_marker_offset = -np.ones(7) * 0.045  # TODO: update to 8 after adding 1s
+        case "eval_platoon":
+            x_marker_offset = -np.zeros(8)  # TODO
+        case _:
+            x_marker_offset = np.zeros(len(avg_reward))
 
     if len(avg_reward) != len(x_marker_offset):
         x_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
@@ -506,7 +531,7 @@ if show_mean_marker is True:
 
     # Plot the mean reward markers
     ax_r.plot(
-        x_marker_avg_reward + 0.04,
+        x_marker_avg_reward,
         avg_reward,
         marker=mpl.markers.CARETRIGHT,
         markersize=5,
@@ -515,12 +540,18 @@ if show_mean_marker is True:
     )
 
     # Annotate the mean reward markers
-    offset_y_text = 1
     for i, r in enumerate(avg_reward):
+        if eval_type in ["eval_single_seed_10", "eval_platoon_seed_10"]:
+            y_offset = 3.5
+        else:
+            if i == 4:
+                y_offset = 3
+            else:
+                y_offset = 0
         ax_r.annotate(
             f"{r:.2f}",
-            xy=(x_marker_avg_reward[i], r + offset_y_text),
-            xytext=(0, 0),  # offset text
+            xy=(x_marker_avg_reward[i], r),
+            xytext=(-4, y_offset),  # offset text
             textcoords="offset points",
             color=c_reward_dark,
             fontsize=markers_font_size,
@@ -544,7 +575,7 @@ if grouping_t == "ts":
         ax_t.annotate(
             f"{t:.2f}",
             xy=(x_marker_max_time[i], t),
-            xytext=(5, 0),  # offset text
+            xytext=(7, 0),  # offset text
             textcoords="offset points",
             color=c_time_dark,
             fontsize=markers_font_size,
