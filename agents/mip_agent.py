@@ -63,6 +63,7 @@ class MIPAgent(SingleVehicleAgent):
                 )
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
                 vals0[0]["gear"][gear] = 1
+                solver = "backup"
                 sol, _ = self.backup_mpc.solve(pars, vals0)
                 if not sol or sol.status not in accepted_knitro_statuses:
                     raise ValueError(
@@ -70,10 +71,18 @@ class MIPAgent(SingleVehicleAgent):
                     )
             elif self.backup_mpc:
                 # Other failure cases: try the backup MPC
+                # CHECKME: Currently added warm start, consider if worth removing
+                gear = self.gear_from_velocity(
+                    self.prev_sol.vals["x"].full()[1, 0], gear_priority="mid"
+                )
+                vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
+                vals0[0]["gear"][gear] = 1
                 solver = "backup"
                 sol, _ = self.backup_mpc.solve(pars, vals0)
                 if not sol.success:
-                    raise ValueError("MPC failed to solve")
+                    raise ValueError(
+                        "Backup MPC failed to solve after primary MPC failure"
+                    )
             else:
                 raise ValueError("MPC failed to solve")
 
