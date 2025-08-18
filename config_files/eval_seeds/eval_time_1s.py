@@ -10,10 +10,10 @@ class Config(Config):
 
         # Set time limit for the solvers to 1 second
         self.extra_opts["gurobi"]["TimeLimit"] = 0.2  # 0.2 for platooning, 1 for single
-        self.extra_opts["knitro"]["maxtime"] = 1
+        self.extra_opts["knitro"]["maxtime"] = 0.2  # 0.2 for platooning, 1 for single
         # self.extra_opts["bonmin"]["time_limit"] = 1
         # self.extra_opts["ipopt"]["max_wall_time"] = 1
 
         # Backup MINLP MPC parameters
         self.backup_minlp_mip_terminate = 1  # stop at 1st feas sol
-        self.backup_minlp_maxtime = 60  # [s]
+        self.backup_minlp_maxtime = 600  # [s]

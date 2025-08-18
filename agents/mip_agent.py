@@ -1,8 +1,10 @@
-import sys, os
+import os
+import sys
+
 import numpy as np
 
 sys.path.append(os.getcwd())
-from agents.agent import SingleVehicleAgent, PlatoonAgent
+from agents.agent import PlatoonAgent, SingleVehicleAgent
 from mpcs.mip_mpc import MIPMPC
 
 
@@ -35,10 +37,11 @@ class MIPAgent(SingleVehicleAgent):
 
     def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
         solver = "primary"
-        sol, info = self.mpc.solve(pars, vals0)
+        sol, _ = self.mpc.solve(pars, vals0)
 
         # error handling
         accepted_knitro_statuses = [
+            "KN_RC_OPTIMAL_OR_SATISFACTORY",
             "KN_RC_MIP_TERM_FEAS",
             "KN_RC_TIME_LIMIT_FEAS",
         ]
@@ -48,7 +51,7 @@ class MIPAgent(SingleVehicleAgent):
             if self.backup_mpc is not None and hasattr(self.backup_mpc, "solver_time"):
                 self.backup_mpc.solver_time.append(0.0)
 
-            pass  # Accept the current solution and continue
+            # Accept the current solution and continue
 
         # Handle other failure cases
         else:
@@ -56,8 +59,8 @@ class MIPAgent(SingleVehicleAgent):
                 if sol.stats["pool_sol_nr"] == 0:
                     raise ValueError("MPC failed to find feasible solution in time")
             elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
-                # Special case: use heuristic 2 to generate a warm start solution
-                # for the backup MPC
+                # Special failure case: knitro reaches time limit without a feasible sol
+                # Uses heuristic 2 to generate a warm start solution for the backup MPC
                 gear = self.gear_from_velocity(
                     self.prev_sol.vals["x"].full()[1, 0], gear_priority="mid"
                 )
@@ -65,13 +68,16 @@ class MIPAgent(SingleVehicleAgent):
                 vals0[0]["gear"][gear] = 1
                 solver = "backup"
                 sol, _ = self.backup_mpc.solve(pars, vals0)
-                if not sol or sol.status not in accepted_knitro_statuses:
+                if not sol or (
+                    not sol.success and sol.status not in accepted_knitro_statuses
+                ):
                     raise ValueError(
                         "Backup MPC failed to solve after primary MPC timeout"
                     )
             elif self.backup_mpc:
-                # Other failure cases: try the backup MPC
-                # CHECKME: Currently added warm start, consider if worth removing
+                # Other failure cases (primary solver fails to find a solution)
+                # Currently same approach as for the special failure case
+                print(f"Primary MPC failure reason: {sol.status}")  # primary MPC status
                 gear = self.gear_from_velocity(
                     self.prev_sol.vals["x"].full()[1, 0], gear_priority="mid"
                 )
@@ -79,7 +85,14 @@ class MIPAgent(SingleVehicleAgent):
                 vals0[0]["gear"][gear] = 1
                 solver = "backup"
                 sol, _ = self.backup_mpc.solve(pars, vals0)
-                if not sol.success:
+                if not sol or (
+                    not sol.success and sol.status not in accepted_knitro_statuses
+                ):
+                    print(f"Exit message: {sol.status}")
+                    print(
+                        f"Speed: {self.prev_sol.vals["x"].full()[1, 0]} | Gear: {gear}"
+                    )
+
                     raise ValueError(
                         "Backup MPC failed to solve after primary MPC failure"
                     )
