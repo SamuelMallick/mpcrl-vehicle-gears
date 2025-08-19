@@ -61,11 +61,9 @@ class MIPAgent(SingleVehicleAgent):
             elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
                 # Special failure case: knitro reaches time limit without a feasible sol
                 # Uses heuristic 2 to generate a warm start solution for the backup MPC
-                gear = self.gear_from_velocity(
-                    self.prev_sol.vals["x"].full()[1, 0], gear_priority="mid"
-                )
+                gear = self.gear_from_velocity(pars["x_0"][1], gear_priority="mid")
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
-                vals0[0]["gear"][gear] = 1
+                vals0[0]["gear"][gear] = 1  # set all 1 in row gear, 0 elsewhere
                 solver = "backup"
                 sol, _ = self.backup_mpc.solve(pars, vals0)
                 if not sol or (
@@ -78,9 +76,7 @@ class MIPAgent(SingleVehicleAgent):
                 # Other failure cases (primary solver fails to find a solution)
                 # Currently same approach as for the special failure case
                 print(f"Primary MPC failure reason: {sol.status}")  # primary MPC status
-                gear = self.gear_from_velocity(
-                    self.prev_sol.vals["x"].full()[1, 0], gear_priority="mid"
-                )
+                gear = self.gear_from_velocity(pars["x_0"][1], gear_priority="mid")
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
                 vals0[0]["gear"][gear] = 1
                 solver = "backup"
@@ -88,13 +84,9 @@ class MIPAgent(SingleVehicleAgent):
                 if not sol or (
                     not sol.success and sol.status not in accepted_knitro_statuses
                 ):
-                    print(f"Exit message: {sol.status}")
-                    print(
-                        f"Speed: {self.prev_sol.vals["x"].full()[1, 0]} | Gear: {gear}"
-                    )
-
                     raise ValueError(
-                        "Backup MPC failed to solve after primary MPC failure"
+                        "Backup MPC failed to solve after primary MPC failure. Primary "
+                        f"MPC failed with error message {sol.status}."
                     )
             else:
                 raise ValueError("MPC failed to solve")
