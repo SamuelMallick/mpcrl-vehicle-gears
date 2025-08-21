@@ -109,7 +109,7 @@ ax[3].plot(np.zeros(t_end), linewidth=linewidth, linestyle="--", color="darkred"
 ax[0].legend(
     [f"Vehicle {i+1}" for i in range(n_agents)] + ["Reference"],
     loc="upper center",
-    bbox_to_anchor=(0.5, 1.6),
+    bbox_to_anchor=(0.47, 1.75),
     fontsize=8,
     frameon=False,
     fancybox=True,
@@ -135,8 +135,8 @@ ax[0].set_yticks([0, 1000, 2000])
 ax[0].set_yticklabels([0, 1, 2])
 ax[0].set_ylabel("$x^{[1]}_i$ [m]")
 ax[0].text(
-    -0.025,
-    1,
+    0.095,
+    1.02,
     r"$\times 10^3$",
     transform=ax[0].transAxes,
     ha="right",
