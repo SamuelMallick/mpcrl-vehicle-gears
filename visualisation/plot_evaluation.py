@@ -31,8 +31,8 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 19.0  # cm
-fig_size_y = 6.0  # cm
+fig_size_x = 16.5  # cm
+fig_size_y = 6  # cm
 show_legend = False
 show_title = False
 
@@ -578,9 +578,9 @@ if show_t_max_marker is True:
                     0,  # LC-2
                     # 0,  # LC-2 PC
                     0,  # MIQP
-                    0.16,  # MIQP-tl
+                    0.17,  # MIQP-tl
                     0,  # MINLP
-                    0.15,  # MINLP-tl
+                    0.14,  # MINLP-tl
                     0,  # HD
                     0,  # HC
                     0,  # HSC
