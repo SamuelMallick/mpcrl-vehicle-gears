@@ -14,15 +14,18 @@ class Config(Config):
 
         # Number of multi-starts for the optimization
         # NOTE: currently multi-starting is hardcoded in the agent files except for
-        # heuristic 1, for which it needs to be set to 4 from the Config object
+        # heuristic 1, for which it needs to be set to 4 from the Config object (this
+        # behavior is implemented in utils/parse_config.py so this variable should
+        # not be modified to run the simulations as described in the paper)
         self.multi_starts = 1
 
         # Time limits for the primary solvers
         self.extra_opts["gurobi"]["TimeLimit"] = 3600
-        self.extra_opts["knitro"]["maxtime"] = 3600
+        # self.extra_opts["knitro"]["maxtime"] = 3600  # For single vehicle
+        self.extra_opts["knitro"]["maxtime"] = 720  # For platoon
         # self.extra_opts["bonmin"]["time_limit"] = max_time
         # self.extra_opts["ipopt"]["max_wall_time"] = max_time
 
         # Backup MINLP MPC parameters
         self.backup_minlp_mip_terminate = 1  # terminate solver after first feasible sol
-        self.backup_minlp_maxtime = 60  # maximum time for the backup MPC
+        self.backup_minlp_maxtime = 600  # maximum time for the backup MPC
