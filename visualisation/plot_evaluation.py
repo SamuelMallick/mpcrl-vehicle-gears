@@ -1,11 +1,11 @@
 """
 Generate the box plot or violin plot from the evaluation results of a single controller.
 
-Note: some parts of the script have been tailored to the results of the experiments
-obtained during the evaluation experiment used in the paper, for example when defining
-the offset of the markers from the y line to avoid overlapping with the distribution.
-These values may need to be updated when plotting the results of different experiments
-in order to obtain a clean plot.
+Note: some parts of the script have been tailored to the plotting of the results of the
+experiments obtained during the evaluation experiment used in the paper, for example
+when defining the offset of the markers from the y line to avoid overlapping with the
+distribution. These values may need to be updated when plotting the results of different
+experiments in order to obtain a clean plot.
 """
 
 import os
@@ -31,26 +31,23 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 18.0  # cm
-fig_size_y = 6.0  # cm
+fig_size_x = 16.5  # cm
+fig_size_y = 6  # cm
 show_legend = False
 show_title = False
 
 # Select experiments to plot
-eval_type = "eval_platoon_seed_10"
+eval_type = "eval_single"
 # AVAILABLE OPTIONS:
 # - eval_single
-# - eval_single_seed_10
 # - eval_platoon
+# - eval_single_seed_10
 # - eval_platoon_seed_10
-
-# Select seeds to plot
-# seeds_to_plot: list[int] = [1001, 1002, 1003, 1004, 1005]  # TEMP [TODO: remove]
-seeds_to_plot = []
 
 # Select the plot parameters
 plot_type = "violin"  # {"box", "violin"} default is "violin"
-show_mean_marker = True  # Show the mean reward marker on the reward plot
+show_r_mean_marker = True  # Show the mean reward marker on the reward plot
+show_t_max_marker = True  # Show the max time marker on the time plot
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
 use_relative_performance = True  # Show the relative performance of the policies
@@ -61,10 +58,40 @@ baseline_solution = "MINLP"
 # for the plot. The experiment folder name (first folder layer under results/) has to
 # match the variable `eval_type`.
 match eval_type:
+
+    case "eval_single":
+        eval_list = [
+            ["eval_l_mpc/c3_seed1", "LC-1"],
+            ["eval_l_mpc/c4_seed4", "LC-2"],
+            # ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
+            ["eval_miqp", "MIQP"],
+            ["eval_miqp_1s", "MIQP-tl"],
+            ["eval_minlp", "MINLP"],
+            ["eval_minlp_1s", "MINLP-tl"],
+            ["eval_heuristic_mpc_1", "HD"],
+            ["eval_heuristic_mpc_2", "HC"],
+            ["eval_heuristic_mpc_3", "HSC"],
+        ]
+
+    case "eval_platoon":
+        eval_list = [
+            ["eval_l_mpc/c3_seed1", "RL-1"],
+            ["eval_l_mpc/c4_seed4", "RL-2"],
+            ["eval_l_mpc/c4_seed4_laptop", "RL-2 lap"],
+            ["eval_miqp", "MIQP"],
+            # ["eval_miqp_1s", "MIQP 1s"],
+            # ["eval_minlp", "MINLP"],
+            # ["eval_minlp_1s", "MINLP 1s"],
+            ["eval_heuristic_mpc_1", "H-1"],
+            ["eval_heuristic_mpc_2", "H-2"],
+            ["eval_heuristic_mpc_3", "H-3"],
+        ]
+
     case "eval_single_seed_10":
         eval_list = [
             ["eval_l_mpc/c3_seed1", "RL-1"],
             ["eval_l_mpc/c4_seed4", "RL-2"],
+            ["eval_l_mpc/c4_seed4_laptop", "RL-2 lap"],
             ["eval_miqp", "MIQP"],
             ["eval_miqp_1s", "MIQP 1s"],
             ["eval_minlp", "MINLP"],
@@ -74,33 +101,19 @@ match eval_type:
             ["eval_heuristic_mpc_3", "H-3"],
         ]
 
-    case "eval_single":
-        eval_list = [
-            ["eval_l_mpc/c3_seed1", "RL-1"],
-            ["eval_l_mpc/c4_seed4", "RL-2"],
-            ["eval_miqp", "MIQP"],
-            ["eval_miqp_1s", "MIQP 1s"],
-            ["eval_minlp", "MINLP"],
-            ["eval_heuristic_mpc_1", "H-1"],
-            ["eval_heuristic_mpc_2", "H-2"],
-            ["eval_heuristic_mpc_3", "H-3"],
-        ]
-
     case "eval_platoon_seed_10":
         eval_list = [
             ["eval_l_mpc/c3_seed1", "RL-1"],
             ["eval_l_mpc/c4_seed4", "RL-2"],
+            ["eval_l_mpc/c4_seed4_laptop", "RL-2 lap"],
             ["eval_miqp", "MIQP"],
-            # ["eval_miqp_1s", "MIQP 1s"],  # TODO: rerun experiment and add back
+            ["eval_miqp_1s", "MIQP 1s"],
             ["eval_minlp", "MINLP"],
+            # ["eval_minlp_1s", "MINLP 1s"],  TODO
             ["eval_heuristic_mpc_1", "H-1"],
             ["eval_heuristic_mpc_2", "H-2"],
             ["eval_heuristic_mpc_3", "H-3"],
         ]
-
-    case "eval_platoon":
-        pass
-        # TODO
 
     case _:
         print("Unknown evaluation type")
@@ -130,17 +143,13 @@ for eval_name, eval_label in eval_list:
     for _, file in enumerate(pkl_files):
         if file.endswith(".pkl"):
 
-            # Check if current file is in the seeds_to_plot list
-            # TEMP: remove once all the experiments are done [TODO]
-            if seeds_to_plot:
-                seed = int(file.split("_")[-1].split(".")[0])
-                if seed not in seeds_to_plot:
-                    continue
-
             with open(f"results/{eval_type}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
                 reward.append(data["R"][0])
-                time.append(data["mpc_solve_time"][0:1000])  # TEMP fix for seed 10
+                if eval_name == "eval_minlp_1s":
+                    time.append(data["t_primary_mpc"][0:1000])
+                else:
+                    time.append(data["mpc_solve_time"][0:1000])
 
         else:
             print(f"Skipping {file}, not a .pkl file")
@@ -352,7 +361,7 @@ match grouping_t:
         cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.008, 5000)
+        ax_t.set_ylim(0.008, 3000)
         ax_t.set_ylabel(
             "Timestep time [s]",
             color=c_time_dark,
@@ -490,7 +499,7 @@ else:
     raise ValueError(f"Unknown plot type: {plot_type}")
 
 # Mean reward marker
-if show_mean_marker is True:
+if show_r_mean_marker is True:
 
     # Calculate the average reward for each evaluation
     avg_reward = []
@@ -501,33 +510,32 @@ if show_mean_marker is True:
     # Set offset for the mean marker (to avoid overlap with the plot)
     # The current values have been manually determined for each evaluation type.
     match eval_type:
-        case "eval_single_seed_10":
-            x_marker_offset = -np.ones(9) * 0.05
         case "eval_single":
-            x_marker_offset = np.array(
+            r_marker_offset = np.array(
                 [
-                    0.13,  # RL1
-                    0.34,  # RL2
-                    0.11,  # MIQP
-                    0.12,  # MIQP 1s
+                    0.16,  # LC-2
+                    0.35,  # LC-2
+                    # 0.35,  # LC-2 PC
+                    0.13,  # MIQP
+                    0.14,  # MIQP-tl
                     -0.04,  # MINLP
-                    0.019,  # H1
-                    0.12,  # H2
-                    0.14,  # H3
+                    0.075,  # MINLP-tl
+                    0.025,  # HD
+                    0.17,  # HC
+                    0.14,  # HSC
                 ]
             )
-        case "eval_platoon_seed_10":
-            x_marker_offset = -np.ones(7) * 0.045  # TODO: update to 8 after adding 1s
         case "eval_platoon":
-            x_marker_offset = -np.zeros(8)  # TODO
-        case _:
-            x_marker_offset = np.zeros(len(avg_reward))
-
-    if len(avg_reward) != len(x_marker_offset):
-        x_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
+            r_marker_offset = -np.zeros(8)  # TODO: update with correct values
+        case "eval_single_seed_10":
+            r_marker_offset = -np.ones(10) * 0.04
+        case "eval_platoon_seed_10":
+            r_marker_offset = -np.ones(7) * 0.045  # TODO: update to 8 after adding 1s
+    if len(avg_reward) != len(r_marker_offset):
+        r_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
 
     # Define x marker positions
-    x_marker_avg_reward = np.arange(len(xticks_labels)) - gap / 2 - x_marker_offset
+    x_marker_avg_reward = np.arange(len(xticks_labels)) - gap / 2 - r_marker_offset
 
     # Plot the mean reward markers
     ax_r.plot(
@@ -544,7 +552,7 @@ if show_mean_marker is True:
         if eval_type in ["eval_single_seed_10", "eval_platoon_seed_10"]:
             y_offset = 3.5
         else:
-            if i == 4:
+            if eval_list[i][1] == "MINLP":
                 y_offset = 3
             else:
                 y_offset = 0
@@ -560,28 +568,55 @@ if show_mean_marker is True:
         )
 
 # Max time marker
-if grouping_t == "ts":
-    x_marker_max_time = np.arange(len(xticks_labels)) + gap / 2
-    ax_t.plot(
-        x_marker_max_time,
-        max_time,
-        marker=mpl.markers.CARETLEFT,
-        markersize=5,
-        color=c_time_dark,
-        linestyle="None",
-    )
+if show_t_max_marker is True:
 
-    for i, t in enumerate(max_time):
-        ax_t.annotate(
-            f"{t:.2f}",
-            xy=(x_marker_max_time[i], t),
-            xytext=(7, 0),  # offset text
-            textcoords="offset points",
+    match eval_type:
+        case "eval_single":
+            t_marker_offset = np.array(
+                [
+                    0,  # LC-2
+                    0,  # LC-2
+                    # 0,  # LC-2 PC
+                    0,  # MIQP
+                    0.17,  # MIQP-tl
+                    0,  # MINLP
+                    0.14,  # MINLP-tl
+                    0,  # HD
+                    0,  # HC
+                    0,  # HSC
+                ]
+            )
+        case "eval_platoon":
+            t_marker_offset = 0  # TODO
+        case "eval_single_seed_10":
+            t_marker_offset = 0  # TODO
+        case "eval_platoon_seed_10":
+            t_marker_offset = 0  # TODO
+    if len(t_marker_offset) != len(max_time):
+        t_marker_offset = np.zeros(len(max_time))  # no offset if wrong dimensions
+
+    if grouping_t == "ts":
+        x_marker_max_time = np.arange(len(xticks_labels)) + gap / 2 + t_marker_offset
+        ax_t.plot(
+            x_marker_max_time,
+            max_time,
+            marker=mpl.markers.CARETLEFT,
+            markersize=5,
             color=c_time_dark,
-            fontsize=markers_font_size,
-            ha="left",
-            va="center",
+            linestyle="None",
         )
+
+        for i, t in enumerate(max_time):
+            ax_t.annotate(
+                f"{t:.2f}",
+                xy=(x_marker_max_time[i], t),
+                xytext=(7, 0),  # offset text
+                textcoords="offset points",
+                color=c_time_dark,
+                fontsize=markers_font_size,
+                ha="left",
+                va="center",
+            )
 
 # Add legend
 if show_legend is True:
@@ -617,3 +652,22 @@ if save_pgf:
     mpl.use("pgf")  # This line must be after the execution of save2tikz (?)
     print("Saving pgf...")
     fig.savefig(f"plots/{eval_type}.pgf", bbox_inches="tight")
+
+# Generate and print table
+# [mean, std, median, min, max]
+table_r = pd.DataFrame(
+    columns=["mean", "std", "median", "min", "max"],
+    index=xticks_labels,
+)
+for i, j in enumerate(eval_list):
+    eval_name = j[0]
+    eval_label = j[1]
+    r = df_reward[(df_reward["Group"] == eval_label) & (df_reward["Type"] == "reward")][
+        "Value"
+    ].values
+    table_r.loc[eval_label, "mean"] = np.mean(r)
+    table_r.loc[eval_label, "std"] = np.std(r)
+    table_r.loc[eval_label, "median"] = np.median(r)
+    table_r.loc[eval_label, "min"] = np.min(r)
+    table_r.loc[eval_label, "max"] = np.max(r)
+print(table_r.round(2))
