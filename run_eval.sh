@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEBUG=false  # Set to true to enable debug mode
+DEBUG=true  # Set to true to enable debug mode
 
 # Help message
 print_help() {
@@ -79,6 +79,7 @@ max_time_set=false
 seed_start=0
 seed_set=false
 seed_end=0
+cores="-c 0-7"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -189,6 +190,16 @@ while [[ $# -gt 0 ]]; do
       fi
       ;;
 
+    --cores)
+      if [[ "$2" == "djep" ]]; then
+        cores="-c 0-7"  # default option (initialized above)
+      elif [[ "$2" == "pippo" ]]; then
+        cores="-c 8-15"
+      fi
+
+      shift 2
+      ;;
+
     -h|--help)
       print_help
       return 0
@@ -204,7 +215,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build command to execute
-cmd=( taskset -c 0-7 python "$script_folder/$script_name" --mode eval )
+cmd=( taskset $cores python "$script_folder/$script_name" --mode eval )
 
 if $config_set; then
   cmd+=(--config "$config")
@@ -230,6 +241,7 @@ if $DEBUG ; then
   echo "Max time: $max_time"
   echo "Seed start: $seed_start"
   echo "Seed end: $seed_end"
+  echo "Cores: $cores"
 fi
 
 echo "Running $script_type evaluation of: $script_folder/$script_name"
