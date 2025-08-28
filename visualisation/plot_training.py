@@ -17,13 +17,13 @@ sys.path.append(os.getcwd())
 from utils.plot_fcns import cm2inch
 
 # Save settings
-final_version = False  # Set to True for final version, False for faster version
+final_version = True  # Set to True for final version, False for faster version
 save_png = True
 save_pgf = True
 save_tikz = False
 
 # Plot settings
-train_stage = "c3"  # {c1, c2, c3, c4}
+train_stage = "c4"  # {c1, c2, c3, c4}
 fig_size_x = 9.0  # cm
 fig_size_y = 6.0  # cm
 avg_skip = 10000
@@ -81,12 +81,19 @@ for file_name in file_names:
     fuel = np.array(list(chain.from_iterable(data["fuel"])))
     R = np.array(list(chain.from_iterable(data["R"])))
     tracking = R - fuel  # Tracking error (not saved directly but easy to recover)
-    k = np.array(list(chain.from_iterable(data["infeasible"]))).astype(float)
 
     # Append the data to the lists
     L.append(cost)
     L_t.append(tracking)
     L_f.append(fuel)
+
+    # Assemble kappa vector
+    k = np.array([])  # default empty
+    if train_stage in ["c1", "c3"]:
+        k = np.array(list(chain.from_iterable(data["infeasible"]))).astype(float)
+    elif train_stage in ["c2", "c4"]:
+        k = 1 - np.array(list(chain.from_iterable(data["heuristic"]))).astype(float)
+        k[0:10000] = 0  # Ensure that kappa starts from 0
     kappa.append(k)
 
 # Assemble data into a list
@@ -255,14 +262,14 @@ p3.set_zorder(10)
 
 # Set labels and ticks
 label_L = "$L$"
-label_kappa = r"$\\kappa$"
+label_kappa = "$\\kappa$"
 if train_stage in ["c1", "c3"]:
     ax[3].set_xticks(np.array([0, 100, 200, 300, 400, 500]))
     label_L = "$L_1$"
-    label_kappa = r"$\\kappa_1$"
+    label_kappa = "$\\kappa_1$"
 elif train_stage in ["c2", "c4"]:
     ax[3].set_xticks(np.array([0, 100, 200, 300, 400]))
-    label_kappa = r"$\\kappa_1$"
+    label_kappa = "$\\kappa_2$"
     label_L = "$L_2$"
 formatter = FuncFormatter(lambda x_val, _: f"{int(x_val * 10)}")
 ax[3].xaxis.set_major_formatter(formatter)
@@ -280,20 +287,28 @@ ax[0].set_ylabel(label_L)
 ax[1].set_ylabel("$J_\\mathrm{t}$")
 ax[2].set_ylabel("$J_\\mathrm{f}$")
 ax[3].set_ylabel(label_kappa)
+ax[3].set_ylim([-0.1, 1.1])
+ax[3].set_yticks([0, 0.5, 1])
 fig.align_ylabels(ax)
 
 # Save figures
+fig_name = ""
+if train_stage in ["c1", "c3"]:
+    fig_name = "train_stage1"
+elif train_stage in ["c2", "c4"]:
+    fig_name = "train_stage2"
+
 if save_png:
     print("Saving png...")
-    fig.savefig(f"plots/{train_stage}.png", dpi=300, bbox_inches="tight")
+    fig.savefig(f"plots/{fig_name}.png", dpi=300, bbox_inches="tight")
 
 if save_tikz:
     from utils.tikz import save2tikz  # import tikzplotlib only if supported
 
     print("Saving tikz...")
-    save2tikz(plt.gcf(), name=f"plots/{train_stage}.tex")
+    save2tikz(plt.gcf(), name=f"plots/{fig_name}.tex")
 
 if save_pgf:
     mpl.use("pgf")
     print("Saving pgf...")
-    fig.savefig(f"plots/{train_stage}.pgf", bbox_inches="tight")
+    fig.savefig(f"plots/{fig_name}.pgf", bbox_inches="tight")
