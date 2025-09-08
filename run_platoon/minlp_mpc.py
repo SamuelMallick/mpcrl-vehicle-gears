@@ -123,6 +123,8 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(solve_time)}")
 
 # Save results to pickle file
+# NOTE: times are saved vehicle-wise and not platoon-wise, i.e., t_primary_mpc has
+# length num_eval_eps * ep_len * num_vehicles.
 if SAVE:
     with open(f"results/platoon_minlp_N_{N}_c_{config.id}.pkl", "wb") as f:
         pickle.dump(
