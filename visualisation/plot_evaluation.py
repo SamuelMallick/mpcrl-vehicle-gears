@@ -37,7 +37,7 @@ show_legend = False
 show_title = False
 
 # Select experiments to plot
-eval_type = "eval_single"
+eval_type = "eval_platoon"
 # AVAILABLE OPTIONS:
 # - eval_single
 # - eval_platoon
@@ -45,13 +45,16 @@ eval_type = "eval_single"
 # - eval_platoon_seed_10
 
 # Select the plot parameters
+use_relative_performance = True  # Show the relative performance of the policies
+baseline_solution = "MINLP"
+
+# Other options (better not change -- alternative values have not really been tested)
 plot_type = "violin"  # {"box", "violin"} default is "violin"
 show_r_mean_marker = True  # Show the mean reward marker on the reward plot
 show_t_max_marker = True  # Show the max time marker on the time plot
+color_grid_lines = False  # Color the gridlines of the axes colors
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
-use_relative_performance = True  # Show the relative performance of the policies
-baseline_solution = "MINLP"
 
 # Match eval_type
 # List must be formatted as ["folder name", "label"] where the label is the one used
@@ -70,49 +73,52 @@ match eval_type:
             ["eval_minlp_1s", "MINLP-tl"],
             ["eval_heuristic_mpc_1", "HD"],
             ["eval_heuristic_mpc_2", "HC"],
-            ["eval_heuristic_mpc_3", "HSC"],
+            ["eval_heuristic_mpc_3", "HS"],
         ]
 
     case "eval_platoon":
         eval_list = [
-            ["eval_l_mpc/c3_seed1", "RL-1"],
-            ["eval_l_mpc/c4_seed4", "RL-2"],
-            ["eval_l_mpc/c4_seed4_laptop", "RL-2 lap"],
+            ["eval_l_mpc/c3_seed1", "LC-1"],
+            ["eval_l_mpc/c4_seed4", "LC-2"],
+            # ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
+            # ["eval_l_mpc/c4_seed4_laptop_1s", "LC-2 PC tl"],
             ["eval_miqp", "MIQP"],
-            # ["eval_miqp_1s", "MIQP 1s"],
-            # ["eval_minlp", "MINLP"],
-            # ["eval_minlp_1s", "MINLP 1s"],
-            ["eval_heuristic_mpc_1", "H-1"],
-            ["eval_heuristic_mpc_2", "H-2"],
-            ["eval_heuristic_mpc_3", "H-3"],
+            ["eval_miqp_1s", "MIQP-tl"],
+            ["eval_minlp_720", "MINLP"],
+            # ["eval_minlp_3600", "MINLP-long"],
+            # ["eval_minlp_1s", "MINLP-tl"],  # TODO
+            ["eval_heuristic_mpc_1", "HD"],
+            ["eval_heuristic_mpc_2", "HC"],
+            ["eval_heuristic_mpc_3", "HS"],
         ]
 
     case "eval_single_seed_10":
         eval_list = [
-            ["eval_l_mpc/c3_seed1", "RL-1"],
-            ["eval_l_mpc/c4_seed4", "RL-2"],
-            ["eval_l_mpc/c4_seed4_laptop", "RL-2 lap"],
+            ["eval_l_mpc/c3_seed1", "LC-1"],
+            ["eval_l_mpc/c4_seed4", "LC-2"],
+            ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
             ["eval_miqp", "MIQP"],
-            ["eval_miqp_1s", "MIQP 1s"],
+            ["eval_miqp_1s", "MIQP-tl"],
             ["eval_minlp", "MINLP"],
-            ["eval_minlp_1s", "MINLP 1s"],
-            ["eval_heuristic_mpc_1", "H-1"],
-            ["eval_heuristic_mpc_2", "H-2"],
-            ["eval_heuristic_mpc_3", "H-3"],
+            # ["eval_minlp_1s", "MINLP-tl"],  # TODO
+            ["eval_heuristic_mpc_1", "HD"],
+            ["eval_heuristic_mpc_2", "HC"],
+            ["eval_heuristic_mpc_3", "HS"],
         ]
 
     case "eval_platoon_seed_10":
         eval_list = [
-            ["eval_l_mpc/c3_seed1", "RL-1"],
-            ["eval_l_mpc/c4_seed4", "RL-2"],
-            ["eval_l_mpc/c4_seed4_laptop", "RL-2 lap"],
+            ["eval_l_mpc/c3_seed1", "LC-1"],
+            ["eval_l_mpc/c4_seed4", "LC-2"],
+            # ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
             ["eval_miqp", "MIQP"],
-            ["eval_miqp_1s", "MIQP 1s"],
+            ["eval_miqp_1s", "MIQP-tl"],
             ["eval_minlp", "MINLP"],
+            ["eval_minlp", "MINLP-tl"],
             # ["eval_minlp_1s", "MINLP 1s"],  TODO
-            ["eval_heuristic_mpc_1", "H-1"],
-            ["eval_heuristic_mpc_2", "H-2"],
-            ["eval_heuristic_mpc_3", "H-3"],
+            ["eval_heuristic_mpc_1", "HD"],
+            ["eval_heuristic_mpc_2", "HC"],
+            ["eval_heuristic_mpc_3", "HS"],
         ]
 
     case _:
@@ -121,6 +127,21 @@ match eval_type:
 
 ##### Preprocess data ##################################################################
 
+# List of specific experiments to include (by their seed, i.e., last 4 digits of name)
+experiments_list = [
+    # "1001",
+    # "1002",
+    # "1003",
+    # "1004",
+    # "1005",
+    "1006",
+    "1007",
+    "1008",
+    "1009",
+    "1010",
+    "1011",
+    "1012",
+]
 
 # Initialize data containers
 df_reward = pd.DataFrame(columns=["Policy", "Variable", "Value"])
@@ -143,13 +164,23 @@ for eval_name, eval_label in eval_list:
     for _, file in enumerate(pkl_files):
         if file.endswith(".pkl"):
 
+            if experiments_list and file[-8:-4] not in experiments_list:
+                continue
+
             with open(f"results/{eval_type}/{eval_name}/{file}", "rb") as f:
                 data = pickle.load(f)
                 reward.append(data["R"][0])
                 if eval_name == "eval_minlp_1s":
-                    time.append(data["t_primary_mpc"][0:1000])
+                    t = data["t_primary_mpc"]
                 else:
-                    time.append(data["mpc_solve_time"][0:1000])
+                    t = data["mpc_solve_time"]
+
+                # For platooning, sum solve time of each vehicle to get platoon time
+                if len(t) > 1000:
+                    t = [np.sum(o) for o in np.split(t, 1000)]
+
+                # Append solve time
+                time.append(t)
 
         else:
             print(f"Skipping {file}, not a .pkl file")
@@ -316,7 +347,12 @@ else:
             cut_r = 0
 
         case "ep_sum":
-            ax_r.set_ylim(5, 10)
+            if eval_type == "eval_single":
+                ax_r.set_ylim(5, 10)
+            elif eval_type == "eval_platoon":
+                ax_r.set_ylim(25, 55)
+            else:
+                ax_r.set_ylim(0, 100)
             ax_r.set_ylabel(
                 "Episode cumulative cost",
                 color=c_reward_dark,
@@ -363,7 +399,7 @@ match grouping_t:
     case "ts":
         ax_t.set_ylim(0.008, 3000)
         ax_t.set_ylabel(
-            "Timestep time [s]",
+            "Timestep solution time [s]",
             color=c_time_dark,
         )
         cut_t = 0
@@ -392,7 +428,24 @@ ax_grid_r.set_facecolor("none")
 ax_grid_r.set_yticks(ax_r.get_yticks(), minor=False)
 ax_grid_r.set_xlim(ax_r.get_xlim())
 ax_grid_r.set_ylim(ax_r.get_ylim())
-ax_grid_r.yaxis.grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
+if color_grid_lines is True:
+    ax_grid_r.yaxis.grid(
+        True,
+        which="major",
+        linestyle="-",
+        linewidth=0.6,
+        alpha=1,
+        color=c_reward_dark,
+    )
+else:
+    ax_grid_r.yaxis.grid(
+        True,
+        which="major",
+        linestyle="-",
+        linewidth=0.6,
+        alpha=1,
+        color="gray",
+    )
 
 # Time grid lines
 ax_grid_t = ax_grid_r.twinx()
@@ -403,8 +456,38 @@ ax_grid_t.set_facecolor("none")
 ax_grid_t.set_xlim(ax_t.get_xlim())
 ax_grid_t.set_ylim(ax_t.get_ylim())
 ax_grid_t.set_yticks(ax_t.get_yticks()[2:-2], minor=False)  # a bit hacky but it works
-ax_grid_t.yaxis.grid(True, which="major", linestyle=":", linewidth=0.6, alpha=1)
-ax_grid_t.yaxis.grid(True, which="minor", linestyle=":", linewidth=0.4, alpha=0.8)
+if color_grid_lines is True:
+    ax_grid_t.yaxis.grid(
+        True,
+        which="major",
+        linestyle=":",
+        linewidth=0.6,
+        alpha=1,
+        color=c_time_dark,
+    )
+    ax_grid_t.yaxis.grid(
+        True,
+        which="minor",
+        linestyle=":",
+        linewidth=0.4,
+        alpha=0.8,
+        color=c_time_dark,
+    )
+else:
+    ax_grid_t.yaxis.grid(
+        True,
+        which="major",
+        linestyle=":",
+        linewidth=0.6,
+        alpha=1,
+    )
+    ax_grid_t.yaxis.grid(
+        True,
+        which="minor",
+        linestyle=":",
+        linewidth=0.4,
+        alpha=0.8,
+    )
 ax_grid_t.set_axisbelow(True)
 
 # Set the plot type
@@ -522,15 +605,15 @@ if show_r_mean_marker is True:
                     0.075,  # MINLP-tl
                     0.025,  # HD
                     0.17,  # HC
-                    0.14,  # HSC
+                    0.14,  # HS
                 ]
             )
         case "eval_platoon":
-            r_marker_offset = -np.zeros(8)  # TODO: update with correct values
+            r_marker_offset = -np.ones(9) * 0.00  # TODO: update with correct values
         case "eval_single_seed_10":
-            r_marker_offset = -np.ones(10) * 0.04
+            r_marker_offset = -np.ones(9) * 0.04
         case "eval_platoon_seed_10":
-            r_marker_offset = -np.ones(7) * 0.045  # TODO: update to 8 after adding 1s
+            r_marker_offset = -np.ones(9) * 0.045  # TODO: update to 8 after adding 1s
     if len(avg_reward) != len(r_marker_offset):
         r_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
 
@@ -583,15 +666,28 @@ if show_t_max_marker is True:
                     0.14,  # MINLP-tl
                     0,  # HD
                     0,  # HC
-                    0,  # HSC
+                    0,  # HS
                 ]
             )
         case "eval_platoon":
-            t_marker_offset = 0  # TODO
+            t_marker_offset = np.ones(9) * 0.00  # TODO
         case "eval_single_seed_10":
-            t_marker_offset = 0  # TODO
+            t_marker_offset = np.ones(9) * 0.00  # TODO
         case "eval_platoon_seed_10":
-            t_marker_offset = 0  # TODO
+            t_marker_offset = np.array(
+                [
+                    0,  # LC-2
+                    0,  # LC-2
+                    # 0,  # LC-2 PC
+                    0,  # MIQP
+                    0.36,  # MIQP-tl
+                    0,  # MINLP
+                    0,  # MINLP-tl
+                    0,  # HD
+                    0,  # HC
+                    0,  # HSC
+                ]
+            )
     if len(t_marker_offset) != len(max_time):
         t_marker_offset = np.zeros(len(max_time))  # no offset if wrong dimensions
 
