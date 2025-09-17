@@ -34,7 +34,6 @@ class MIPAgent(SingleVehicleAgent):
     ):
         super().__init__(mpc, np_random=np_random, multi_starts=multi_starts)
         self.backup_mpc = backup_mpc
-        self.DEBUG = True
 
     def solve_mpc(self, pars, vals0) -> tuple[float, float, int, dict]:
         solver = "primary"
@@ -62,8 +61,7 @@ class MIPAgent(SingleVehicleAgent):
             elif sol.status == "KN_RC_TIME_LIMIT_INFEAS":
                 # Special failure case: knitro reaches time limit without a feasible sol
                 # Uses heuristic 2 to generate a warm start solution for the backup MPC
-                if self.DEBUG:
-                    print("Using backup MPC - 1st case")
+                print("Using backup MPC - 1st case")
                 gear = self.gear_from_velocity(pars["x_0"][1], gear_priority="mid")
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
                 vals0[0]["gear"][gear] = 1  # set all 1 in row gear, 0 elsewhere
@@ -78,8 +76,7 @@ class MIPAgent(SingleVehicleAgent):
             elif self.backup_mpc:
                 # Other failure cases (primary solver fails to find a solution)
                 # Currently same approach as for the special failure case
-                if self.DEBUG:
-                    print("Using backup MPC - 2nd case")
+                print("Using backup MPC - 2nd case")
                 print(f"Primary MPC failure reason: {sol.status}")  # primary MPC status
                 gear = self.gear_from_velocity(pars["x_0"][1], gear_priority="mid")
                 vals0[0]["gear"] = np.zeros((6, self.mpc.prediction_horizon))
