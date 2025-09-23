@@ -45,8 +45,14 @@ class MIPAgent(SingleVehicleAgent):
             "KN_RC_MIP_TERM_FEAS",
             "KN_RC_TIME_LIMIT_FEAS",
         ]
-        if sol.success or sol.status in accepted_knitro_statuses:
-
+        accepted_bonmin_statuses = [
+            "LIMIT_EXCEEDED",
+        ]
+        if (
+            sol.success
+            or sol.status in accepted_knitro_statuses
+            or sol.status in accepted_bonmin_statuses
+        ):
             # Append a zero time to the backup MPC since it is not used at this timestep
             if self.backup_mpc is not None and hasattr(self.backup_mpc, "solver_time"):
                 self.backup_mpc.solver_time.append(0.0)
@@ -91,7 +97,7 @@ class MIPAgent(SingleVehicleAgent):
                         f"MPC failed with error message {sol.status}."
                     )
             else:
-                raise ValueError("MPC failed to solve")
+                raise ValueError(f"MPC failed to solve. Exit message: {sol.status}")
 
         T_e = sol.vals["T_e"].full()[0, 0]
         F_b = sol.vals["F_b"].full()[0, 0]
