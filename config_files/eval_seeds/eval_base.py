@@ -21,9 +21,9 @@ class Config(Config):
 
         # Time limits for the primary solvers
         self.extra_opts["gurobi"]["TimeLimit"] = 3600
-        # self.extra_opts["knitro"]["maxtime"] = 3600  # For single vehicle
         self.extra_opts["knitro"]["maxtime"] = 720  # For platoon
-        # self.extra_opts["bonmin"]["time_limit"] = max_time
+        self.extra_opts["bonmin"]["time_limit"] = 720
+        self.extra_opts["cplex"]["CPXPARAM_TimeLimit"] = 60
         # self.extra_opts["ipopt"]["max_wall_time"] = max_time
 
         # Backup MINLP MPC parameters

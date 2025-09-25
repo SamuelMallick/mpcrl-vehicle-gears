@@ -66,4 +66,12 @@ solver_options = {
         "record_time": True,
         "error_on_fail": False,
     },
+    "cplex": {
+        "print_time": False,
+        "record_time": True,
+        "error_on_fail": False,
+        "cplex": {
+            "CPXPARAM_ScreenOutput": 0,
+        },
+    },
 }

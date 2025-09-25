@@ -48,10 +48,12 @@ class MIPAgent(SingleVehicleAgent):
         accepted_bonmin_statuses = [
             "LIMIT_EXCEEDED",
         ]
+        accepted_cplex_statuses = ["time limit exceeded"]
         if (
             sol.success
             or sol.status in accepted_knitro_statuses
             or sol.status in accepted_bonmin_statuses
+            or sol.status in accepted_cplex_statuses
         ):
             # Append a zero time to the backup MPC since it is not used at this timestep
             if self.backup_mpc is not None and hasattr(self.backup_mpc, "solver_time"):

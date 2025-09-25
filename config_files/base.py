@@ -29,6 +29,7 @@ class Config:
         "knitro": {},
         "bonmin": {},
         "ipopt": {},
+        "cplex": {},
     }
     max_time = None
     if max_time is not None:
@@ -36,6 +37,7 @@ class Config:
         extra_opts["knitro"]["maxtime"] = max_time
         extra_opts["bonmin"]["time_limit"] = max_time
         extra_opts["ipopt"]["max_wall_time"] = max_time
+        extra_opts["cplex"]["CPXPARAM_TimeLimit"] = max_time
 
     # -----------network parameters----------------
     # initial weights
