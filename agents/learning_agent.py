@@ -256,14 +256,14 @@ class LearningAgent(SingleVehicleAgent):
             heuristic_gear = self.gear_from_velocity(
                 state[1].item(), "low"
             )  # low heuristic used as backup sol
-            heurisitic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
-            heurisitic_gear_choice_binary[heuristic_gear] = 1
+            heuristic_gear_choice_binary = np.zeros((6, self.mpc.prediction_horizon))
+            heuristic_gear_choice_binary[heuristic_gear] = 1
             heuristic_pars.append(
                 {
                     "x_0": state,
                     "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                     "T_e_prev": self.T_e_prev,
-                    "gear": heurisitic_gear_choice_binary,
+                    "gear": heuristic_gear_choice_binary,
                     "gear_prev": self.gear_prev,
                 }
             )
@@ -273,16 +273,16 @@ class LearningAgent(SingleVehicleAgent):
                 heuristic_gear = self.gear_from_velocity(state[1].item(), gear_priority)
                 if heuristic_gear not in gears:
                     gears.append(heuristic_gear)
-                    heurisitic_gear_choice_binary = np.zeros(
+                    heuristic_gear_choice_binary = np.zeros(
                         (6, self.mpc.prediction_horizon)
                     )
-                    heurisitic_gear_choice_binary[heuristic_gear] = 1
+                    heuristic_gear_choice_binary[heuristic_gear] = 1
                     heuristic_pars.append(
                         {
                             "x_0": state,
                             "x_ref": self.x_ref_predicition.T.reshape(2, -1),
                             "T_e_prev": self.T_e_prev,
-                            "gear": heurisitic_gear_choice_binary,
+                            "gear": heuristic_gear_choice_binary,
                             "gear_prev": self.gear_prev,
                         }
                     )
@@ -583,23 +583,41 @@ class DistributedLearningAgent(PlatoonAgent, LearningAgent):
                 heuristic_gear = self.gear_from_velocity(
                     x[1].item(), "low"
                 )  # low heuristic used as backup sol
-                heurisitic_gear_choice_binary = np.zeros(
+                heuristic_gear_choice_binary = np.zeros(
                     (6, self.mpc.prediction_horizon)
                 )
-                heurisitic_gear_choice_binary[heuristic_gear] = 1
-                heuristic_pars.append({**pars, "gear": heurisitic_gear_choice_binary})
+                heuristic_gear_choice_binary[heuristic_gear] = 1
+                heuristic_pars.append({**pars, "gear": heuristic_gear_choice_binary})
             else:
                 gears = []
                 for gear_priority in self.heuristic_gear_priorities:
                     heuristic_gear = self.gear_from_velocity(x[1].item(), gear_priority)
                     if heuristic_gear not in gears:
                         gears.append(heuristic_gear)
-                        heurisitic_gear_choice_binary = np.zeros(
+                        heuristic_gear_choice_binary = np.zeros(
                             (6, self.mpc.prediction_horizon)
                         )
-                        heurisitic_gear_choice_binary[heuristic_gear] = 1
+                        heuristic_gear_choice_binary[heuristic_gear] = 1
+
+                        # Prevent heuristic gear from taking a step larger than 1
+                        # Currently disabled as it leads to worse performances
+                        # delta = heuristic_gear - np.argmax(self.gear_prev[i])
+                        # if delta > 1:
+                        #     for j in range(0, delta - 1):
+                        #         heuristic_gear_choice_binary[heuristic_gear, j] = 0
+                        #         heuristic_gear_choice_binary[
+                        #             heuristic_gear - delta + 1 + j, j
+                        #         ] = 1
+                        #     pass  # pylint: disable=unnecessary-pass
+                        # elif delta < -1:
+                        #     for j in range(0, -delta - 1):
+                        #         heuristic_gear_choice_binary[heuristic_gear, j] = 0
+                        #         heuristic_gear_choice_binary[
+                        #             heuristic_gear + delta - 1 - j, j
+                        #         ] = 1
+                        #     pass  # pylint: disable=unnecessary-pass
                         heuristic_pars.append(
-                            {**pars, "gear": heurisitic_gear_choice_binary}
+                            {**pars, "gear": heuristic_gear_choice_binary}
                         )
 
             T_e, F_b, gear, info = self.solve_mpc(
