@@ -62,6 +62,7 @@ class Agent:
         allow_failure: bool = False,
         save_every_episode: bool = False,
         log_progress: bool = False,
+        print_actions: bool = False,
     ) -> tuple[np.ndarray, dict]:
         """Evaluate the agent on the vehicle tracking environment for a number of episodes.
 
@@ -83,6 +84,9 @@ class Agent:
         log_progress : bool, optional
             If True, a log file will be created to track the progress of the evaluation,
             By default False.
+        print_actions : bool, optional
+            If True, the actions taken by the agent will be printed to the console at
+            each timestep. False by default.
 
         Returns
         -------
@@ -122,6 +126,13 @@ class Agent:
                 action = self.clip_action(action)
                 prev_state = state
                 state, reward, truncated, terminated, step_info = env.step(action)
+                if print_actions:
+                    print(f"\tT_e_list: {''.join(f'{x:6.2f}' for x in action[0])}")
+                    print(f"\tF_b_list: {''.join(f'{x:6.2f}' for x in action[1])}")
+                    print(f"\tgear_list: {''.join(f'{x:6.2f}' for x in action[2])}")
+                    print(f"\ttruncated: {truncated}, terminated: {terminated}")
+                    print(f"\tReward received: {reward:.4f}")
+                    print("\n")
                 self.on_env_step(env, episode, timestep, action_info | step_info)
 
                 returns[episode] += reward

@@ -73,6 +73,7 @@ returns, info = agent.evaluate(
     allow_failure=False,
     save_every_episode=config.save_every_episode,
     log_progress=False,
+    print_actions=True,  # TEMP
 )
 
 # Collect the results
