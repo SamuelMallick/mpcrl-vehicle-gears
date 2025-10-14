@@ -19,6 +19,7 @@ class Config(Config):
         self.extra_opts["gurobi"]["TimeLimit"] = 0.2
         self.extra_opts["knitro"]["maxtime"] = 0.2
         self.extra_opts["ipopt"]["max_wall_time"] = 0.2
+        self.extra_opts["cplex"]["CPXPARAM_TimeLimit"] = 0.2
 
         # Backup MINLP MPC parameters
         self.backup_minlp_mip_terminate = 1  # stop at 1st feas sol

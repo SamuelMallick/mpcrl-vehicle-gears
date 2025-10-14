@@ -19,11 +19,15 @@ class Config(Config):
         # not be modified to run the simulations as described in the paper)
         self.multi_starts = 1
 
+        # Horizon and platoon size settings
+        self.N = 30  # If commented out, N=15
+        # self.num_vehicles = 10  # If commented out, num_vehicles=5
+
         # Time limits for the primary solvers
-        self.extra_opts["gurobi"]["TimeLimit"] = 3600
-        self.extra_opts["knitro"]["maxtime"] = 720  # For platoon
+        self.extra_opts["gurobi"]["TimeLimit"] = 720
+        self.extra_opts["knitro"]["maxtime"] = 720
         self.extra_opts["bonmin"]["time_limit"] = 720
-        self.extra_opts["cplex"]["CPXPARAM_TimeLimit"] = 60
+        self.extra_opts["cplex"]["CPXPARAM_TimeLimit"] = 720
         # self.extra_opts["ipopt"]["max_wall_time"] = max_time
 
         # Backup MINLP MPC parameters
