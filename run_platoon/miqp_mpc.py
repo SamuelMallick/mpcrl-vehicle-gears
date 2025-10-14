@@ -73,7 +73,7 @@ returns, info = agent.evaluate(
     allow_failure=False,
     save_every_episode=config.save_every_episode,
     log_progress=False,
-    print_actions=True,  # TEMP
+    print_actions=False,
 )
 
 # Collect the results
@@ -92,10 +92,7 @@ print(f"average fuel = {sum([sum(fuel[i]) for i in range(len(fuel))]) / len(fuel
 print(f"total mpc solve times = {sum(solve_time)}")
 
 # Save results to pkl file
-if config.extra_opts["gurobi"]["TimeLimit"] >= 1:
-    results_name = f"results/platoon_miqp_N_{N}_c_{config.id}_time_limited.pkl"
-else:
-    results_name = f"results/platoon_miqp_N_{N}_c_{config.id}.pkl"
+results_name = f"results/platoon_miqp_N_{N}_c_{config.id}.pkl"
 
 if SAVE:
     with open(results_name, "wb") as f:
