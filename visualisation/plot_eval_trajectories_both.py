@@ -15,16 +15,16 @@ from utils.plot_fcns import cm2inch
 
 # Plot trajectories of a platoon evaluation.
 # Select experiment to plot
-filename = "results/eval_platoon_seed_10/eval_l_mpc/c4_seed4/platoon_l_mpc_N_15_c_eval_seed_10.pkl"
-fig_name = "trajectories_platoon_both"
+filename = "results/eval_platoon/eval_miqp/platoon_miqp_N_15_c_eval_seed_1003.pkl"
+fig_name = "trajectories_platoon_miqp_1003"
 
 # Save settings
 save_png = True
-save_pgf = True
+save_pgf = False
 save_tikz = False
 
 # Plot settings
-t_end = 200  # time steps for plotting abs values
+t_end = 1000  # time steps for plotting abs values
 fig_size_x = 9  # cm
 fig_size_y = 10  # cm
 

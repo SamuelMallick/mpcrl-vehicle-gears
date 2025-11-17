@@ -20,16 +20,21 @@ from utils.plot_fcns import cm2inch
 final_version = True  # Set to True for final version, False for faster version
 save_png = True
 save_pgf = True
-save_tikz = False
+save_tikz = True
 
 # Plot settings
 train_stage = "c4"  # {c1, c2, c3, c4}
 fig_size_x = 9.0  # cm
 fig_size_y = 6.0  # cm
-avg_skip = 10000
-avg_window = 10000
 show_individual_lines = False
 show_legend = False
+
+if train_stage == "c3":
+    avg_skip = 10000
+    avg_window = 10000
+elif train_stage == "c4":
+    avg_skip = 1000
+    avg_window = 1000
 
 ########################################################################################
 
@@ -131,6 +136,10 @@ data_df = [pd.DataFrame(d.T, columns=file_names) for d in data_avg]
 for d in data_df:
     d["x"] = np.arange(len(d))
 data_df_long = [d.melt(id_vars="x", var_name="seed", value_name="L") for d in data_df]
+
+# Cut length for c4
+if train_stage == "c4":
+    data_df_long = [d[d["x"] <= 1000] for d in data_df_long]
 
 # Plot results #########################################################################
 
@@ -265,13 +274,21 @@ label_L = "$L$"
 label_kappa = "$\\kappa$"
 if train_stage in ["c1", "c3"]:
     ax[3].set_xticks(np.array([0, 100, 200, 300, 400, 500]))
+    ax[3].set_ylim([-0.1, 0.5])
+    ax[3].set_yticks([0, 0.2, 0.4])
     label_L = "$L_1$"
     label_kappa = "$\\kappa_1$"
 elif train_stage in ["c2", "c4"]:
-    ax[3].set_xticks(np.array([0, 100, 200, 300, 400]))
+    ax[3].set_xticks(np.array([0, 250, 500, 750, 1000]))
+    ax[3].set_ylim([-0.1, 1.1])
+    ax[3].set_yticks([0, 0.5, 1])
     label_kappa = "$\\kappa_2$"
     label_L = "$L_2$"
-formatter = FuncFormatter(lambda x_val, _: f"{int(x_val * 10)}")
+formatter: FuncFormatter = None  # initialize
+if train_stage == "c3":
+    formatter = FuncFormatter(lambda x_val, _: f"{int(x_val * 10)}")
+elif train_stage == "c4":
+    formatter = FuncFormatter(lambda x_val, _: f"{int(x_val)}")
 ax[3].xaxis.set_major_formatter(formatter)
 ax[3].set_xlabel("Training step $k$")
 ax[3].text(
@@ -287,8 +304,6 @@ ax[0].set_ylabel(label_L)
 ax[1].set_ylabel("$J_\\mathrm{t}$")
 ax[2].set_ylabel("$J_\\mathrm{f}$")
 ax[3].set_ylabel(label_kappa)
-ax[3].set_ylim([-0.1, 1.1])
-ax[3].set_yticks([0, 0.5, 1])
 fig.align_ylabels(ax)
 
 # Save figures

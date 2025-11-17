@@ -5,7 +5,7 @@ Note: some parts of the script have been tailored to the plotting of the results
 experiments obtained during the evaluation experiment used in the paper, for example
 when defining the offset of the markers from the y line to avoid overlapping with the
 distribution. These values may need to be updated when plotting the results of different
-experiments in order to obtain a clean plot.
+experiments in order to obtain a nice and clean plot.
 """
 
 import os
@@ -28,7 +28,7 @@ from utils.plot_fcns import cm2inch
 # Save settings
 save_png = True
 save_pgf = True
-save_tikz = False
+save_tikz = False  # still has some issues with multiple axes
 
 # Plot settings
 fig_size_x = 16.5  # cm
@@ -37,12 +37,15 @@ show_legend = False
 show_title = False
 
 # Select experiments to plot
-eval_type = "eval_platoon"
+eval_to_plot = "eval_single"
 # AVAILABLE OPTIONS:
 # - eval_single
-# - eval_platoon
-# - eval_single_seed_10
-# - eval_platoon_seed_10
+# - eval_single_no_tl
+# - eval_platoon_15
+# - eval_platoon_30
+# - eval_platoon_horizons (only for quick visualization --> actual plot in other file)
+# - eval_single_seed_10 (intended for testing purposes)
+# - eval_platoon_seed_10 (intended for testing purposes)
 
 # Select the plot parameters
 use_relative_performance = True  # Show the relative performance of the policies
@@ -56,17 +59,21 @@ color_grid_lines = False  # Color the gridlines of the axes colors
 grouping_r = "ep_sum"  # {ep_sum, ep_mean, ts} default is "ep_sum"
 grouping_t = "ts"  # {ep_sum, ep_mean, ts} default is "ts"
 
-# Match eval_type
+# List of specific experiments to include (by their seed, i.e., last 4 digits of name)
+experiments_list = [str(i) for i in range(1001, 1026)]  # use [] to disable
+# experiments_list = []  # use [] to disable
+
+# Select eval_type and experiments
 # List must be formatted as ["folder name", "label"] where the label is the one used
 # for the plot. The experiment folder name (first folder layer under results/) has to
-# match the variable `eval_type`.
-match eval_type:
+# match the variable `eval_to_plot`.
+eval_type: str = ""
+match eval_to_plot:
 
     case "eval_single":
         eval_list = [
             ["eval_l_mpc/c3_seed1", "LC-1"],
             ["eval_l_mpc/c4_seed4", "LC-2"],
-            # ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
             ["eval_miqp", "MIQP"],
             ["eval_miqp_1s", "MIQP-tl"],
             ["eval_minlp", "MINLP"],
@@ -75,73 +82,92 @@ match eval_type:
             ["eval_heuristic_mpc_2", "HC"],
             ["eval_heuristic_mpc_3", "HS"],
         ]
+        eval_type = "eval_single"  # all data is in eval_single folder
 
-    case "eval_platoon":
+    case "eval_single_no_tl":
         eval_list = [
             ["eval_l_mpc/c3_seed1", "LC-1"],
             ["eval_l_mpc/c4_seed4", "LC-2"],
-            # ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
-            # ["eval_l_mpc/c4_seed4_laptop_1s", "LC-2 PC tl"],
             ["eval_miqp", "MIQP"],
-            ["eval_miqp_1s", "MIQP-tl"],
-            ["eval_minlp_720", "MINLP"],
-            # ["eval_minlp_3600", "MINLP-long"],
-            # ["eval_minlp_1s", "MINLP-tl"],  # TODO
+            ["eval_minlp", "MINLP"],
             ["eval_heuristic_mpc_1", "HD"],
             ["eval_heuristic_mpc_2", "HC"],
             ["eval_heuristic_mpc_3", "HS"],
         ]
+        eval_type = "eval_single"  # all data is in eval_single folder
+
+    case "eval_platoon_15":
+        eval_list = [
+            ["eval_l_mpc_c3_seed1_N15", "LC-1"],
+            ["eval_l_mpc_c4_seed4_N15", "LC-2"],
+            ["eval_miqp_N15_no_tl", "MIQP"],
+            ["eval_minlp_N15", "MINLP"],
+            ["eval_heuristic_mpc_1_N15", "HD"],
+            ["eval_heuristic_mpc_2_N15", "HC"],
+            ["eval_heuristic_mpc_3_N15", "HS"],
+        ]
+        eval_type = "eval_platoon"  # all data is in eval_platoon folder
+
+    case "eval_platoon_30":
+        eval_list = [
+            ["eval_l_mpc_c3_seed1_N30", "LC-1"],
+            ["eval_l_mpc_c4_seed4_N30", "LC-2"],
+            ["eval_miqp_N15_no_tl", "MIQP"],  # TODO: update when N30 data is available
+            ["eval_minlp_N15", "MINLP"],  # TODO: update when N30 data is available
+            ["eval_heuristic_mpc_1_N30", "HD"],
+            ["eval_heuristic_mpc_2_N30", "HC"],
+            ["eval_heuristic_mpc_3_N30", "HS"],
+        ]
+        eval_type = "eval_platoon"  # all data is in eval_platoon folder
+
+    case "eval_platoon_horizons":
+        eval_list = [
+            ["eval_l_mpc_c4_seed4_N15", "LC-2-15"],
+            ["eval_l_mpc_c4_seed4_N20", "LC-2-20"],
+            ["eval_l_mpc_c4_seed4_N25", "LC-2-25"],
+            ["eval_l_mpc_c4_seed4_N30", "LC-2-30"],
+            ["eval_l_mpc_c4_seed4_N35", "LC-2-35"],
+            ["eval_miqp_N15", "MIQP-15"],
+            ["eval_miqp_N20", "MIQP-20"],
+            ["eval_miqp_N25", "MIQP-25"],
+            ["eval_miqp_N30", "MIQP-30"],
+            ["eval_miqp_N35", "MIQP-35"],
+            ["eval_minlp_N15", "MINLP"],
+        ]
+        eval_type = "eval_platoon"  # all data is in eval_platoon folder
 
     case "eval_single_seed_10":
         eval_list = [
             ["eval_l_mpc/c3_seed1", "LC-1"],
             ["eval_l_mpc/c4_seed4", "LC-2"],
-            ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
             ["eval_miqp", "MIQP"],
             ["eval_miqp_1s", "MIQP-tl"],
             ["eval_minlp", "MINLP"],
-            # ["eval_minlp_1s", "MINLP-tl"],  # TODO
             ["eval_heuristic_mpc_1", "HD"],
             ["eval_heuristic_mpc_2", "HC"],
             ["eval_heuristic_mpc_3", "HS"],
         ]
+        eval_type = "eval_single_seed_10"  # all data is in eval_single_seed_10 folder
 
     case "eval_platoon_seed_10":
         eval_list = [
             ["eval_l_mpc/c3_seed1", "LC-1"],
             ["eval_l_mpc/c4_seed4", "LC-2"],
-            # ["eval_l_mpc/c4_seed4_laptop", "LC-2 PC"],
             ["eval_miqp", "MIQP"],
             ["eval_miqp_1s", "MIQP-tl"],
             ["eval_minlp", "MINLP"],
             ["eval_minlp", "MINLP-tl"],
-            # ["eval_minlp_1s", "MINLP 1s"],  TODO
             ["eval_heuristic_mpc_1", "HD"],
             ["eval_heuristic_mpc_2", "HC"],
             ["eval_heuristic_mpc_3", "HS"],
         ]
+        eval_type = "eval_platoon_seed_10"  # all data is in eval_platoon_seed_10 folder
 
     case _:
         print("Unknown evaluation type")
         sys.exit()
 
 ##### Preprocess data ##################################################################
-
-# List of specific experiments to include (by their seed, i.e., last 4 digits of name)
-experiments_list = [
-    # "1001",
-    # "1002",
-    # "1003",
-    # "1004",
-    # "1005",
-    "1006",
-    "1007",
-    "1008",
-    "1009",
-    "1010",
-    "1011",
-    "1012",
-]
 
 # Initialize data containers
 df_reward = pd.DataFrame(columns=["Policy", "Variable", "Value"])
@@ -211,6 +237,11 @@ for eval_name, eval_label in eval_list:
 
         case "ts":
             time = np.concatenate(time, axis=0)
+
+            # TEMP: outliers removal for LC-2-20
+            # #TODO: add to all evaluations or remove
+            if eval_label == "LC-2-20":
+                time = time[time < np.partition(time, -2)[-2]]
             max_time.append(np.max(time))
 
         case _:
@@ -321,14 +352,17 @@ ax_t.set_yscale("log")
 # Set reward labels and limits
 cut_r = 0
 if use_relative_performance is True:
-    if eval_type == "eval_single":
-        ax_r.set_ylim(-1, 28)
-    elif eval_type == "eval_single_seed_10":
-        ax_r.set_ylim(-1, 31)
-    elif eval_type == "eval_platoon":
-        ax_r.set_ylim(-1, 25)  # TODO: update values
-    elif eval_type == "eval_platoon_seed_10":
-        ax_r.set_ylim(-1, 28)
+    match eval_to_plot:
+        case "eval_single" | "eval_single_no_tl":
+            ax_r.set_ylim(-1, 28)
+        case "eval_single_seed_10":
+            ax_r.set_ylim(-1, 31)
+        case "eval_platoon_15":
+            ax_r.set_ylim(-5, 35)
+        case "eval_platoon_30":
+            ax_r.set_ylim(-10, 40)
+        case "eval_platoon_seed_10":
+            ax_r.set_ylim(-1, 28)
     ax_r.set_ylabel(
         "$\\Delta J$ [\\%]",  # Relative performance drop
         color=c_reward_dark,
@@ -350,7 +384,7 @@ else:
             if eval_type == "eval_single":
                 ax_r.set_ylim(5, 10)
             elif eval_type == "eval_platoon":
-                ax_r.set_ylim(25, 55)
+                ax_r.set_ylim(20, 55)
             else:
                 ax_r.set_ylim(0, 100)
             ax_r.set_ylabel(
@@ -397,7 +431,7 @@ match grouping_t:
         cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.008, 3000)
+        ax_t.set_ylim(0.008, 3500)
         ax_t.set_ylabel(
             "Timestep solution time [s]",
             color=c_time_dark,
@@ -405,16 +439,21 @@ match grouping_t:
         cut_t = 0
 
 # Reward axis settings
+if eval_to_plot == "eval_platoon_30":
+    xticks_labels[2] = "MIQP$^*$"  # temporary fix until N30 data is available
+    xticks_labels[3] = "MINLP$^*$"  # temporary fix until N30 data is available
 ax_r.set_xticks(list(range(len(xticks_labels))))
 ax_r.set_xticklabels(xticks_labels)
 ax_r.tick_params(axis="x", labelrotation=0)  # 90
 if show_title is True:
     ax_r.set_xlabel("Policy")
     ax_r.set_title("Policies Evaluation")
-elif eval_type in ["eval_single", "eval_single_seed_10"]:
-    ax_r.set_xlabel("(a) $M=1$")
-elif eval_type in ["eval_platoon", "eval_platoon_seed_10"]:
-    ax_r.set_xlabel("(b) $M=5$")
+elif eval_to_plot in ["eval_single", "eval_single_no_tl"]:
+    ax_r.set_xlabel("(a) $M=1$, $N=15$")
+elif eval_to_plot in ["eval_platoon_15"]:
+    ax_r.set_xlabel("(b) $M=5$, $N=15$")
+elif eval_to_plot in ["eval_platoon_30"]:
+    ax_r.set_xlabel("(c) $M=5$, $N=30$")
 
 # Vertical grid lines
 for i in range(len(xticks_labels)):
@@ -592,13 +631,13 @@ if show_r_mean_marker is True:
 
     # Set offset for the mean marker (to avoid overlap with the plot)
     # The current values have been manually determined for each evaluation type.
-    match eval_type:
+    r_marker_offset: np.ndarray = np.array([])  # initialize
+    match eval_to_plot:
         case "eval_single":
             r_marker_offset = np.array(
                 [
                     0.16,  # LC-2
                     0.35,  # LC-2
-                    # 0.35,  # LC-2 PC
                     0.13,  # MIQP
                     0.14,  # MIQP-tl
                     -0.04,  # MINLP
@@ -608,12 +647,46 @@ if show_r_mean_marker is True:
                     0.14,  # HS
                 ]
             )
-        case "eval_platoon":
-            r_marker_offset = -np.ones(9) * 0.00  # TODO: update with correct values
+        case "eval_single_no_tl":
+            r_marker_offset = np.array(
+                [
+                    0.16,  # LC-2
+                    0.35,  # LC-2
+                    0.13,  # MIQP
+                    -0.04,  # MINLP
+                    0.025,  # HD
+                    0.17,  # HC
+                    0.14,  # HS
+                ]
+            )
+        case "eval_platoon_15":
+            r_marker_offset = np.array(
+                [
+                    0.15,  # LC-1
+                    0.35,  # LC-2
+                    0.105,  # MIQP
+                    -0.04,  # MINLP
+                    0.025,  # HD
+                    0.16,  # HC
+                    0.11,  # HS
+                ]
+            )
+        case "eval_platoon_30":
+            r_marker_offset = np.array(
+                [
+                    0.24,  # LC-1
+                    0.31,  # LC-2
+                    0.35,  # MIQP
+                    -0.04,  # MINLP
+                    0.1,  # HD
+                    0.25,  # HC
+                    0.29,  # HS
+                ]
+            )
         case "eval_single_seed_10":
             r_marker_offset = -np.ones(9) * 0.04
         case "eval_platoon_seed_10":
-            r_marker_offset = -np.ones(9) * 0.045  # TODO: update to 8 after adding 1s
+            r_marker_offset = -np.ones(9) * 0.045
     if len(avg_reward) != len(r_marker_offset):
         r_marker_offset = np.zeros(len(avg_reward))  # no offset if wrong dimensions
 
@@ -653,13 +726,13 @@ if show_r_mean_marker is True:
 # Max time marker
 if show_t_max_marker is True:
 
-    match eval_type:
+    t_marker_offset: np.ndarray = np.array([])  # initialize
+    match eval_to_plot:
         case "eval_single":
             t_marker_offset = np.array(
                 [
                     0,  # LC-2
                     0,  # LC-2
-                    # 0,  # LC-2 PC
                     0,  # MIQP
                     0.17,  # MIQP-tl
                     0,  # MINLP
@@ -669,16 +742,49 @@ if show_t_max_marker is True:
                     0,  # HS
                 ]
             )
-        case "eval_platoon":
-            t_marker_offset = np.ones(9) * 0.00  # TODO
+        case "eval_single_no_tl":
+            t_marker_offset = np.array(
+                [
+                    0,  # LC-2
+                    0,  # LC-2
+                    0,  # MIQP
+                    0,  # MINLP
+                    0,  # HD
+                    0,  # HC
+                    0,  # HS
+                ]
+            )
+        case "eval_platoon_15":
+            t_marker_offset = np.array(
+                [
+                    0,  # LC-1
+                    0,  # LC-2
+                    0,  # MIQP
+                    0,  # MINLP
+                    0,  # HD
+                    0,  # HC
+                    0,  # HS
+                ]
+            )
+        case "eval_platoon_30":
+            t_marker_offset = np.array(
+                [
+                    0,  # LC-1
+                    0,  # LC-2
+                    0,  # MIQP
+                    0,  # MINLP
+                    0,  # HD
+                    0,  # HC
+                    0,  # HS
+                ]
+            )
         case "eval_single_seed_10":
-            t_marker_offset = np.ones(9) * 0.00  # TODO
+            t_marker_offset = np.ones(9) * 0.00
         case "eval_platoon_seed_10":
             t_marker_offset = np.array(
                 [
                     0,  # LC-2
                     0,  # LC-2
-                    # 0,  # LC-2 PC
                     0,  # MIQP
                     0.36,  # MIQP-tl
                     0,  # MINLP
@@ -736,18 +842,18 @@ ax_r.set_zorder(4)
 # Save figures
 if save_png:
     print("Saving png...")
-    fig.savefig(f"plots/{eval_type}.png", dpi=300, bbox_inches="tight")
+    fig.savefig(f"plots/{eval_to_plot}.png", dpi=300, bbox_inches="tight")
 
 if save_tikz:
     from utils.tikz import save2tikz  # import tikzplotlib only if supported
 
     print("Saving tikz...")
-    save2tikz(plt.gcf(), name=f"plots/{eval_type}.tex")
+    save2tikz(plt.gcf(), name=f"plots/{eval_to_plot}.tex")
 
 if save_pgf:
     mpl.use("pgf")  # This line must be after the execution of save2tikz (?)
     print("Saving pgf...")
-    fig.savefig(f"plots/{eval_type}.pgf", bbox_inches="tight")
+    fig.savefig(f"plots/{eval_to_plot}.pgf", bbox_inches="tight")
 
 # Generate and print table
 # [mean, std, median, min, max]
