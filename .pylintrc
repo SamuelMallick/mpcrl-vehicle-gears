@@ -21,6 +21,8 @@ disable=
     no-else-return, # R1705
     no-else-raise, # R1720
 
+    protected-access,  # W0212
+
     fixme, # W0511
 
 [FORMAT]
