@@ -20,7 +20,7 @@ from utils.plot_fcns import cm2inch
 final_version = True  # Set to True for final version, False for faster version
 save_png = True
 save_pgf = True
-save_tikz = True
+save_tikz = False
 
 # Plot settings
 train_stage = "c4"  # {c1, c2, c3, c4}
@@ -98,7 +98,7 @@ for file_name in file_names:
         k = np.array(list(chain.from_iterable(data["infeasible"]))).astype(float)
     elif train_stage in ["c2", "c4"]:
         k = 1 - np.array(list(chain.from_iterable(data["heuristic"]))).astype(float)
-        k[0:10000] = 0  # Ensure that kappa starts from 0
+        k[0:1000] = 0  # Ensure that kappa starts from 0
     kappa.append(k)
 
 # Assemble data into a list
@@ -139,7 +139,7 @@ data_df_long = [d.melt(id_vars="x", var_name="seed", value_name="L") for d in da
 
 # Cut length for c4
 if train_stage == "c4":
-    data_df_long = [d[d["x"] <= 1000] for d in data_df_long]
+    data_df_long = [d[d["x"] <= 100] for d in data_df_long]
 
 # Plot results #########################################################################
 
@@ -279,7 +279,7 @@ if train_stage in ["c1", "c3"]:
     label_L = "$L_1$"
     label_kappa = "$\\kappa_1$"
 elif train_stage in ["c2", "c4"]:
-    ax[3].set_xticks(np.array([0, 250, 500, 750, 1000]))
+    ax[3].set_xticks(np.array([0, 25, 50, 75, 100]))
     ax[3].set_ylim([-0.1, 1.1])
     ax[3].set_yticks([0, 0.5, 1])
     label_kappa = "$\\kappa_2$"
@@ -309,9 +309,9 @@ fig.align_ylabels(ax)
 # Save figures
 fig_name = ""
 if train_stage in ["c1", "c3"]:
-    fig_name = "train_stage1"
+    fig_name = "train_stage_1"
 elif train_stage in ["c2", "c4"]:
-    fig_name = "train_stage2"
+    fig_name = "train_stage_2"
 
 if save_png:
     print("Saving png...")

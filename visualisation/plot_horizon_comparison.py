@@ -24,7 +24,7 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 6  # cm
+fig_size_x = 8  # cm
 fig_size_y = 3.5  # cm
 show_legend = True
 
@@ -229,16 +229,18 @@ if show_legend is True:
     ax.legend(
         handles,
         labels,
-        loc="center right",
-        bbox_to_anchor=(1.56, 0.5),
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.3),
         fontsize=labels_font_size,
         framealpha=None,
         edgecolor="white",
         frameon=True,
         mode=None,
+        ncols=3,
+        columnspacing=0.7,
         borderpad=0,
-        labelspacing=0.3,
-        handletextpad=0,
+        labelspacing=0.2,
+        handletextpad=-0.3,
     )
 
 if show_figure:

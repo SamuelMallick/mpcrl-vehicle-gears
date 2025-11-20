@@ -37,7 +37,7 @@ show_legend = False
 show_title = False
 
 # Select experiments to plot
-eval_to_plot = "eval_single"
+eval_to_plot = "eval_platoon_30"
 # AVAILABLE OPTIONS:
 # - eval_single
 # - eval_single_no_tl
@@ -112,7 +112,7 @@ match eval_to_plot:
         eval_list = [
             ["eval_l_mpc_c3_seed1_N30", "LC-1"],
             ["eval_l_mpc_c4_seed4_N30", "LC-2"],
-            ["eval_miqp_N15_no_tl", "MIQP"],  # TODO: update when N30 data is available
+            # ["eval_miqp_N15_no_tl", "MIQP"], # TODO: update when N30 data is available
             ["eval_minlp_N15", "MINLP"],  # TODO: update when N30 data is available
             ["eval_heuristic_mpc_1_N30", "HD"],
             ["eval_heuristic_mpc_2_N30", "HC"],
@@ -290,6 +290,50 @@ if use_relative_performance is True:
         relative_J = (J_policy - J_baseline) / J_baseline * 100
         df_reward.loc[mask, "Value"] = (J_policy - J_baseline) / J_baseline * 100
 
+# TEMP: remove MINLP from plot
+# Removal must happen after using it to compute the relative performance drop
+if eval_to_plot == "eval_platoon_30":
+    df_reward = df_reward[df_reward["Group"] != "MINLP"]
+    df_time = df_time[df_time["Group"] != "MINLP"]
+    df_reward_temp_a = pd.DataFrame(
+        {
+            "Group": ["dummy_a"] * 2,
+            "Type": ["reward"] * 1 + ["dummy"] * 1,
+            "Value": np.concatenate([10e10 * np.ones(2)]),
+        }
+    )
+    df_time_temp_a = pd.DataFrame(
+        {
+            "Group": ["dummy_a"] * 2,
+            "Type": ["dummy"] * 1 + ["time"] * 1,
+            "Value": np.concatenate([10e-10 * np.ones(2)]),
+        }
+    )
+    df_reward_temp_b = pd.DataFrame(
+        {
+            "Group": ["dummy_b"] * 2,
+            "Type": ["reward"] * 1 + ["dummy"] * 1,
+            "Value": np.concatenate([10e10 * np.ones(2)]),
+        }
+    )
+    df_time_temp_b = pd.DataFrame(
+        {
+            "Group": ["dummy_b"] * 2,
+            "Type": ["dummy"] * 1 + ["time"] * 1,
+            "Value": np.concatenate([10e-10 * np.ones(2)]),
+        }
+    )
+    df_reward = pd.concat([df_reward_temp_a, df_reward])
+    df_time = pd.concat([df_time_temp_a, df_time])
+    df_reward = pd.concat([df_reward, df_reward_temp_b])
+    df_time = pd.concat([df_time, df_time_temp_b])
+    eval_list.pop(2)
+    eval_list = [["dummy_a", "dummy_a"]] + eval_list + [["dummy_b", "dummy_b"]]
+    xticks_labels.remove("MINLP")
+    xticks_labels = [""] + xticks_labels + [""]
+    max_time.pop(2)
+    max_time = [1e6] + max_time + [1e6]
+
 ##### Plot results #####################################################################
 
 if version.parse(mpl.__version__) <= version.parse("3.7"):
@@ -439,9 +483,6 @@ match grouping_t:
         cut_t = 0
 
 # Reward axis settings
-if eval_to_plot == "eval_platoon_30":
-    xticks_labels[2] = "MIQP$^*$"  # temporary fix until N30 data is available
-    xticks_labels[3] = "MINLP$^*$"  # temporary fix until N30 data is available
 ax_r.set_xticks(list(range(len(xticks_labels))))
 ax_r.set_xticklabels(xticks_labels)
 ax_r.tick_params(axis="x", labelrotation=0)  # 90
@@ -674,13 +715,15 @@ if show_r_mean_marker is True:
         case "eval_platoon_30":
             r_marker_offset = np.array(
                 [
-                    0.24,  # LC-1
-                    0.31,  # LC-2
-                    0.35,  # MIQP
-                    -0.04,  # MINLP
-                    0.1,  # HD
-                    0.25,  # HC
-                    0.29,  # HS
+                    0,  # dummy_a
+                    0.26,  # LC-1
+                    0.35,  # LC-2
+                    # 0.35,  # MIQP
+                    # -0.04,  # MINLP
+                    0.11,  # HD
+                    0.28,  # HC
+                    0.32,  # HS
+                    0,  # dummy_b
                 ]
             )
         case "eval_single_seed_10":
@@ -769,13 +812,15 @@ if show_t_max_marker is True:
         case "eval_platoon_30":
             t_marker_offset = np.array(
                 [
+                    0,  # dummy_a
                     0,  # LC-1
                     0,  # LC-2
-                    0,  # MIQP
-                    0,  # MINLP
+                    # 0,  # MIQP
+                    # 0,  # MINLP
                     0,  # HD
                     0,  # HC
                     0,  # HS
+                    0,  # dummy_b
                 ]
             )
         case "eval_single_seed_10":

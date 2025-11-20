@@ -15,18 +15,21 @@ from utils.plot_fcns import cm2inch
 
 # Plot trajectories of a platoon evaluation.
 # Select experiment to plot
-filename = "results/eval_platoon/eval_miqp/platoon_miqp_N_15_c_eval_seed_1003.pkl"
-fig_name = "trajectories_platoon_miqp_1003"
+filename = (
+    "results/eval_platoon/eval_l_mpc_c4_seed4_N15/"
+    "platoon_l_mpc_N_15_c_eval_seed_1005.pkl"
+)
+fig_name = "trajectories_platoon_both"
 
 # Save settings
 save_png = True
-save_pgf = False
+save_pgf = True
 save_tikz = False
 
 # Plot settings
-t_end = 1000  # time steps for plotting abs values
+t_end = 200  # time steps for plotting abs values
 fig_size_x = 9  # cm
-fig_size_y = 10  # cm
+fig_size_y = 12  # cm
 
 
 ##### Generate Plot ####################################################################
@@ -51,8 +54,8 @@ with open(filename, "rb") as f:
     data = pickle.load(f)
 x = np.squeeze(np.array(list(chain.from_iterable(data["X"]))))
 x_ref = np.squeeze(np.array(list(chain.from_iterable(data["x_ref"]))))
+gear = np.squeeze(np.array(list(chain.from_iterable(data["U"]))))[:, 2]
 t = np.arange(t_end)  # time steps for plotting
-
 
 # Compute relative errors (lead vehicle from ref, other vehicles from preceding one)
 # The +25 compensates for the safety distance between vehicles
@@ -85,7 +88,7 @@ fig_size_y = cm2inch(fig_size_y)
 
 # Absolute values plot
 fig, ax = plt.subplots(
-    4,
+    5,
     1,
     sharex=True,
     figsize=(fig_size_x, fig_size_y),
@@ -100,6 +103,9 @@ for i in range(n_agents):
     ax[1].plot(t, x_err[0:t_end, 0, i], linewidth=linewidth)
     ax[2].plot(t, x[0:t_end, 1, i], linewidth=linewidth)
     ax[3].plot(t, x_err[0:t_end, 1, i], linewidth=linewidth)
+    ax[4].plot(t, gear[0:t_end, i], linewidth=linewidth)
+
+# Plot reference trajectories
 ax[0].plot(t, x_ref[0:t_end, 0], linewidth=linewidth, linestyle="--", color="darkred")
 ax[1].plot(np.zeros(t_end), linewidth=linewidth, linestyle="--", color="darkred")
 ax[2].plot(t, x_ref[0:t_end, 1], linewidth=linewidth, linestyle="--", color="darkred")
@@ -117,7 +123,7 @@ ax[0].legend(
 )
 
 # Add grid, limits, ticks, and labels
-for i in range(4):
+for i in range(5):
     ax[i].set_axisbelow(True)
     ax[i].grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
     ax[i].grid(
@@ -130,7 +136,7 @@ ax[0].set_xticks(list(np.linspace(0, 200, 5, dtype=int)))
 ax[1].set_xticks(ax[0].get_xticks())
 ax[2].set_xticks(ax[0].get_xticks())
 ax[3].set_xticks(ax[0].get_xticks())
-ax[0].set_ylim([-200, 2700])
+ax[0].set_ylim([-200, 2500])
 ax[0].set_yticks([0, 1000, 2000])
 ax[0].set_yticklabels([0, 1, 2])
 ax[0].set_ylabel("$x^{[1]}_i$ [m]")
@@ -143,17 +149,19 @@ ax[0].text(
     va="bottom",
     fontsize=8,
 )
-ax[1].set_ylim([-20, 20])
+ax[1].set_ylim([-21, 23])
 ax[1].set_yticks([-20, 0, 20])
 ax[1].set_ylabel("$\\Delta x^{[1]}_i$ [m]")
-ax[2].set_ylim([0, 35])
+ax[2].set_ylim([-1, 31])
 ax[2].set_yticks([0, 10, 20, 30])
-ax[2].set_xlabel("$t$ [s]")
 ax[2].set_ylabel("$x^{[2]}_i$ [m/s]")
-ax[3].set_ylim([-7.7, 7])
+ax[3].set_ylim([-9, 9.5])
 ax[3].set_yticks([-5, 0, 5])
-ax[3].set_xlabel("$t$ [s]")
 ax[3].set_ylabel("$\\Delta x^{[2]}_i$ [m/s]")
+ax[4].set_ylabel("$u^{[3]}_i$ [-]")
+ax[4].set_yticks([1, 2, 3, 4, 5])
+ax[4].set_yticklabels([1, 2, 3, 4, 5])
+ax[4].set_xlabel("$t$ [s]")  # x label
 fig.align_ylabels(ax)
 
 ##### Save Figures #####################################################################
