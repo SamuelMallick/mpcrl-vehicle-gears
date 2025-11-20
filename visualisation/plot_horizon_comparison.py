@@ -1,5 +1,5 @@
 """
-Generate the comparison plot for MIQP-tl and RL-MPC25 with different horizons.
+Generate the comparison plot for MIQP-tl and RL-MPC with different horizons.
 """
 
 import os
@@ -18,12 +18,13 @@ from utils.plot_fcns import cm2inch
 ##### Plot settings ####################################################################
 
 # Save settings
+show_figure = False
 save_png = True
 save_pgf = True
-save_tikz = True
+save_tikz = False
 
 # Plot settings
-fig_size_x = 8  # cm
+fig_size_x = 6  # cm
 fig_size_y = 3.5  # cm
 show_legend = True
 
@@ -34,17 +35,20 @@ tick_labels_font_size = 8
 # Select experiments to plot
 eval_list = [
     ["eval_minlp_N15", "MINLP", 15],  # baseline
-    # ["eval_miqp_N10", "MIQP", 10],
-    # ["eval_l_mpc_c4_seed4_N10", "RL-MPC", 10],
-    ["eval_miqp_N15", "MIQP", 15],
+    ["eval_miqp_N15", "GUROBI", 15],
+    ["eval_miqp_N15_cplex", "CPLEX", 15],
     ["eval_l_mpc_c4_seed4_N15", "RL-MPC", 15],
-    ["eval_miqp_N20", "MIQP", 20],
+    ["eval_miqp_N20", "GUROBI", 20],
+    ["eval_miqp_N20_cplex", "CPLEX", 20],
     ["eval_l_mpc_c4_seed4_N20", "RL-MPC", 20],
-    ["eval_miqp_N25", "MIQP", 25],
+    ["eval_miqp_N25", "GUROBI", 25],
+    ["eval_miqp_N25_cplex", "CPLEX", 25],
     ["eval_l_mpc_c4_seed4_N25", "RL-MPC", 25],
-    ["eval_miqp_N30", "MIQP", 30],
+    ["eval_miqp_N30", "GUROBI", 30],
+    ["eval_miqp_N20_cplex", "CPLEX", 30],  # TODO: update data when available
     ["eval_l_mpc_c4_seed4_N30", "RL-MPC", 30],
-    ["eval_miqp_N35", "MIQP", 35],
+    ["eval_miqp_N35", "GUROBI", 35],
+    ["eval_miqp_N20_cplex", "CPLEX", 35],  # TODO: update data when available
     ["eval_l_mpc_c4_seed4_N35", "RL-MPC", 35],
 ]
 ##### Preprocess data ##################################################################
@@ -114,14 +118,22 @@ for eval_name, controller, horizon in eval_list:
 
 # Calculate the average reward for each evaluation
 avg_reward_rlmpc = []
-avg_reward_miqp = []
+avg_reward_gurobi = []
+avg_reward_cplex = []
 for h in horizon_list:
     avg_reward_rlmpc.append(
         np.mean(df[(df["Group"] == "RL-MPC") & (df["Type"] == str(h))]["Value"])
     )
-    avg_reward_miqp.append(
-        np.mean(df[(df["Group"] == "MIQP") & (df["Type"] == str(h))]["Value"])
+    avg_reward_gurobi.append(
+        np.mean(df[(df["Group"] == "GUROBI") & (df["Type"] == str(h))]["Value"])
     )
+    if h in [15, 20, 25]:
+        avg_reward_cplex.append(
+            np.mean(df[(df["Group"] == "CPLEX") & (df["Type"] == str(h))]["Value"])
+        )
+    else:
+        avg_reward_cplex.append(1e5)  # Placeholder for missing data
+
 ##### Plot results #####################################################################
 
 if version.parse(mpl.__version__) <= version.parse("3.7"):
@@ -154,8 +166,9 @@ mpl.rcParams.update(
 )
 
 # Set plot colors
-color_1 = "cadetblue"
-color_2 = "darkred"
+color_1 = "#005b8f"
+color_2 = "#8f0000"
+color_3 = "#8f6900"
 
 # Initialize figure
 print("Generating figure...")
@@ -165,14 +178,18 @@ fig, ax = plt.subplots(figsize=(fig_size_x, fig_size_y))
 fig.tight_layout()  # Avoid plt.tight_layout() as it messes with the multiple axes
 
 # Set reward labels and limits
-ax.set_ylim(13, 37)
-ax.set_ylim(-1, 5)
-ax.set_ylabel("$\\Delta J$ [\\%]")  # Relative performance drop
+ax.set_xlim(14, 36)
+ax.set_yscale("symlog", linthresh=2, linscale=1)  # CHANGE THESE SETTINGS IF NEEDED
+ax.set_ylim(-1.1, 2000)
+ax.minorticks_on()
+ax.set_yticks([-1, 0, 1, 10, 100, 1000])
+ax.set_yticks([-0.5, 0.5, 2, 3, 5, 50, 500], minor=True)
+ax.set_yticklabels(["-1", "0", "1", "$10^1$", "$10^2$", "$10^3$"])
 ax.set_xlabel("$N$")
+ax.set_ylabel("$\\Delta J$ [\\%]")  # Relative performance drop
 ax.set_axisbelow(True)  # Set grid below the plot elements
 ax.grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
 ax.grid(True, which="minor", linestyle=":", linewidth=0.5, alpha=0.7)
-ax.minorticks_on()
 ax.set_zorder(1)
 
 # Plot RLMPC2
@@ -185,26 +202,47 @@ h_rlmpc = ax.plot(
     linestyle="None",
 )
 
-# PLOT MIQP-tl
-h_miqp = ax.plot(
+# PLOT GUROBI MIQP-tl
+h_gurobi = ax.plot(
     horizon_list,
-    avg_reward_miqp,
+    avg_reward_gurobi,
     marker="D",
     markersize=3,
     color=color_2,
     linestyle="None",
 )
 
+# PLOT CPLEX MIQP-tl
+h_cplex = ax.plot(
+    horizon_list,
+    avg_reward_cplex,
+    marker="v",
+    markersize=3,
+    color=color_3,
+    linestyle="None",
+)
+
 # Add legend
 if show_legend is True:
-    handles = [h_rlmpc[0], h_miqp[0]]
-    labels = ["LC-2", "MIQP-tl"]
+    handles = [h_rlmpc[0], h_gurobi[0], h_cplex[0]]
+    labels = ["LC-2", "GUROBI", "CPLEX"]
     ax.legend(
         handles,
         labels,
-        loc="upper right",
+        loc="center right",
+        bbox_to_anchor=(1.56, 0.5),
+        fontsize=labels_font_size,
+        framealpha=None,
+        edgecolor="white",
         frameon=True,
+        mode=None,
+        borderpad=0,
+        labelspacing=0.3,
+        handletextpad=0,
     )
+
+if show_figure:
+    plt.show()
 
 # Save figures
 if save_png:
