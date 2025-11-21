@@ -24,7 +24,7 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-fig_size_x = 8  # cm
+fig_size_x = 9  # cm
 fig_size_y = 3.5  # cm
 show_legend = True
 
