@@ -31,13 +31,14 @@ save_pgf = True
 save_tikz = False  # still has some issues with multiple axes
 
 # Plot settings
-fig_size_x = 16.5  # cm
-fig_size_y = 5.9  # cm
+fig_size_x = 14  # cm
+fig_size_y = 4  # cm
 show_legend = False
 show_title = False
 
 # Select experiments to plot
-eval_to_plot = "eval_platoon_30"
+# eval_to_plot = "eval_single_no_tl"
+eval_to_plot = "eval_platoon_15"
 # AVAILABLE OPTIONS:
 # - eval_single
 # - eval_single_no_tl
@@ -489,7 +490,7 @@ match grouping_t:
         cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.008, 3500)
+        ax_t.set_ylim(0.008, 4500)
         ax_t.set_ylabel(
             "Timestep solution time [s]",
             color=c_time_dark,

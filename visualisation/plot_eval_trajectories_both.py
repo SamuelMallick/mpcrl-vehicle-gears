@@ -29,7 +29,7 @@ save_tikz = False
 # Plot settings
 t_end = 200  # time steps for plotting abs values
 fig_size_x = 9  # cm
-fig_size_y = 12  # cm
+fig_size_y = 8  # cm
 
 
 ##### Generate Plot ####################################################################
@@ -72,8 +72,8 @@ mpl.rcParams.update(
         "pgf.texsystem": "xelatex",  # or any other engine you want to use
         "text.usetex": True,  # use TeX for all texts
         "font.family": "serif",
-        "font.size": 10,
-        "axes.labelsize": 10,
+        "font.size": 8,
+        "axes.labelsize": 8,
         "xtick.labelsize": 8,
         "ytick.labelsize": 8,
         "pgf.rcfonts": False,
@@ -88,31 +88,32 @@ fig_size_y = cm2inch(fig_size_y)
 
 # Absolute values plot
 fig, ax = plt.subplots(
-    5,
+    4,
     1,
     sharex=True,
     figsize=(fig_size_x, fig_size_y),
 )
 ax = ax.flatten()
+ax = np.hstack((np.empty(1), ax))  # hacky # CHECKME
 
 # Plot trajectories
 linewidth = 0.7
 n_agents = x.shape[2]
 for i in range(n_agents):
-    ax[0].plot(t, x[0:t_end, 0, i], linewidth=linewidth)
+    # ax[0].plot(t, x[0:t_end, 0, i], linewidth=linewidth)
     ax[1].plot(t, x_err[0:t_end, 0, i], linewidth=linewidth)
     ax[2].plot(t, x[0:t_end, 1, i], linewidth=linewidth)
     ax[3].plot(t, x_err[0:t_end, 1, i], linewidth=linewidth)
     ax[4].plot(t, gear[0:t_end, i], linewidth=linewidth)
 
 # Plot reference trajectories
-ax[0].plot(t, x_ref[0:t_end, 0], linewidth=linewidth, linestyle="--", color="darkred")
+# ax[0].plot(t, x_ref[0:t_end, 0], linewidth=linewidth, linestyle="--", color="darkred")
 ax[1].plot(np.zeros(t_end), linewidth=linewidth, linestyle="--", color="darkred")
 ax[2].plot(t, x_ref[0:t_end, 1], linewidth=linewidth, linestyle="--", color="darkred")
 ax[3].plot(np.zeros(t_end), linewidth=linewidth, linestyle="--", color="darkred")
 
 # Add legend
-ax[0].legend(
+ax[1].legend(
     [f"Vehicle {i+1}" for i in range(n_agents)] + ["Reference"],
     loc="upper center",
     bbox_to_anchor=(0.47, 1.75),
@@ -123,7 +124,7 @@ ax[0].legend(
 )
 
 # Add grid, limits, ticks, and labels
-for i in range(5):
+for i in range(1, 5):
     ax[i].set_axisbelow(True)
     ax[i].grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
     ax[i].grid(
@@ -132,23 +133,23 @@ for i in range(5):
     ax[i].minorticks_on()
     ax[i].set_zorder(1)
 
-ax[0].set_xticks(list(np.linspace(0, 200, 5, dtype=int)))
-ax[1].set_xticks(ax[0].get_xticks())
-ax[2].set_xticks(ax[0].get_xticks())
-ax[3].set_xticks(ax[0].get_xticks())
-ax[0].set_ylim([-200, 2500])
-ax[0].set_yticks([0, 1000, 2000])
-ax[0].set_yticklabels([0, 1, 2])
-ax[0].set_ylabel("$x^{[1]}_i$ [m]")
-ax[0].text(
-    0.095,
-    1.02,
-    r"$\times 10^3$",
-    transform=ax[0].transAxes,
-    ha="right",
-    va="bottom",
-    fontsize=8,
-)
+ax[1].set_xticks(list(np.linspace(0, 200, 5, dtype=int)))
+# ax[1].set_xticks(ax[0].get_xticks())
+ax[2].set_xticks(ax[1].get_xticks())
+ax[3].set_xticks(ax[1].get_xticks())
+# ax[0].set_ylim([-200, 2500])
+# ax[0].set_yticks([0, 1000, 2000])
+# ax[0].set_yticklabels([0, 1, 2])
+# ax[0].set_ylabel("$x^{[1]}_i$ [m]")
+# ax[0].text(
+#     0.095,
+#     1.02,
+#     r"$\times 10^3$",
+#     transform=ax[0].transAxes,
+#     ha="right",
+#     va="bottom",
+#     fontsize=8,
+# )
 ax[1].set_ylim([-21, 23])
 ax[1].set_yticks([-20, 0, 20])
 ax[1].set_ylabel("$\\Delta x^{[1]}_i$ [m]")
@@ -162,7 +163,7 @@ ax[4].set_ylabel("$u^{[3]}_i$ [-]")
 ax[4].set_yticks([1, 2, 3, 4, 5])
 ax[4].set_yticklabels([1, 2, 3, 4, 5])
 ax[4].set_xlabel("$t$ [s]")  # x label
-fig.align_ylabels(ax)
+fig.align_ylabels(ax[1:])
 
 ##### Save Figures #####################################################################
 if save_png:

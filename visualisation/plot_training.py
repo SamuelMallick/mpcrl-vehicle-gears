@@ -17,7 +17,7 @@ sys.path.append(os.getcwd())
 from utils.plot_fcns import cm2inch
 
 # Save settings
-final_version = True  # Set to True for final version, False for faster version
+final_version = False  # Set to True for final version, False for faster version
 save_png = True
 save_pgf = True
 save_tikz = False
@@ -25,7 +25,7 @@ save_tikz = False
 # Plot settings
 train_stage = "c4"  # {c1, c2, c3, c4}
 fig_size_x = 9.0  # cm
-fig_size_y = 6.0  # cm
+fig_size_y = 3.0  # cm
 show_individual_lines = False
 show_legend = False
 
@@ -175,8 +175,9 @@ mpl.rcParams.update(
 
 fig_size_x = cm2inch(fig_size_x)
 fig_size_y = cm2inch(fig_size_y)
-fig, ax = plt.subplots(4, 1, sharex=True, figsize=(fig_size_x, fig_size_y))
+fig, ax = plt.subplots(2, 1, sharex=True, figsize=(fig_size_x, fig_size_y))
 ax = ax.flatten()
+ax = np.hstack([ax[0], np.empty(2), ax[1]])
 
 if show_individual_lines:
     p0 = sns.lineplot(
@@ -231,21 +232,21 @@ else:
         ax=ax[0],
     )
 
-    p1 = sns.lineplot(
-        data=data_df_long[1],
-        x="x",
-        y="L",
-        errorbar="sd",
-        ax=ax[1],
-    )
+    # p1 = sns.lineplot(
+    #     data=data_df_long[1],
+    #     x="x",
+    #     y="L",
+    #     errorbar="sd",
+    #     ax=ax[1],
+    # )
 
-    p2 = sns.lineplot(
-        data=data_df_long[2],
-        x="x",
-        y="L",
-        errorbar="sd",
-        ax=ax[2],
-    )
+    # p2 = sns.lineplot(
+    #     data=data_df_long[2],
+    #     x="x",
+    #     y="L",
+    #     errorbar="sd",
+    #     ax=ax[2],
+    # )
 
     p3 = sns.lineplot(
         data=data_df_long[3],
@@ -256,7 +257,7 @@ else:
     )
 
 # Set grid
-for i in ax:
+for i in [ax[0], ax[3]]:
     i.set_axisbelow(True)  # Set grid below the plot elements
     i.grid(True, which="major", linestyle="-", linewidth=0.6, alpha=1)
     i.grid(True, which="minor", linestyle=":", linewidth=0.5, alpha=0.7)
@@ -265,8 +266,8 @@ for i in ax:
 
 # Raise plots zorder
 p0.set_zorder(10)
-p1.set_zorder(10)
-p2.set_zorder(10)
+# p1.set_zorder(10)
+# p2.set_zorder(10)
 p3.set_zorder(10)
 
 # Set labels and ticks
@@ -301,10 +302,10 @@ ax[3].text(
     fontsize=8,
 )
 ax[0].set_ylabel(label_L)
-ax[1].set_ylabel("$J_\\mathrm{t}$")
-ax[2].set_ylabel("$J_\\mathrm{f}$")
+# ax[1].set_ylabel("$J_\\mathrm{t}$")
+# ax[2].set_ylabel("$J_\\mathrm{f}$")
 ax[3].set_ylabel(label_kappa)
-fig.align_ylabels(ax)
+fig.align_ylabels([ax[0], ax[3]])
 
 # Save figures
 fig_name = ""
