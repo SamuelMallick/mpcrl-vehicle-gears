@@ -36,19 +36,29 @@ tick_labels_font_size = 8
 eval_list = [
     ["eval_minlp_N15", "MINLP", 15],  # baseline
     ["eval_miqp_N15", "GUROBI", 15],
+    ["eval_miqp_N15_no_tl", "GUROBI-no-tl", 15],
+    ["eval_miqp_N15_no_heuristic", "GUROBI-no-h", 15],
     ["eval_miqp_N15_cplex", "CPLEX", 15],
     ["eval_l_mpc_c4_seed4_N15", "RL-MPC", 15],
     ["eval_miqp_N20", "GUROBI", 20],
+    ["eval_miqp_N15_no_tl", "GUROBI-no-tl", 20],
+    ["eval_miqp_N20_no_heuristic", "GUROBI-no-h", 20],
     ["eval_miqp_N20_cplex", "CPLEX", 20],
     ["eval_l_mpc_c4_seed4_N20", "RL-MPC", 20],
     ["eval_miqp_N25", "GUROBI", 25],
+    ["eval_miqp_N15_no_tl", "GUROBI-no-tl", 25],
+    ["eval_miqp_N25_no_heuristic", "GUROBI-no-h", 25],
     ["eval_miqp_N25_cplex", "CPLEX", 25],
     ["eval_l_mpc_c4_seed4_N25", "RL-MPC", 25],
     ["eval_miqp_N30", "GUROBI", 30],
-    ["eval_miqp_N20_cplex", "CPLEX", 30],  # TODO: update data when available
+    ["eval_miqp_N15_no_tl", "GUROBI-no-tl", 30],
+    ["eval_miqp_N30_no_heuristic", "GUROBI-no-h", 30],
+    ["eval_miqp_N30_cplex", "CPLEX", 30],
     ["eval_l_mpc_c4_seed4_N30", "RL-MPC", 30],
     ["eval_miqp_N35", "GUROBI", 35],
-    ["eval_miqp_N20_cplex", "CPLEX", 35],  # TODO: update data when available
+    ["eval_miqp_N15_no_tl", "GUROBI-no-tl", 35],
+    ["eval_miqp_N35_no_heuristic", "GUROBI-no-h", 35],
+    ["eval_miqp_N35_cplex", "CPLEX", 35],
     ["eval_l_mpc_c4_seed4_N35", "RL-MPC", 35],
 ]
 ##### Preprocess data ##################################################################
@@ -120,6 +130,8 @@ for eval_name, controller, horizon in eval_list:
 avg_reward_rlmpc = []
 avg_reward_gurobi = []
 avg_reward_cplex = []
+avg_reward_gurobi_no_tl = []
+avg_reward_gurobi_no_h = []
 for h in horizon_list:
     avg_reward_rlmpc.append(
         np.mean(df[(df["Group"] == "RL-MPC") & (df["Type"] == str(h))]["Value"])
@@ -127,12 +139,20 @@ for h in horizon_list:
     avg_reward_gurobi.append(
         np.mean(df[(df["Group"] == "GUROBI") & (df["Type"] == str(h))]["Value"])
     )
-    if h in [15, 20, 25]:
-        avg_reward_cplex.append(
-            np.mean(df[(df["Group"] == "CPLEX") & (df["Type"] == str(h))]["Value"])
+    avg_reward_cplex.append(
+        np.mean(df[(df["Group"] == "CPLEX") & (df["Type"] == str(h))]["Value"])
+    )
+    avg_reward_gurobi_no_h.append(
+        np.mean(df[(df["Group"] == "GUROBI-no-h") & (df["Type"] == str(h))]["Value"])
+    )
+    if h in [15]:
+        avg_reward_gurobi_no_tl.append(
+            np.mean(
+                df[(df["Group"] == "GUROBI-no-tl") & (df["Type"] == str(h))]["Value"]
+            )
         )
     else:
-        avg_reward_cplex.append(1e5)  # Placeholder for missing data
+        avg_reward_gurobi_no_tl.append(1e5)  # Placeholder for missing data
 
 ##### Plot results #####################################################################
 
@@ -168,7 +188,9 @@ mpl.rcParams.update(
 # Set plot colors
 color_1 = "#005b8f"
 color_2 = "#8f0000"
-color_3 = "#8f6900"
+color_3 = "#d86800"
+color_4 = "#f0b000"
+color_5 = "#01927fff"
 
 # Initialize figure
 print("Generating figure...")
@@ -197,9 +219,10 @@ h_rlmpc = ax.plot(
     horizon_list,
     avg_reward_rlmpc,
     marker=".",
-    markersize=8,
+    markersize=7,
     color=color_1,
     linestyle="None",
+    zorder=5,
 )
 
 # PLOT GUROBI MIQP-tl
@@ -207,9 +230,32 @@ h_gurobi = ax.plot(
     horizon_list,
     avg_reward_gurobi,
     marker="D",
-    markersize=3,
+    markersize=2.5,
     color=color_2,
     linestyle="None",
+    zorder=7,
+)
+
+# PLOT GUROBI MIQP-no-tl
+h_gurobi_no_tl = ax.plot(
+    horizon_list,
+    avg_reward_gurobi_no_tl,
+    marker="s",
+    markersize=4.5,
+    color=color_4,
+    linestyle="None",
+    zorder=4,
+)
+
+# PLOT GUROBI MIQP-no-tl
+h_gurobi_no_h = ax.plot(
+    horizon_list,
+    avg_reward_gurobi_no_h,
+    marker="p",
+    markersize=4,
+    color=color_5,
+    linestyle="None",
+    zorder=2,
 )
 
 # PLOT CPLEX MIQP-tl
@@ -220,17 +266,30 @@ h_cplex = ax.plot(
     markersize=3,
     color=color_3,
     linestyle="None",
+    zorder=4,
 )
 
 # Add legend
 if show_legend is True:
-    handles = [h_rlmpc[0], h_gurobi[0], h_cplex[0]]
-    labels = ["LC-2", "GUROBI", "CPLEX"]
+    handles = [
+        h_rlmpc[0],
+        h_gurobi[0],
+        h_gurobi_no_tl[0],
+        h_gurobi_no_h[0],
+        h_cplex[0],
+    ]
+    labels = [
+        "LC-2",
+        "GUROBI",
+        "GUROBI-no-tl",
+        "GUROBI-no-h",
+        "CPLEX",
+    ]
     ax.legend(
         handles,
         labels,
         loc="upper center",
-        bbox_to_anchor=(0.5, 1.3),
+        bbox_to_anchor=(0.5, 1.5),
         fontsize=labels_font_size,
         framealpha=None,
         edgecolor="white",
