@@ -1,7 +1,0 @@
-matplotlib<=3.7
-numpy<2
-webcolors
-tikzplotlib-patched
-seaborn
-pandas
-scipy
