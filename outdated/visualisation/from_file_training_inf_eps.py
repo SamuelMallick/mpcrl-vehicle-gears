@@ -1,7 +1,8 @@
+import os
 import pickle
-import sys, os
-from matplotlib import pyplot as plt
+import sys
 
+from matplotlib import pyplot as plt
 
 sys.path.append(os.getcwd())
 # from utils.tikz import save2tikz

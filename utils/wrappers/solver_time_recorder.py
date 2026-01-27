@@ -1,7 +1,8 @@
-from typing import TypeVar, Any
+from typing import Any, TypeVar
+
+import casadi as cs
 from csnlp import Nlp
 from csnlp.wrappers import Wrapper
-import casadi as cs
 
 SymType = TypeVar("SymType", cs.SX, cs.MX)
 

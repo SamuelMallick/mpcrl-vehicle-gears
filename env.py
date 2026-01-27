@@ -1,7 +1,9 @@
 from typing import Literal
+
 import gymnasium as gym
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
+
 from vehicle import Vehicle
 
 DEBUG = False

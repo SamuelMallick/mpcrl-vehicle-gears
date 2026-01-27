@@ -1,26 +1,27 @@
+import pickle
+from bisect import bisect_right
+from copy import deepcopy
+from datetime import datetime
 from typing import Literal
 
-from csnlp import Solution
+import casadi as cs
+import numpy as np
 import torch
+import torch.nn as nn
+import torch.optim as optim
+from csnlp import Solution
+from csnlp.wrappers.mpc.mpc import Mpc
+from torch.utils.data import DataLoader, TensorDataset
+
 from config_files.base import Config
 from env import VehicleTracking
-import numpy as np
-from csnlp.wrappers.mpc.mpc import Mpc
-from mpcs.mpc import Mpc
-from mpcs.hybrid_mpc import HybridMPC
-from mpcs.nonlinear_mpc import NonlinearMPC
 from mpcs.fixed_gear_mpc import FixedGearMPC
+from mpcs.hybrid_mpc import HybridMPC
+from mpcs.mpc import Mpc
+from mpcs.nonlinear_mpc import NonlinearMPC
 from network import DRQN, ReplayMemory, Transition
 from utils.running_mean_std import RunningMeanStd
 from vehicle import Vehicle
-from bisect import bisect_right
-import pickle
-from datetime import datetime
-import torch.optim as optim
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
-import casadi as cs
-from copy import deepcopy
 
 # the max velocity allowed by each gear while respecting the engine speed limit
 max_v_per_gear = [

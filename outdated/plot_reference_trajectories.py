@@ -1,6 +1,8 @@
-import sys, os
-from matplotlib.backends.backend_pgf import _tex_escape as mpl_common_texification
+import os
+import sys
+
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_pgf import _tex_escape as mpl_common_texification
 
 sys.path.append(os.getcwd())
 

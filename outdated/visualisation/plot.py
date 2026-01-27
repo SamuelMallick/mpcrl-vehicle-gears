@@ -1,7 +1,8 @@
 import os
 import sys
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 plt.rc("text", usetex=True)
 plt.rc("text.latex", preamble=r"\usepackage{bm}")

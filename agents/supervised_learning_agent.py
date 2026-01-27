@@ -1,10 +1,12 @@
 from copy import deepcopy
+
+import numpy as np
 import torch
+
 from agents.learning_agent import LearningAgent
 from config_files.base import Config
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
-import numpy as np
 
 
 class SupervisedLearningAgent(LearningAgent):

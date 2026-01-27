@@ -1,5 +1,7 @@
 from typing import Literal
+
 import numpy as np
+
 from agents.agent import PlatoonAgent, SingleVehicleAgent
 from mpcs.fixed_gear_mpc import FixedGearMPC
 

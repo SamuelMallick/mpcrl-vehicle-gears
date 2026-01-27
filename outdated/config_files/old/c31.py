@@ -1,10 +1,11 @@
 import os
 import pickle
 import sys
+
+import torch
+
 from mpcs.mpc import HybridTrackingMpc
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-import os, sys
-import torch
 
 sys.path.append(os.getcwd())
 from config_files.base import Config

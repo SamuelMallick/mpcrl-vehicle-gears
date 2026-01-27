@@ -1,6 +1,8 @@
 from bisect import bisect_right
 from typing import Literal
+
 import numpy as np
+
 from agents.agent import PlatoonAgent, SingleVehicleAgent
 from mpcs.nonlinear_mpc import NonlinearMPC
 from vehicle import Vehicle

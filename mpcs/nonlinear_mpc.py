@@ -1,8 +1,9 @@
 from typing import Literal, Optional
-from mpcs.mpc import VehicleMPC
-import numpy as np
-import casadi as cs
 
+import casadi as cs
+import numpy as np
+
+from mpcs.mpc import VehicleMPC
 from utils.solver_options import solver_options
 
 

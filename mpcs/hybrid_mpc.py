@@ -1,7 +1,9 @@
 from typing import Literal
-from mpcs.mpc import VehicleMPC
+
 import casadi as cs
 import numpy as np
+
+from mpcs.mpc import VehicleMPC
 
 
 class HybridMPC(VehicleMPC):

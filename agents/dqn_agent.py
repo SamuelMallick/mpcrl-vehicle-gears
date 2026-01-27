@@ -1,13 +1,15 @@
 import pickle
 from typing import Literal
+
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim as optim
+
 from agents.learning_agent import LearningAgent
 from env import VehicleTracking
 from network import DRQN, ReplayMemory, Transition
 from utils.running_mean_std import RunningMeanStd
-import torch.nn as nn
 
 
 class DQNAgent(LearningAgent):

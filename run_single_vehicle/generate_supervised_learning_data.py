@@ -5,14 +5,14 @@ import numpy as np
 import torch
 
 sys.path.append(os.getcwd())
+from gymnasium.wrappers import TimeLimit
+
 from agents.supervised_learning_agent import SupervisedLearningAgent
 from env import VehicleTracking
 from mpcs.mip_mpc import MIPMPC
+from utils.parse_config import parse_config
 from utils.wrappers.monitor_episodes import MonitorEpisodes
 from utils.wrappers.solver_time_recorder import SolverTimeRecorder
-from utils.parse_config import parse_config
-from gymnasium.wrappers import TimeLimit
-
 from vehicle import Vehicle
 
 # Generate config object

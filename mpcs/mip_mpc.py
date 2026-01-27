@@ -1,9 +1,10 @@
-from mpcs.hybrid_mpc import HybridMPC
+import copy
 from typing import Literal, Optional
+
 import casadi as cs
 import numpy as np
-import copy
 
+from mpcs.hybrid_mpc import HybridMPC
 from utils.solver_options import solver_options
 
 
