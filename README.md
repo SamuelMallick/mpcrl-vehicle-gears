@@ -28,7 +28,7 @@ If you find the paper or this repository helpful in your publications, please co
 The code was created with `Python 3.13`. To access it, clone the repository
 
 ```bash
-git clone https://github.com/SamuelMallick/mpcrl-vehicle-gears
+git clone --branch paper-2025 --single-branch https://github.com/SamuelMallick/mpcrl-vehicle-gears
 cd mpcrl-vehicle-gears
 ```
 
@@ -67,6 +67,6 @@ The repository is provided under the GNU General Public License. See the [LICENS
 
 > This research is part of a project that has received funding from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation programme ([Grant agreement No. 101018826 - CLariNet](https://cordis.europa.eu/project/id/101018826)).
 
-Copyright (c) 2024 Samuel Mallick.
+Copyright (c) 2025 Samuel Mallick.
 
 Copyright notice: Technische Universiteit Delft hereby disclaims all copyright interest in the program “mpcrl-vehicle-gearse” (Learning-Based MPC for Fuel Efficient Control of Autonomous Vehicles with Discrete Gear Selection) written by the Author(s). Prof. Dr. Ir. Fred van Keulen, Dean of 3mE.
