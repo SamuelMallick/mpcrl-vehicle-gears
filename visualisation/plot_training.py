@@ -23,7 +23,7 @@ save_pgf = True
 save_tikz = False
 
 # Plot settings
-train_stage = "c4"  # {c1, c2, c3, c4}
+train_stage = "c4"  # c3, c4 for stage 1, 2 respectively
 fig_size_x = 9.0  # cm
 fig_size_y = 3.0  # cm
 show_individual_lines = False

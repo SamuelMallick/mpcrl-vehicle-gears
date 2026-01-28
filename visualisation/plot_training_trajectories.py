@@ -14,7 +14,7 @@ from utils.plot_fcns import cm2inch
 ##### Plot settings ####################################################################
 
 # Select experiment to plot
-filename = "results/train_c3/c3_seed1/data_step_5000000.pkl"
+filename = "results/train_c3/seed1/data_step_5000000.pkl"
 fig_name = "train_traj"
 
 # Save settings

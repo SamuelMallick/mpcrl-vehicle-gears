@@ -16,10 +16,9 @@ from utils.plot_fcns import cm2inch
 # Plot trajectories of a platoon evaluation.
 # Select experiment to plot
 filename = (
-    "results/eval_platoon/eval_l_mpc_c4_seed4_N15/"
-    "platoon_l_mpc_N_15_c_eval_seed_1005.pkl"
+    "results/eval_platoon/eval_l_mpc_1_N15/platoon_l_mpc_N_15_c_eval_seed_1005.pkl"
 )
-fig_name = "trajectories_platoon_both"
+fig_name = "trajectories_platoon"
 
 # Save settings
 save_png = True
@@ -94,7 +93,11 @@ fig, ax = plt.subplots(
     figsize=(fig_size_x, fig_size_y),
 )
 ax = ax.flatten()
-ax = np.hstack((np.empty(1), ax))  # hacky # CHECKME
+
+# NOTE: the figure is set up to possibly include one extra subplot showing the position
+# value x^[1]_i over time. To enable this, line 90 must be replaced with '5', the
+# following line must be commented, and lines 106, 113, and 143-155 must be uncommented.
+ax = np.hstack((np.empty(1), ax))  # hacky
 
 # Plot trajectories
 linewidth = 0.7
