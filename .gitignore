@@ -11,10 +11,6 @@ dev/
 TODO.md
 .env
 
-# Folder of generated files and results 
-# (ignoring it requires to manually transfer results from the server to the local machine)
-results/  
-
 # Distribution / packaging
 .Python
 build/
