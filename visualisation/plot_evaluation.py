@@ -41,7 +41,7 @@ show_title = False
 #   - eval_single
 #   - eval_platoon_15
 #   - eval_platoon_30
-eval_to_plot = "eval_platoon_15"
+eval_to_plot = "eval_platoon_30"
 
 # Select the plot parameters
 use_relative_performance = True  # Show the relative performance of the policies
@@ -94,8 +94,8 @@ match eval_to_plot:
         eval_list = [
             ["eval_l_mpc_1_N30", "LC-1"],
             ["eval_l_mpc_2_N30", "LC-2"],
-            # ["eval_miqp_N15", "MIQP"], # TODO: update when N30 data is available
-            ["eval_minlp_N15", "MINLP"],  # TODO: update when N30 data is available
+            ["eval_miqp_N30", "MIQP"],
+            ["eval_minlp_N30", "MINLP"],
             ["eval_heuristic_mpc_1_N30", "HD"],
             ["eval_heuristic_mpc_2_N30", "HC"],
             ["eval_heuristic_mpc_3_N30", "HS"],
@@ -122,7 +122,7 @@ for eval_name, eval_label in eval_list:
     time: list[list] = []
 
     # Locate data files for current evaluation
-    pkl_files = os.listdir(f"results/{eval_type}/{eval_name}")
+    pkl_files = sorted(os.listdir(f"results/{eval_type}/{eval_name}"))
     print(f"Found {len(pkl_files)} files in results/{eval_type}/{eval_name}")
 
     # Extract all data from .pkl files
@@ -176,6 +176,7 @@ for eval_name, eval_label in eval_list:
 
         case "ts":
             time = np.concatenate(time, axis=0)
+            max_time.append(np.max(time))
 
         case _:
             raise ValueError(f"Unknown evaluation metric: {grouping_t}")
@@ -222,67 +223,6 @@ if use_relative_performance is True:
         J_policy = df_reward[mask]["Value"].values
         relative_J = (J_policy - J_baseline) / J_baseline * 100
         df_reward.loc[mask, "Value"] = (J_policy - J_baseline) / J_baseline * 100
-
-### HACKY STUFF FOR N=30 ###############################################################
-# This section is intended to hide the MINLP data from the plot as they are used only
-# as a baseline but should not be visualized, since they have been computed with N=15
-# and not N=30. Removal must happen after using it to compute the relative performance
-# drop for the other controllers
-if eval_to_plot == "eval_platoon_30":
-
-    # Remove MINLP data
-    df_reward = df_reward[df_reward["Group"] != "MINLP"]
-    df_time = df_time[df_time["Group"] != "MINLP"]
-
-    # Add dummy data for spacing
-    df_reward_temp_a = pd.DataFrame(
-        {
-            "Group": ["dummy_a"] * 2,
-            "Type": ["reward"] * 1 + ["dummy"] * 1,
-            "Value": np.concatenate([10e10 * np.ones(2)]),
-        }
-    )
-    df_time_temp_a = pd.DataFrame(
-        {
-            "Group": ["dummy_a"] * 2,
-            "Type": ["dummy"] * 1 + ["time"] * 1,
-            "Value": np.concatenate([10e-10 * np.ones(2)]),
-        }
-    )
-    df_reward_temp_b = pd.DataFrame(
-        {
-            "Group": ["dummy_b"] * 2,
-            "Type": ["reward"] * 1 + ["dummy"] * 1,
-            "Value": np.concatenate([10e10 * np.ones(2)]),
-        }
-    )
-    df_time_temp_b = pd.DataFrame(
-        {
-            "Group": ["dummy_b"] * 2,
-            "Type": ["dummy"] * 1 + ["time"] * 1,
-            "Value": np.concatenate([10e-10 * np.ones(2)]),
-        }
-    )
-    df_reward = pd.concat(
-        [df_reward.iloc[:52], df_reward_temp_a, df_reward_temp_b, df_reward.iloc[52:]]
-    )
-    df_time = pd.concat(
-        [df_time.iloc[:52], df_time_temp_a, df_time_temp_b, df_time.iloc[52:]]
-    )
-
-    # Update eval list
-    eval_list.pop(2)
-    eval_list = (
-        eval_list[:2] + [["dummy_a", "dummy_a"], ["dummy_b", "dummy_b"]] + eval_list[2:]
-    )
-
-    # Update x ticks labels
-    xticks_labels.remove("MINLP")
-    xticks_labels = xticks_labels[:2] + ["", ""] + xticks_labels[2:]
-
-    # Update max time
-    max_time.pop(2)
-    max_time = max_time[:2] + [1e6, 1e6] + max_time[2:]
 
 ##### Plot results #####################################################################
 
@@ -349,7 +289,7 @@ if use_relative_performance is True:
         case "eval_platoon_15":
             ax_r.set_ylim(-5, 35)
         case "eval_platoon_30":
-            ax_r.set_ylim(-10, 40)
+            ax_r.set_ylim(-4, 35)
     ax_r.set_ylabel(
         "$\\Delta J$ [\\%]",  # Relative performance drop
         color=c_reward_dark,
@@ -418,7 +358,7 @@ match grouping_t:
         cut_t = 0
 
     case "ts":
-        ax_t.set_ylim(0.008, 4500)
+        ax_t.set_ylim(0.01, 10000)
         ax_t.set_ylabel(
             "Timestep solution time [s]",
             color=c_time_dark,
@@ -644,15 +584,13 @@ if show_r_mean_marker is True:
         case "eval_platoon_30":
             r_marker_offset = np.array(
                 [
-                    0.26,  # LC-1
+                    0.25,  # LC-1
                     0.35,  # LC-2
-                    0,  # dummy_a
-                    0,  # dummy_a=b
-                    # 0.35,  # MIQP
-                    # -0.04,  # MINLP
-                    0.11,  # HD
+                    0.30,  # MIQP
+                    -0.04,  # MINLP
+                    0.09,  # HD
                     0.28,  # HC
-                    0.32,  # HS
+                    0.25,  # HS
                 ]
             )
     if len(avg_reward) != len(r_marker_offset):
@@ -720,12 +658,10 @@ if show_t_max_marker is True:
         case "eval_platoon_30":
             t_marker_offset = np.array(
                 [
-                    0,  # LC-1
-                    0,  # LC-2
-                    0,  # dummy_a
-                    0,  # dummy_b
-                    # 0,  # MIQP
-                    # 0,  # MINLP
+                    0.005,  # LC-1
+                    0.02,  # LC-2
+                    0.05,  # MIQP
+                    0,  # MINLP
                     0,  # HD
                     0,  # HC
                     0,  # HS
